@@ -12,9 +12,9 @@
 
 ## IPLab.Core
 
-- **Parallel operator execution in `FlowEx`**
-  Currently `RunAllAsync` executes operators sequentially in topological order.
-  Operators with no dependency on each other can safely run in parallel.
-  Implementation: after topological sort, group operators into dependency levels
-  (operators at the same level have no inter-dependencies), then use `Task.WhenAll`
-  to run each level in parallel while preserving execution order across levels.
+- **Type-safe output ports on `IOperatorType`**
+  Currently `OutputPorts` is `IReadOnlyList<string>` (names only). Each port should
+  also declare its data type (e.g. `Mat`, `CircleSegment[]`, `int`) so that
+  `FlowDef.Validate()` can verify that a wired `ParameterValue.Source` port type
+  is compatible with the target `ParameterDescriptor` type — the same way input
+  parameters are already typed via `ParameterDescriptor`.

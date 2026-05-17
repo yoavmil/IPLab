@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 
@@ -5,15 +6,16 @@ namespace IPLab.Core.Runtime;
 
 public class FlowEx : IFlowEx
 {
-    private readonly Dictionary<string, object?> _results = [];
-    private readonly Dictionary<string, OperatorStatus> _statuses;
+    private readonly ConcurrentDictionary<string, object?> _results = new();
+    private readonly ConcurrentDictionary<string, OperatorStatus> _statuses;
 
     public IFlowDef Flow { get; }
 
     public FlowEx(IFlowDef flow)
     {
         Flow = flow;
-        _statuses = flow.Operators.ToDictionary(o => o.Id, _ => OperatorStatus.NotRun);
+        _statuses = new ConcurrentDictionary<string, OperatorStatus>(
+            flow.Operators.Select(o => KeyValuePair.Create(o.Id, OperatorStatus.NotRun)));
     }
 
     public IReadOnlyDictionary<string, object?> IntermediateResults => _results;
@@ -21,9 +23,10 @@ public class FlowEx : IFlowEx
 
     public async Task RunAllAsync()
     {
-        var sorted = TopologicalSort().ToList();
-        foreach (var op in sorted)
-            await RunOperatorAsync(op);
+        var levels = TopologicalLevels();
+
+		foreach (var level in levels)
+            await Task.WhenAll(level.Select(RunOperatorAsync));
     }
 
     public async Task RunSingleAsync(string operatorId)
@@ -35,7 +38,7 @@ public class FlowEx : IFlowEx
     public void ClearResults()
     {
         _results.Clear();
-        foreach (var key in _statuses.Keys.ToList())
+        foreach (var key in _statuses.Keys)
             _statuses[key] = OperatorStatus.NotRun;
     }
 
@@ -76,10 +79,12 @@ public class FlowEx : IFlowEx
         return resolved;
     }
 
-    private IEnumerable<IOperator> TopologicalSort()
+    // Groups operators into dependency levels. All operators within a level are
+    // independent of each other and can run in parallel.
+    private IEnumerable<IReadOnlyList<IOperator>> TopologicalLevels()
     {
         var inDegree = Flow.Operators.ToDictionary(o => o.Id, _ => 0);
-        var graph = Flow.Operators.ToDictionary(o => o.Id, _ => new List<string>());
+        var graph    = Flow.Operators.ToDictionary(o => o.Id, _ => new List<string>());
 
         foreach (var op in Flow.Operators)
             foreach (var dep in op.Dependencies)
@@ -88,19 +93,24 @@ public class FlowEx : IFlowEx
                 inDegree[op.Id]++;
             }
 
-        var queue = new Queue<string>(inDegree.Where(kv => kv.Value == 0).Select(kv => kv.Key));
-        var byId = Flow.Operators.ToDictionary(o => o.Id);
-        var result = new List<IOperator>();
+        var byId      = Flow.Operators.ToDictionary(o => o.Id);
+        var remaining = new HashSet<string>(Flow.Operators.Select(o => o.Id));
 
-        while (queue.Count > 0)
+        while (remaining.Count > 0)
         {
-            var id = queue.Dequeue();
-            result.Add(byId[id]);
-            foreach (var next in graph[id])
-                if (--inDegree[next] == 0)
-                    queue.Enqueue(next);
-        }
+            var level = remaining.Where(id => inDegree[id] == 0)
+                                 .Select(id => byId[id])
+                                 .ToList();
+            if (level.Count == 0) break; // cycle — Validate() should have caught this
 
-        return result;
+            yield return level;
+
+            foreach (var op in level)
+            {
+                remaining.Remove(op.Id);
+                foreach (var next in graph[op.Id])
+                    inDegree[next]--;
+            }
+        }
     }
 }

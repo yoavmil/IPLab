@@ -22,4 +22,10 @@
     <ProjectReference Include="..\IPLab.Core\IPLab.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="TestImages\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
