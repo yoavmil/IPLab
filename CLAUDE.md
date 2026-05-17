@@ -216,6 +216,10 @@ The user should be able to click any operator and inspect its output.
 
 ## Architecture Direction
 
+See [DESIGN.md](docs/DESIGN.md) for the core interface definitions and diagrams.
+
+
+
 The exact flow data structure is not yet decided.
 
 However, the general direction is:

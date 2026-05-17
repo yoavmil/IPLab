@@ -1,0 +1,86 @@
+{
+  "flowDef": {
+    "version": "1.0",
+    "operators": [
+      {
+        "id": "O1",
+        "displayName": "Input",
+        "typeName": "LoadImage",
+        "parameters": [
+          { "name": "FilePath", "value": "C:/images/wafer.tif" }
+        ],
+        "dependencies": []
+      },
+      {
+        "id": "O2",
+        "displayName": "Smooth",
+        "typeName": "GaussianBlur",
+        "parameters": [
+          { "name": "Image",  "source": { "operatorId": "O1", "port": "Image" } },
+          { "name": "Kernel", "value": { "Width": 5, "Height": 5 } },
+          { "name": "SigmaX", "value": 0 }
+        ],
+        "dependencies": [
+          { "dependencyId": "D1", "operatorId": "O1" }
+        ]
+      },
+      {
+        "id": "O3",
+        "displayName": "Binarize",
+        "typeName": "Threshold",
+        "parameters": [
+          { "name": "Image",          "source": { "operatorId": "O2", "port": "Image" } },
+          { "name": "ThresholdValue", "value": 128 },
+          { "name": "Type",           "value": "BinaryInv" }
+        ],
+        "dependencies": [
+          { "dependencyId": "D2", "operatorId": "O2" }
+        ]
+      },
+      {
+        "id": "O4",
+        "displayName": "WaferEdge",
+        "typeName": "FindContours",
+        "parameters": [
+          { "name": "Image",  "source": { "operatorId": "O3", "port": "Image" } },
+          { "name": "Mode",   "value": "External" },
+          { "name": "Method", "value": "Simple" }
+        ],
+        "dependencies": [
+          { "dependencyId": "D3", "operatorId": "O3" }
+        ]
+      },
+      {
+        "id": "O5",
+        "displayName": "Overlay",
+        "typeName": "DrawContours",
+        "parameters": [
+          { "name": "Image",     "source": { "operatorId": "O1", "port": "Image" } },
+          { "name": "Contours",  "source": { "operatorId": "O4", "port": "Contours" } },
+          { "name": "Color",     "value": { "R": 0, "G": 255, "B": 0 } },
+          { "name": "Thickness", "value": 2 }
+        ],
+        "dependencies": [
+          { "dependencyId": "D4", "operatorId": "O1" },
+          { "dependencyId": "D5", "operatorId": "O4" }
+        ]
+      }
+    ]
+  },
+  "flowLayout": {
+    "operators": [
+      { "operatorId": "O1", "x": 100, "y": 300 },
+      { "operatorId": "O2", "x": 300, "y": 200 },
+      { "operatorId": "O3", "x": 500, "y": 200 },
+      { "operatorId": "O4", "x": 700, "y": 200 },
+      { "operatorId": "O5", "x": 900, "y": 300 }
+    ],
+    "dependencies": [
+      { "dependencyId": "D1", "waypoints": [] },
+      { "dependencyId": "D2", "waypoints": [] },
+      { "dependencyId": "D3", "waypoints": [] },
+      { "dependencyId": "D4", "waypoints": [{ "x": 100, "y": 400 }, { "x": 900, "y": 400 }] },
+      { "dependencyId": "D5", "waypoints": [] }
+    ]
+  }
+}
