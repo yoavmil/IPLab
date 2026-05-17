@@ -2,5 +2,7 @@
   <Folder Name="/Solution Items/">
     <File Path="CLAUDE.md" />
   </Folder>
+  <Project Path="IPLab.Core.Tests/IPLab.Core.Tests.csproj" />
+  <Project Path="IPLab.Core/IPLab.Core.csproj" />
   <Project Path="IPLab/IPLab.csproj" />
 </Solution>

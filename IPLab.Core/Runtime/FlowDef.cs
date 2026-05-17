@@ -1,0 +1,77 @@
+using System.Collections.ObjectModel;
+using IPLab.Core.Interfaces;
+using IPLab.Core.Models;
+
+namespace IPLab.Core.Runtime;
+
+public class FlowDef : IFlowDef
+{
+    private readonly ObservableCollection<IOperator> _operators;
+    private readonly ReadOnlyObservableCollection<IOperator> _readOnlyOperators;
+
+    public FlowDef(IEnumerable<IOperator>? operators = null)
+    {
+        _operators = new ObservableCollection<IOperator>(operators ?? []);
+        _readOnlyOperators = new ReadOnlyObservableCollection<IOperator>(_operators);
+    }
+
+    // IReadOnlyList<T> for the interface contract; the runtime type is
+    // ReadOnlyObservableCollection so WPF bindings still receive CollectionChanged events.
+    public IReadOnlyList<IOperator> Operators => _readOnlyOperators;
+
+    public void AddOperator(IOperator op) => _operators.Add(op);
+
+    public void RemoveOperator(string operatorId)
+    {
+        var op = _operators.FirstOrDefault(o => o.Id == operatorId);
+        if (op is not null) _operators.Remove(op);
+    }
+
+    public ValidationResult Validate()
+    {
+        var errors = new List<string>();
+        var ids = new HashSet<string>();
+
+        foreach (var op in Operators)
+            if (!ids.Add(op.Id))
+                errors.Add($"Duplicate operator ID: {op.Id}");
+
+        foreach (var op in Operators)
+            foreach (var dep in op.Dependencies)
+                if (!ids.Contains(dep.OperatorId))
+                    errors.Add($"Operator '{op.Id}' references unknown dependency '{dep.OperatorId}'.");
+
+        if (HasCycle())
+            errors.Add("Flow contains circular dependencies.");
+
+        return errors.Count == 0 ? ValidationResult.Ok() : ValidationResult.Fail([.. errors]);
+    }
+
+    private bool HasCycle()
+    {
+        var inDegree = Operators.ToDictionary(o => o.Id, _ => 0);
+        var graph = Operators.ToDictionary(o => o.Id, _ => new List<string>());
+
+        foreach (var op in Operators)
+            foreach (var dep in op.Dependencies)
+                if (graph.ContainsKey(dep.OperatorId))
+                {
+                    graph[dep.OperatorId].Add(op.Id);
+                    inDegree[op.Id]++;
+                }
+
+        var queue = new Queue<string>(inDegree.Where(kv => kv.Value == 0).Select(kv => kv.Key));
+        int processed = 0;
+
+        while (queue.Count > 0)
+        {
+            var id = queue.Dequeue();
+            processed++;
+            foreach (var next in graph[id])
+                if (--inDegree[next] == 0)
+                    queue.Enqueue(next);
+        }
+
+        return processed != Operators.Count;
+    }
+}
