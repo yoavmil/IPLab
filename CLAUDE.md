@@ -57,7 +57,7 @@ Examples:
 
 Each operator should have inputs, outputs, parameters, execution status, and some displayable result.
 
-### Flow
+### FlowVis
 
 A **flow** is the complete visual image-processing pipeline.
 
@@ -200,7 +200,6 @@ The execution system should support:
 
 - Running the full flow.
 - Running a selected operator.
-- 
 - Saving intermediate outputs in runtime memory.
 - Displaying intermediate images and features.
 - Reporting operator status.
@@ -242,32 +241,25 @@ Advantages:
 - Easier to debug.
 - Allows the same flow to be reused by the tool and production code.
 
-### C# Code Export
 
-The tool generates C# code equivalent to the visual flow.
-
-Advantages:
-
-- Easier integration into production projects.
-- No runtime flow interpreter required.
-- More transparent to developers.
-
-This is useful, but probably harder than JSON export and can be added later.
 
 ## Open Questions
 
 Important unresolved decisions:
 
-1. Should the visual flow be a free node graph or a simpler vertical step list?
+1. Should the visual flow be a free node graph or a simpler vertical step list? Node Graph for multiple paths, including parallel execution.
 2. What is the exact flow data model?
-3. What should an operator interface look like?
-4. How should multiple outputs be represented?
-5. How should non-image data be passed between operators?
-6. How should parameters be described for automatic UI generation?
-7. Should operators be built-in only, or should there be a plugin system?
-8. Should the executor support partial recomputation when only one parameter changes?
-9. How should large images and memory-heavy intermediate results be managed?
-10. What is the minimum useful MVP operator set?
+3. What should an operator interface look like? It should include 
+   1. an ID (ex. O21, O for Operator)
+   2. the Type (ex. Line Detection or an representative Icon)
+   3. a user selected name (ex. "LeftWaferEdge")
+4. How should multiple outputs be represented? Eigther on the image or on the results textual display
+5. How should non-image data be passed between operators? strongly types, but stored at the memory as an generic Object, which could be a int/bool/double/array and so on.
+6. How should parameters be described for automatic UI generation? the operator interface would teach the UI how to dislay it. BTW TBD where the settings window would open once double click an operator.
+7. Should operators be built-in only, or should there be a plugin system? what does this mean?
+8. Should the executor support partial recomputation when only one parameter changes? redo everything
+9. How should large images and memory-heavy intermediate results be managed? no special treatment for now
+10. What is the minimum useful MVP operator set? load image + median blur + edge detection + expose results
 
 ## MVP Recommendation
 
@@ -277,7 +269,6 @@ A good MVP could include:
 - Add operators visually
 - Connect simple linear flow
 - Run all
-- Run selected
 - Preview output image per operator
 - Show textual result per operator
 - Edit parameters
@@ -288,11 +279,12 @@ A good MVP could include:
 Initial operators:
 
 - Input image
-- Convert color
+- Convert color to BW or split channel
 - Blur
 - Threshold
 - Morphology
 - Find contours
+- Line detection
 - Draw contours / overlay
 
 The MVP should avoid complex graph features until the basic linear pipeline works well.
