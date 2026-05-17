@@ -146,6 +146,13 @@ It should include:
 - Connections between operators.
 - A panel or library for adding new operators (with textual search)
 
+The pipeline editor has two views, switchable via tabs:
+
+1. **Graph View** — the visual node graph (default)
+2. **JSON View** — a raw JSON text editor showing the underlying flow definition
+
+Changes in either view are immediately reflected in the other. This allows power users to edit the flow directly as JSON, and see the result in the graph, and vice versa.
+
 ### Right Side – Inspector
 
 The right side shows information about the currently selected operator.
@@ -243,23 +250,32 @@ Advantages:
 
 
 
+## Design Decisions
+
+**Flow layout:** A free node graph (not a step list), supporting multiple paths and parallel execution.
+
+**Operator interface:** Each operator exposes:
+- An auto-generated ID in the format `O` + number (e.g., `O21`)
+- A type name (e.g., "Line Detection") with a representative icon
+- A user-selected display name (e.g., `"LeftWaferEdge"`)
+
+**Non-image data between operators:** Strongly typed at the interface level, but stored in runtime memory as a generic `object` (can be `int`, `bool`, `double`, array, etc.).
+
+**Parameter UI generation:** Each operator is self-describing — it tells the UI how to render its parameters.
+
+**Partial recomputation:** Not supported. Any parameter change triggers a full re-execution of the flow.
+
+**Memory management:** No special treatment for large images or heavy intermediate results in the MVP.
+
+**Plugin system:** Built-in operators only. Plugin extensibility is deferred beyond MVP.
+
+**MVP operator set:** Load image, median blur, edge detection, expose results.
+
 ## Open Questions
 
-Important unresolved decisions:
-
-1. Should the visual flow be a free node graph or a simpler vertical step list? Node Graph for multiple paths, including parallel execution.
-2. What is the exact flow data model?
-3. What should an operator interface look like? It should include 
-   1. an ID (ex. O21, O for Operator)
-   2. the Type (ex. Line Detection or an representative Icon)
-   3. a user selected name (ex. "LeftWaferEdge")
-4. How should multiple outputs be represented? Eigther on the image or on the results textual display
-5. How should non-image data be passed between operators? strongly types, but stored at the memory as an generic Object, which could be a int/bool/double/array and so on.
-6. How should parameters be described for automatic UI generation? the operator interface would teach the UI how to dislay it. BTW TBD where the settings window would open once double click an operator.
-7. Should operators be built-in only, or should there be a plugin system? what does this mean?
-8. Should the executor support partial recomputation when only one parameter changes? redo everything
-9. How should large images and memory-heavy intermediate results be managed? no special treatment for now
-10. What is the minimum useful MVP operator set? load image + median blur + edge detection + expose results
+1. What is the exact flow data model (schema and serialization format)?
+2. How should multiple outputs be represented — overlaid on the image, or shown in the textual result panel?
+3. Where should the parameter settings panel open when an operator is double-clicked?
 
 ## MVP Recommendation
 
@@ -275,6 +291,7 @@ A good MVP could include:
 - Show operator status colors
 - Save/load flow as JSON
 - Execute saved flow through `FlowEx`
+- Edit flow as JSON directly in the pipeline editor (JSON view tab), with live two-way sync to the graph view
 
 Initial operators:
 
