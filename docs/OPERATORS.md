@@ -8,8 +8,12 @@
 - [ConvertToGrayscale](#converttograyscale) — convert BGR image to single-channel grayscale
 - [SplitChannels](#splitchannels) — split BGR image into separate R, G, B channel images
 
+## Filters
+- [Threshold](#threshold) — apply binary threshold to a single-channel image
+
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
+- [DetectBlobs](#detectblobs) — detect circular blobs using SimpleBlobDetector
 
 ---
 
@@ -68,6 +72,22 @@ Splits a BGR color image into three separate single-channel images.
 
 ---
 
+## Threshold
+
+Applies a binary threshold to a single-channel image. Pixels above `Thresh` are set to `MaxVal`; all others are set to 0.
+
+| Parameter | Type   | Connectable | Description                        |
+|-----------|--------|-------------|------------------------------------|
+| Image     | Object | Yes         | Single-channel input Mat           |
+| Thresh    | Double | No          | Threshold value (default 128)      |
+| MaxVal    | Double | No          | Value assigned to passing pixels (default 255) |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
+
 ## DetectCircles
 
 Detects circles in a single-channel image using the Hough Gradient transform (`Cv2.HoughCircles`).
@@ -84,3 +104,23 @@ Detects circles in a single-channel image using the Hough Gradient transform (`C
 | Output Port | Type            |
 |-------------|-----------------|
 | Circles     | CircleSegment[] |
+
+---
+
+## DetectBlobs
+
+Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
+
+| Parameter          | Type   | Connectable | Description                                      |
+|--------------------|--------|-------------|--------------------------------------------------|
+| Image              | Object | Yes         | Single-channel input Mat                         |
+| MinCircularity     | Double | No          | Minimum circularity score (0–1); higher = rounder |
+| MinArea            | Double | No          | Minimum blob area in pixels²                     |
+| MaxArea            | Double | No          | Maximum blob area in pixels²                     |
+| MinDistBetweenBlobs| Double | No          | Minimum distance between blob centers in pixels  |
+| MinThreshold       | Double | No          | Lower bound of the internal binarization range   |
+| MaxThreshold       | Double | No          | Upper bound of the internal binarization range   |
+
+| Output Port | Type       |
+|-------------|------------|
+| Blobs       | KeyPoint[] |

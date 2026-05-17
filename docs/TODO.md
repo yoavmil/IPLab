@@ -17,10 +17,6 @@
 
 ## IPLab.Core
 
-- **Blob detection operator** — implement `DetectBlobsOperator` using `SimpleBlobDetector`
-  with circularity filtering once the correct OpenCvSharp API is confirmed.
-  Mirror the `ChannelCircleTests` test structure for the blob version.
-
 - **Type-safe output ports on `IOperatorType`**
   Currently `OutputPorts` is `IReadOnlyList<string>` (names only). Each port should
   also declare its data type (e.g. `Mat`, `CircleSegment[]`, `int`) so that

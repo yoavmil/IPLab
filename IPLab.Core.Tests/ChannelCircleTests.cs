@@ -13,14 +13,12 @@ public class ChannelCircleTests
     [Fact]
     public async Task RGBCircles_PerChannelDetection_CountsMatch()
     {
-        // Load image once upfront to derive scale-dependent HoughCircles parameters
         using var probe = Cv2.ImRead(ImagePath, ImreadModes.Color);
         var minDist   = probe.Width / 10.0;
-        var minRadius = probe.Width / 30;
-        var maxRadius = probe.Width / 6;
+        var minRadius = 30;
+        var maxRadius = 50;
 
-        // Build the full flow: Load → SplitChannels → DetectCircles (×3, one per channel)
-        // O3R, O3G, O3B each wire their Image parameter to a different output port of O2
+        // Flow: Load → Split → Threshold(×3) → DetectCircles(×3)
         var flow = new FlowDef(
         [
             new Operator
@@ -42,59 +40,98 @@ public class ChannelCircleTests
             new Operator
             {
                 Id           = "O3",
-                DisplayName  = "DetectRed",
-                Type         = new DetectCirclesOperator(),
+                DisplayName  = "ThreshRed",
+                Type         = new ThresholdOperator(),
                 Parameters   =
                 [
-                    new ParameterValue { Name = "Image",     Source = new SourceRef("O2", "Red") },
-                    new ParameterValue { Name = "MinDist",   Value  = minDist   },
-                    new ParameterValue { Name = "Param1",    Value  = 200.0     },
-                    new ParameterValue { Name = "Param2",    Value  = 19.0      },
-                    new ParameterValue { Name = "MinRadius", Value  = minRadius },
-                    new ParameterValue { Name = "MaxRadius", Value  = maxRadius }
+                    new ParameterValue { Name = "Image",  Source = new SourceRef("O2", "Red") },
+                    new ParameterValue { Name = "Thresh", Value  = 128.0 },
+                    new ParameterValue { Name = "MaxVal", Value  = 255.0 }
                 ],
                 Dependencies = [new Dependency("D2", "O2")]
             },
             new Operator
             {
                 Id           = "O4",
-                DisplayName  = "DetectGreen",
-                Type         = new DetectCirclesOperator(),
+                DisplayName  = "ThreshGreen",
+                Type         = new ThresholdOperator(),
                 Parameters   =
                 [
-                    new ParameterValue { Name = "Image",     Source = new SourceRef("O2", "Green") },
-                    new ParameterValue { Name = "MinDist",   Value  = minDist   },
-                    new ParameterValue { Name = "Param1",    Value  = 200.0     },
-                    new ParameterValue { Name = "Param2",    Value  = 19.0      },
-                    new ParameterValue { Name = "MinRadius", Value  = minRadius },
-                    new ParameterValue { Name = "MaxRadius", Value  = maxRadius }
+                    new ParameterValue { Name = "Image",  Source = new SourceRef("O2", "Green") },
+                    new ParameterValue { Name = "Thresh", Value  = 128.0 },
+                    new ParameterValue { Name = "MaxVal", Value  = 255.0 }
                 ],
                 Dependencies = [new Dependency("D3", "O2")]
             },
             new Operator
             {
                 Id           = "O5",
+                DisplayName  = "ThreshBlue",
+                Type         = new ThresholdOperator(),
+                Parameters   =
+                [
+                    new ParameterValue { Name = "Image",  Source = new SourceRef("O2", "Blue") },
+                    new ParameterValue { Name = "Thresh", Value  = 128.0 },
+                    new ParameterValue { Name = "MaxVal", Value  = 255.0 }
+                ],
+                Dependencies = [new Dependency("D4", "O2")]
+            },
+            new Operator
+            {
+                Id           = "O6",
+                DisplayName  = "DetectRed",
+                Type         = new DetectCirclesOperator(),
+                Parameters   =
+                [
+                    new ParameterValue { Name = "Image",     Source = new SourceRef("O3", "Image") },
+                    new ParameterValue { Name = "MinDist",   Value  = minDist   },
+                    new ParameterValue { Name = "Param1",    Value  = 150.0     },
+                    new ParameterValue { Name = "Param2",    Value  = 10.0      },
+                    new ParameterValue { Name = "MinRadius", Value  = minRadius },
+                    new ParameterValue { Name = "MaxRadius", Value  = maxRadius }
+                ],
+                Dependencies = [new Dependency("D5", "O3")]
+            },
+            new Operator
+            {
+                Id           = "O7",
+                DisplayName  = "DetectGreen",
+                Type         = new DetectCirclesOperator(),
+                Parameters   =
+                [
+                    new ParameterValue { Name = "Image",     Source = new SourceRef("O4", "Image") },
+                    new ParameterValue { Name = "MinDist",   Value  = minDist   },
+                    new ParameterValue { Name = "Param1",    Value  = 150.0     },
+                    new ParameterValue { Name = "Param2",    Value  = 10.0      },
+                    new ParameterValue { Name = "MinRadius", Value  = minRadius },
+                    new ParameterValue { Name = "MaxRadius", Value  = maxRadius }
+                ],
+                Dependencies = [new Dependency("D6", "O4")]
+            },
+            new Operator
+            {
+                Id           = "O8",
                 DisplayName  = "DetectBlue",
                 Type         = new DetectCirclesOperator(),
                 Parameters   =
                 [
-                    new ParameterValue { Name = "Image",     Source = new SourceRef("O2", "Blue") },
+                    new ParameterValue { Name = "Image",     Source = new SourceRef("O5", "Image") },
                     new ParameterValue { Name = "MinDist",   Value  = minDist   },
-                    new ParameterValue { Name = "Param1",    Value  = 200.0     },
-                    new ParameterValue { Name = "Param2",    Value  = 20.0      },
+                    new ParameterValue { Name = "Param1",    Value  = 150.0     },
+                    new ParameterValue { Name = "Param2",    Value  = 10.0      },
                     new ParameterValue { Name = "MinRadius", Value  = minRadius },
                     new ParameterValue { Name = "MaxRadius", Value  = maxRadius }
                 ],
-                Dependencies = [new Dependency("D4", "O2")]
+                Dependencies = [new Dependency("D7", "O5")]
             }
         ]);
 
         var executor = new FlowEx(flow);
         await executor.RunAllAsync();
 
-        var redCircles   = (CircleSegment[])executor.IntermediateResults["O3"]!;
-        var greenCircles = (CircleSegment[])executor.IntermediateResults["O4"]!;
-        var blueCircles  = (CircleSegment[])executor.IntermediateResults["O5"]!;
+        var redCircles   = (CircleSegment[])executor.IntermediateResults["O6"]!;
+        var greenCircles = (CircleSegment[])executor.IntermediateResults["O7"]!;
+        var blueCircles  = (CircleSegment[])executor.IntermediateResults["O8"]!;
 
         Assert.Equal(2, redCircles.Length);
         Assert.Equal(3, greenCircles.Length);
