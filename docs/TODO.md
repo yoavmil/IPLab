@@ -1,5 +1,10 @@
 # IPLab TODO
 
+## Docs
+
+- **README.md** — root-level project introduction: what IPLab is, who it's for,
+  quick-start (how to build and run), and links to OPERATORS.md
+
 ## IPLab.Core.Tests
 
 - **Test: circular dependency is caught by `Validate()`**
@@ -11,6 +16,10 @@
   in the operator's `Dependencies`, and assert that `Validate()` catches the mismatch.
 
 ## IPLab.Core
+
+- **Blob detection operator** — implement `DetectBlobsOperator` using `SimpleBlobDetector`
+  with circularity filtering once the correct OpenCvSharp API is confirmed.
+  Mirror the `ChannelCircleTests` test structure for the blob version.
 
 - **Type-safe output ports on `IOperatorType`**
   Currently `OutputPorts` is `IReadOnlyList<string>` (names only). Each port should

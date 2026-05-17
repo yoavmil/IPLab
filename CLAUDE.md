@@ -217,6 +217,9 @@ The user should be able to click any operator and inspect its output.
 ## Architecture Direction
 
 See [DESIGN.md](docs/DESIGN.md) for the core interface definitions and diagrams.
+See [OPERATORS.md](docs/OPERATORS.md) for the catalogue of built-in operators.
+
+**Rule: whenever a new operator is added to `IPLab.Core.Operators`, add a corresponding entry to [docs/OPERATORS.md](docs/OPERATORS.md).**
 
 
 
