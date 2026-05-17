@@ -46,9 +46,10 @@ Saves an image to disk. No output port — side effect only.
 
 Converts a BGR color image to a single-channel grayscale image.
 
-| Parameter | Type   | Connectable | Description    |
-|-----------|--------|-------------|----------------|
-| Image     | Object | Yes         | Input BGR Mat  |
+| Parameter | Type   | Connectable | Description                                      |
+|-----------|--------|-------------|--------------------------------------------------|
+| Image     | Object | Yes         | Input BGR Mat                                    |
+| Method    | Enum   | No          | `Luminance` (default) — weighted BGR2GRAY (0.299R + 0.587G + 0.114B); `HsvValue` — max(R,G,B), equal brightness for all pure hues |
 
 | Output Port | Type |
 |-------------|------|

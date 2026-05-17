@@ -7,6 +7,12 @@
 
 ## IPLab.Core.Tests
 
+- **Test: `ConvertToGrayscale` throws when input is already grayscale**
+  Both `Luminance` and `HsvValue` paths call `CvtColor` with a 3-channel code, so
+  passing a single-channel `Mat` will throw an OpenCV exception at runtime.
+  Test should assert that `FlowEx.RunAllAsync()` throws (or sets status `Failed`)
+  when a grayscale image is wired into `ConvertToGrayscale`.
+
 - **Test: circular dependency is caught by `Validate()`**
   Build a flow with a cycle (e.g. O1 → O2 → O3 → O1) and assert that
   `Validate()` returns an invalid result containing a circular dependency error.
@@ -16,6 +22,12 @@
   in the operator's `Dependencies`, and assert that `Validate()` catches the mismatch.
 
 ## IPLab.Core
+
+- **Serialization: handle array parameter values**
+  `FlowDefSerializer.CoerceValue` currently handles scalar types only (int, double, bool, string).
+  If a parameter value is an array (e.g. a list of points or thresholds passed as a literal),
+  serialization will store it but deserialization will not reconstruct the correct CLR array type.
+  Extend `CoerceValue` and the `ParameterType` enum to cover array cases, and add a round-trip test.
 
 - **Type-safe output ports on `IOperatorType`**
   Currently `OutputPorts` is `IReadOnlyList<string>` (names only). Each port should
