@@ -4,6 +4,7 @@ using IPLab.Core.Runtime;
 using IPLab.Core.Utilities;
 using Microsoft.Win32;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
@@ -56,7 +57,8 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
-        Flow = new FlowViewModel(BuildSampleFlow(), node => EditingNode = node, BuildSampleConnectionSides());
+        Flow = new FlowViewModel(BuildSampleFlow(), node => EditingNode = node,
+            BuildSampleConnectionSides(), BuildSampleNodePositions());
         RunAllCommand        = new RelayCommand(RunAll);
         ClearResultsCommand  = new RelayCommand(ClearResults);
         CloseSettingsCommand = new RelayCommand(() => EditingNode = null);
@@ -146,6 +148,13 @@ public class MainViewModel : ViewModelBase
         bi.Freeze();
         return bi;
     }
+
+    private static IReadOnlyDictionary<string, Point> BuildSampleNodePositions() =>
+        new Dictionary<string, Point>
+        {
+            ["O3"] = new Point(240, 400),  // 200 px right of auto (40, 400)
+            ["O4"] = new Point(140, 580),  // midpoint between O2 x=40 and O3 x=240
+        };
 
     private static IReadOnlyDictionary<string, (ConnectionSide, ConnectionSide)> BuildSampleConnectionSides() =>
         new Dictionary<string, (ConnectionSide, ConnectionSide)>

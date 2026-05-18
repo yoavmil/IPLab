@@ -17,7 +17,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type nodify:Connector}">
-                        <Border Background="Transparent" Height="12">
+                        <Border Background="Transparent" Height="3">
                             <Border x:Name="PART_Connector"
                                     Background="{TemplateBinding Background}"
                                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -35,7 +35,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type nodify:Connector}">
-                        <Border Background="Transparent" Width="12">
+                        <Border Background="Transparent" Width="3">
                             <Border x:Name="PART_Connector"
                                     Background="{TemplateBinding Background}"
                                     HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -182,9 +182,15 @@
 
                             <nodify:NodifyEditor.ConnectionTemplate>
                                 <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
-                                    <Path Data="{Binding BezierGeometry}"
-                                          Stroke="#888888"
-                                          StrokeThickness="2" />
+                                    <nodify:StepConnection
+                                        Source="{Binding Source.Anchor}"
+                                        Target="{Binding Target.Anchor}"
+                                        SourcePosition="{Binding SourcePosition}"
+                                        TargetPosition="{Binding TargetPosition}"
+                                        Stroke="#888888"
+                                        StrokeThickness="2"
+                                        ArrowEnds="End"
+                                        ArrowSize="8,6" />
                                 </DataTemplate>
                             </nodify:NodifyEditor.ConnectionTemplate>
 

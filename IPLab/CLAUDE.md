@@ -50,7 +50,7 @@ Key rules:
 - The connector's `ControlTemplate` must contain `<Border x:Name="PART_Connector" …/>` — that named part is what `Connector.OnApplyTemplate()` looks for.
 - `ItemContainer.Location` must be bound **TwoWay** so dragging updates the VM.
 - Set `NodifyEditor.AutoRegisterConnectionsLayer = false` in `MainWindow`'s **static constructor** before `InitializeComponent()`.
-- **Do NOT use `nodify:LineConnection`** — it ignores the declared side when computing bezier tangent direction. Use `<Path Data="{Binding BezierGeometry}">` with a manually computed `StreamGeometry` bezier instead.
+- **Use `nodify:StepConnection`** with `SourcePosition="{Binding SourcePosition}"` and `TargetPosition="{Binding TargetPosition}"` (both `ConnectorPosition` enum). `StepConnection` auto-coerces `Direction`/`SourceOrientation`/`TargetOrientation` internally and correctly handles all connector combinations: opposite sides (standard S), same side (U-loop), and mixed (L-bend). Built-in arrowheads via `ArrowEnds`/`ArrowSize`. Do NOT use `nodify:Connection` (bezier), `nodify:LineConnection` (can't handle same-side), or manual `Path`/`StreamGeometry`.
 - `NodifyEditor.ConnectionCompletedCommand` receives a **`ValueTuple<object, object?>`** (not `Tuple<T,U>`). Use `RelayCommand<(object, object?)>` — if you use the class `Tuple`, the cast silently fails and the handler is never called.
 
 ## Node connector layout
@@ -81,8 +81,8 @@ In XAML, each is bound with `DataContext="{Binding TopConnector}"` (etc.) so tha
 |---|---|
 | `ConnectorViewModel` | `Name: string`, `Side: ConnectionSide`, `Anchor: Point` (INPC) |
 | `OperatorNodeViewModel` | `TopConnector`, `BottomConnector`, `LeftConnector`, `RightConnector` (fixed, always present), `Parameters`, `Location: Point` (INPC) |
-| `ConnectionViewModel` | `Source: ConnectorViewModel`, `Target: ConnectorViewModel`, `BezierGeometry: Geometry` (INPC, derived) |
+| `ConnectionViewModel` | `Source: ConnectorViewModel`, `Target: ConnectorViewModel`, `SourceOrientation`, `TargetOrientation` (derived from `Side`) |
 | `FlowViewModel` | `Nodes`, `Connections`, `Json`, `ConnectCommand` |
 | `MainViewModel` | `Flow: FlowViewModel`, `Status: string` |
 
-Anchor tracking flow: `Connector` (UI) computes screen position → writes to `ConnectorViewModel.Anchor` via `OneWayToSource` binding → `ConnectionViewModel.BezierGeometry` re-raises via INPC → `Path.Data` re-renders.
+Anchor tracking flow: `Connector` (UI) computes screen position → writes to `ConnectorViewModel.Anchor` via `OneWayToSource` binding → `ConnectionViewModel` re-raises `Source`/`Target` via INPC → `LineConnection.Source`/`Target` re-renders.

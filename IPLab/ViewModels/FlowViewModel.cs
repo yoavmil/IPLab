@@ -14,12 +14,13 @@ public class FlowViewModel
     public ICommand                                    ConnectCommand { get; }
 
     public FlowViewModel(IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings = null,
-        IReadOnlyDictionary<string, (ConnectionSide Source, ConnectionSide Target)>? connectionSides = null)
+        IReadOnlyDictionary<string, (ConnectionSide Source, ConnectionSide Target)>? connectionSides = null,
+        IReadOnlyDictionary<string, Point>? nodePositions = null)
     {
         Json           = FlowDefSerializer.Serialize(flow);
         ConnectCommand = new RelayCommand<(object, object?)>(OnConnect);
 
-        var nodeMap = BuildNodes(flow, onOpenSettings);
+        var nodeMap = BuildNodes(flow, onOpenSettings, nodePositions);
         BuildConnections(flow, nodeMap, connectionSides);
     }
 
@@ -33,6 +34,9 @@ public class FlowViewModel
         var targetNode = Nodes.FirstOrDefault(n => n.HasConnector(targetConnector));
 
         if (sourceNode is null || targetNode is null || sourceNode == targetNode) return;
+
+        // Top connector is input-only; prevent it from being used as a source.
+        if (sourceConnector == sourceNode.TopConnector) return;
 
         // Req 3: replace any existing connection between the same source→target node pair.
         foreach (var old in Connections
@@ -58,7 +62,8 @@ public class FlowViewModel
     }
 
     private Dictionary<string, OperatorNodeViewModel> BuildNodes(
-        IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings)
+        IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings,
+        IReadOnlyDictionary<string, Point>? nodePositions)
     {
         var levels  = ComputeLevels(flow);
         var byLevel = flow.Operators.GroupBy(o => levels[o.Id]).OrderBy(g => g.Key);
@@ -83,9 +88,12 @@ public class FlowViewModel
 
             for (int i = 0; i < ops.Count; i++)
             {
+                var autoPos = new Point(i * xStep + xPad, y);
+                var pos     = nodePositions?.TryGetValue(ops[i].Id, out var p) == true ? p : autoPos;
+
                 var node = new OperatorNodeViewModel(ops[i], availableSources, onOpenSettings)
                 {
-                    Location = new Point(i * xStep + xPad, y)
+                    Location = pos
                 };
                 Nodes.Add(node);
                 nodeMap[ops[i].Id] = node;
