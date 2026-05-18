@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-windows</TargetFrameworks>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Authors>miroiu</Authors>
+    <Company />
+    <PackageId>Nodify</PackageId>
+    <Product>Nodify</Product>
+    <Description>The core controls for a node based editor (designed for MVVM)</Description>
+    <Copyright>Miroiu Emanuel</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/miroiu/nodify</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <RepositoryUrl>https://github.com/miroiu/nodify</RepositoryUrl>
+    <PackageTags>wpf mvvm node network node-editor graph controls</PackageTags>
+    <Version>7.3.0</Version>
+    <PackageReleaseNotes>
+      &gt; - Breaking Changes:
+      &gt; 	- Renamed BeginGesture to DragGesture in DragState
+      &gt; 	- DragState uses virtual properties to retrieve the required gestures instead of constructor arguments
+      &gt; - Features:
+      &gt; 	- Added InputGestures dependency property to NodifyEditor and Minimap to specify which gestures mappings to use
+      &gt; 	- Added ActualGestures to Minimap, NodifyEditor and its elements
+      &gt; 	- Added ContentPadding dependency property to Node to allow adjusting the spacing between input and output panels
+      &gt; 	- Added IsContentHitTestVisible dependency property to GroupingNode to allow selecting nodes and connections behind it when clicking on its content area
+      &gt; 	- Added ResizeThumbTemplate dependency property to GroupingNode to allow customizing the resize thumb
+      &gt; - Bugfixes:
+      &gt;	  - Fixed StepConnection applying SourceOffset in the wrong direction in some cases
+    </PackageReleaseNotes>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)'=='net472' OR '$(TargetFramework)'=='net48'">
+    <LangVersion>8.0</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\icon.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
