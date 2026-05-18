@@ -7,11 +7,13 @@
 
 ## IPLab (UI project)
 
+- **Multi-image input in the image source operator** — extend the `LoadImageOperator` (or add a dedicated `ImageSourceOperator`) to hold a list of image file paths rather than a single path. The operator's result panel should display thumbnails of all listed images beneath the main preview; clicking a thumbnail loads that image as the operator's active output, triggering a full re-run of the flow so all downstream operators update. The parameter editor should allow adding/removing files from the list (e.g. via a file-picker or drag-and-drop). This lets the user quickly toggle between images and visually compare how the same pipeline handles different inputs.
+
 - **Delete connection by clicking on it** — clicking a connection (edge) in the graph view should select and delete it. Nodify's `BaseConnection` supports mouse events; hook `MouseRightButtonDown` or a dedicated delete gesture to remove the corresponding `Dependency` from the `FlowDef` and re-run validation.
 
 - **Prevent invalid connections (e.g. cycles)** — when the user drags a new connection, validate it before committing: reject cycles, self-connections, and any other constraint checked by `FlowDef.Validate()`. If the connection would be invalid, cancel the drop silently (no partial state).
 
-- **Color operator border red on execution failure** — when `FlowEx` reports `Failed` status for an operator (e.g. type mismatch — RGB image fed to a grayscale-only input), bind the `NodeViewModel`'s border brush to the operator status so the node turns red. The failure message from the exception should remain accessible in the existing status/error display.
+- **Color operator border red on execution failure; show error on click** — when `FlowEx` reports `Failed` status for an operator (e.g. type mismatch — RGB image fed to a grayscale-only input), bind the `NodeViewModel`'s border brush to the operator status so the node turns red. Clicking the red node should surface the exception message — either in the existing result/status panel on the right, or in a small tooltip/popup attached to the node itself — so the user can read what went wrong without leaving the graph view.
 
 - **Image overlay in `RControls.ImageViewer`** — the `ImageViewer` control supports a single `SourceImage`. Add multi-image overlay support so several processed results (or the original + result) can be blended and displayed together. Options: pre-composite via `DrawingVisual`/`RenderTargetBitmap` in the VM, or add a second image layer inside `ImageCanvas` in the RControls library itself.
 
@@ -19,11 +21,6 @@
 
 ## IPLab.Core.Tests
 
-- **Test: `ConvertToGrayscale` throws when input is already grayscale**
-  Both `Luminance` and `HsvValue` paths call `CvtColor` with a 3-channel code, so
-  passing a single-channel `Mat` will throw an OpenCV exception at runtime.
-  Test should assert that `FlowEx.RunAllAsync()` throws (or sets status `Failed`)
-  when a grayscale image is wired into `ConvertToGrayscale`.
 
 
 ## IPLab.Core
