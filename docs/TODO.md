@@ -23,6 +23,11 @@
 
 ## IPLab.Core
 
+- **Add `CancellationToken` to `FlowEx`**
+  `RunAllAsync` and `RunSingleAsync` have no cancellation support. Pass a token
+  through to `Task.Run` calls and honour it between operator steps so long-running
+  flows can be stopped by the user.
+
 - **Serialization: handle array parameter values**
   `FlowDefSerializer.CoerceValue` currently handles scalar types only (int, double, bool, string).
   If a parameter value is an array (e.g. a list of points or thresholds passed as a literal),

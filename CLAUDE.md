@@ -218,8 +218,11 @@ The user should be able to click any operator and inspect its output.
 
 See [DESIGN.md](docs/DESIGN.md) for the core interface definitions and diagrams.
 See [OPERATORS.md](docs/OPERATORS.md) for the catalogue of built-in operators.
+See [TODO.md](docs/TODO.md) for the backlog of planned work and known gaps.
 
 **Rule: whenever a new operator is added to `IPLab.Core.Operators`, add a corresponding entry to [docs/OPERATORS.md](docs/OPERATORS.md).**
+
+**Rule: after any meaningful change to `IPLab.Core` or its tests, run the full test suite (`dotnet test`) and confirm it passes before considering the task done.**
 
 
 
