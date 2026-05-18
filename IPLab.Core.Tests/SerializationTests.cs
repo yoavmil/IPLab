@@ -48,8 +48,7 @@ public class SerializationTests
                 Parameters   =
                 [
                     new ParameterValue { Name = "Image",  Source = new SourceRef("O2", "Image") },
-                    new ParameterValue { Name = "Thresh", Value  = 128.0 },
-                    new ParameterValue { Name = "MaxVal", Value  = 255.0 }
+                    new ParameterValue { Name = "Thresh", Value  = 128.0 }
                 ],
                 Dependencies = [new Dependency("D2", "O2")]
             },
