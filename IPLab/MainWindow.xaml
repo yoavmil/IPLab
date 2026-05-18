@@ -3,12 +3,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:nodify="clr-namespace:Nodify;assembly=Nodify"
         xmlns:vm="clr-namespace:IPLab.ViewModels"
+        xmlns:rc="clr-namespace:RControls;assembly=RControls"
         Title="IPLab" Height="720" Width="1280"
         Background="#1E1E1E" Foreground="#DCDCDC">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
-        <!-- Vertical pill connector: PART_Connector is the named element Nodify requires -->
+        <!-- Vertical pill connector -->
         <Style x:Key="ConnectorStyle" TargetType="{x:Type nodify:Connector}">
             <Setter Property="Width" Value="16" />
             <Setter Property="Background" Value="#007ACC" />
@@ -59,92 +61,256 @@
             <TabControl Grid.Column="0" Background="#252526" BorderBrush="#3F3F46"
                         TabStripPlacement="Bottom">
                 <TabItem Header="Graph">
-                    <nodify:NodifyEditor ItemsSource="{Binding Flow.Nodes}"
-                                         Connections="{Binding Flow.Connections}"
-                                         SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
-                                         Background="#1E1E1E">
 
-                        <nodify:NodifyEditor.ItemContainerStyle>
-                            <Style TargetType="{x:Type nodify:ItemContainer}">
-                                <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
-                            </Style>
-                        </nodify:NodifyEditor.ItemContainerStyle>
+                    <!-- Grid lets us overlay the settings panel on top of the editor -->
+                    <Grid>
+                        <nodify:NodifyEditor ItemsSource="{Binding Flow.Nodes}"
+                                             Connections="{Binding Flow.Connections}"
+                                             SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                                             Background="#1E1E1E">
 
-                        <nodify:NodifyEditor.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:OperatorNodeViewModel}">
-                                <Border Background="#2D2D30"
-                                        BorderBrush="#555"
-                                        BorderThickness="1"
-                                        CornerRadius="4"
-                                        MinWidth="140">
-                                    <StackPanel>
+                            <nodify:NodifyEditor.ItemContainerStyle>
+                                <Style TargetType="{x:Type nodify:ItemContainer}">
+                                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                                </Style>
+                            </nodify:NodifyEditor.ItemContainerStyle>
 
-                                        <!-- Input connectors row at top -->
-                                        <ItemsControl ItemsSource="{Binding Inputs}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal"
-                                                                HorizontalAlignment="Center" />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
-                                                    <nodify:Connector
-                                                        Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                        VerticalContentAlignment="Top"
-                                                        IsConnected="True"
-                                                        Style="{StaticResource ConnectorStyle}" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                            <nodify:NodifyEditor.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:OperatorNodeViewModel}">
+                                    <Border Background="#2D2D30"
+                                            BorderBrush="#555"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            MinWidth="140">
+                                        <StackPanel>
 
-                                        <!-- Node header -->
-                                        <Border Background="#007ACC" CornerRadius="0" Padding="8 4">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding DisplayName}"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="White" />
-                                                <TextBlock Text="{Binding TypeName}"
-                                                           FontSize="10"
-                                                           Foreground="#AAD4F5" />
-                                            </StackPanel>
-                                        </Border>
+                                            <!-- Input connectors row at top -->
+                                            <ItemsControl ItemsSource="{Binding Inputs}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal"
+                                                                    HorizontalAlignment="Center" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
+                                                        <nodify:Connector
+                                                            Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                            VerticalContentAlignment="Top"
+                                                            IsConnected="True"
+                                                            Style="{StaticResource ConnectorStyle}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
 
-                                        <!-- Output connectors row at bottom -->
-                                        <ItemsControl ItemsSource="{Binding Outputs}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal"
-                                                                HorizontalAlignment="Center" />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
-                                                    <nodify:Connector
-                                                        Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                        VerticalContentAlignment="Bottom"
-                                                        IsConnected="True"
-                                                        Style="{StaticResource ConnectorStyle}" />
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                            <!-- Node header with gear icon -->
+                                            <Border Background="#007ACC" Padding="8 4">
+                                                <Grid>
+                                                    <StackPanel Margin="0 0 20 0">
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="White" />
+                                                        <TextBlock Text="{Binding TypeName}"
+                                                                   FontSize="10"
+                                                                   Foreground="#AAD4F5" />
+                                                    </StackPanel>
+                                                    <Button HorizontalAlignment="Right"
+                                                            VerticalAlignment="Center"
+                                                            Content="⚙"
+                                                            Command="{Binding OpenSettingsCommand}"
+                                                            Padding="2 0"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Foreground="White"
+                                                            FontSize="13"
+                                                            Cursor="Hand"
+                                                            ToolTip="Edit parameters" />
+                                                </Grid>
+                                            </Border>
 
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </nodify:NodifyEditor.ItemTemplate>
+                                            <!-- Output connectors row at bottom -->
+                                            <ItemsControl ItemsSource="{Binding Outputs}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal"
+                                                                    HorizontalAlignment="Center" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
+                                                        <nodify:Connector
+                                                            Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                            VerticalContentAlignment="Bottom"
+                                                            IsConnected="True"
+                                                            Style="{StaticResource ConnectorStyle}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
 
-                        <nodify:NodifyEditor.ConnectionTemplate>
-                            <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
-                                <nodify:LineConnection Source="{Binding Source.Anchor}"
-                                                       Target="{Binding Target.Anchor}"
-                                                       SourceOrientation="Vertical"
-                                                       TargetOrientation="Vertical" />
-                            </DataTemplate>
-                        </nodify:NodifyEditor.ConnectionTemplate>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </nodify:NodifyEditor.ItemTemplate>
 
-                    </nodify:NodifyEditor>
+                            <nodify:NodifyEditor.ConnectionTemplate>
+                                <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
+                                    <nodify:LineConnection Source="{Binding Source.Anchor}"
+                                                           Target="{Binding Target.Anchor}"
+                                                           SourceOrientation="{Binding SourceOrientation}"
+                                                           TargetOrientation="{Binding TargetOrientation}" />
+                                </DataTemplate>
+                            </nodify:NodifyEditor.ConnectionTemplate>
+
+                        </nodify:NodifyEditor>
+
+                        <!-- ── Settings panel overlay ────────────────── -->
+                        <Border VerticalAlignment="Bottom"
+                                Background="#252526"
+                                BorderBrush="#3F3F46"
+                                BorderThickness="0 1 0 0"
+                                MaxHeight="240"
+                                Visibility="{Binding IsSettingsPanelOpen, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Panel header -->
+                                <Grid Grid.Row="0" Background="#2D2D30">
+                                    <TextBlock Padding="10 5"
+                                               FontWeight="SemiBold"
+                                               Foreground="White"
+                                               VerticalAlignment="Center">
+                                        <Run Text="Parameters — " />
+                                        <Run Text="{Binding EditingNode.DisplayName, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <Button HorizontalAlignment="Right"
+                                            Content="✕"
+                                            Command="{Binding CloseSettingsCommand}"
+                                            Padding="10 5"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="#888"
+                                            FontSize="12"
+                                            Cursor="Hand" />
+                                </Grid>
+
+                                <!-- Parameter rows -->
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding EditingNode.Parameters}"
+                                                  Margin="4 4">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type vm:ParameterEditViewModel}">
+                                                <Grid Margin="4 3">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="130" />
+                                                        <ColumnDefinition Width="26" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Parameter label -->
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding Label}"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="#DCDCDC" />
+
+                                                    <!-- Wire toggle (only for connectable params) -->
+                                                    <ToggleButton Grid.Column="1"
+                                                                  IsChecked="{Binding IsWired}"
+                                                                  ToolTip="Wire to an upstream output"
+                                                                  Width="22" Height="22"
+                                                                  Content="⛓"
+                                                                  FontSize="11">
+                                                        <ToggleButton.Style>
+                                                            <Style TargetType="ToggleButton">
+                                                                <Setter Property="Visibility"   Value="Collapsed" />
+                                                                <Setter Property="Background"   Value="Transparent" />
+                                                                <Setter Property="Foreground"   Value="#666" />
+                                                                <Setter Property="BorderBrush"  Value="Transparent" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding CanBeWired}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsWired}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#007ACC" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </ToggleButton.Style>
+                                                    </ToggleButton>
+
+                                                    <!-- Value editor column: three overlaid controls, one visible at a time -->
+                                                    <Grid Grid.Column="2">
+
+                                                        <!-- Wired: choose upstream source -->
+                                                        <ComboBox ItemsSource="{Binding AvailableSources}"
+                                                                  SelectedItem="{Binding SelectedSource}"
+                                                                  DisplayMemberPath="DisplayLabel">
+                                                            <ComboBox.Style>
+                                                                <Style TargetType="ComboBox">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsWired}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ComboBox.Style>
+                                                        </ComboBox>
+
+                                                        <!-- Not wired + enum: pick option -->
+                                                        <ComboBox ItemsSource="{Binding Options}"
+                                                                  SelectedItem="{Binding SelectedOption}">
+                                                            <ComboBox.Style>
+                                                                <Style TargetType="ComboBox">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <MultiDataTrigger>
+                                                                            <MultiDataTrigger.Conditions>
+                                                                                <Condition Binding="{Binding IsWired}" Value="False" />
+                                                                                <Condition Binding="{Binding IsEnum}"  Value="True" />
+                                                                            </MultiDataTrigger.Conditions>
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </MultiDataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ComboBox.Style>
+                                                        </ComboBox>
+
+                                                        <!-- Not wired + not enum: free text -->
+                                                        <TextBox Text="{Binding ValueText, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Background="#1E1E1E"
+                                                                 Foreground="#DCDCDC"
+                                                                 BorderBrush="#3F3F46">
+                                                            <TextBox.Style>
+                                                                <Style TargetType="TextBox">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <MultiDataTrigger>
+                                                                            <MultiDataTrigger.Conditions>
+                                                                                <Condition Binding="{Binding IsWired}" Value="False" />
+                                                                                <Condition Binding="{Binding IsEnum}"  Value="False" />
+                                                                            </MultiDataTrigger.Conditions>
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </MultiDataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBox.Style>
+                                                        </TextBox>
+
+                                                    </Grid>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                    </Grid>
                 </TabItem>
+
                 <TabItem Header="JSON">
                     <TextBox Text="{Binding Flow.Json, Mode=OneTime}"
                              IsReadOnly="True"
@@ -162,11 +328,9 @@
             <TabControl Grid.Column="2" Background="#252526" BorderBrush="#3F3F46"
                         TabStripPlacement="Bottom">
                 <TabItem Header="Image Preview">
-                    <Border Background="#1E1E1E">
-                        <Image Source="{Binding SelectedImage}"
-                               Stretch="Uniform"
-                               RenderOptions.BitmapScalingMode="HighQuality" />
-                    </Border>
+                    <rc:ImageViewer SourceImage="{Binding SelectedImage}"
+                                    OperationMode="Move"
+                                    Background="#1E1E1E" />
                 </TabItem>
                 <TabItem Header="Data">
                     <Border Background="#1E1E1E" />

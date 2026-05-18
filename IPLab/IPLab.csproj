@@ -12,6 +12,17 @@
     <PackageReference Include="Nodify" Version="7.3.0" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <Reference Include="RControls">
+      <HintPath>..\3rd\RControls\bin\Debug\RControls.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Reference Include="RControls">
+      <HintPath>..\3rd\RControls\bin\Release\RControls.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\IPLab.Core\IPLab.Core.csproj" />
   </ItemGroup>

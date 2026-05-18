@@ -1,0 +1,148 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:RControls" xmlns:cvt="clr-namespace:RControls.Converts" xmlns:interactivity="clr-namespace:RControls.Interactivity" xmlns:thumb="clr-namespace:RControls.Thumbs" xmlns:ad="clr-namespace:RControls.Adorners" xmlns:d="clr-namespace:RControls.Decorator">
+
+    <!-- 尺寸显示 -->
+    <ad:DoubleFormatConverter x:Key="doubleFormatConverter" />
+    <Style TargetType="{x:Type ad:SizeChrome}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ad:SizeChrome}">
+                    <Grid SnapsToDevicePixels="True">
+                        <Path Stroke="Red" StrokeThickness="1" Height="10" VerticalAlignment="Bottom" Margin="-2,0,-2,-30" Stretch="Fill" Data="M0,0 0,10 M 0,5 100,5 M 100,0 100,10" />
+                        <TextBlock Text="{Binding Path=Width, Converter={StaticResource doubleFormatConverter}}" Background="White" Padding="3,0,3,0" FontSize="24" Foreground="Red" Margin="0,0,0,-40" HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+                        <Path Stroke="Red" StrokeThickness="1" Width="10" HorizontalAlignment="Right" Margin="0,-2,-30,-2" Stretch="Fill" Data="M5,0 5,100 M 0,0 10,0 M 0,100 10,100" />
+                        <TextBlock Text="{Binding Path=Height, Converter={StaticResource doubleFormatConverter}}" Background="White" Foreground="Red" FontSize="24" Padding="3,0,3,0" Margin="0,0,-40,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock.LayoutTransform>
+                                <RotateTransform Angle="90" CenterX="1" CenterY="0.5" />
+                            </TextBlock.LayoutTransform>
+                        </TextBlock>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Thumb样式 -->
+    <Style TargetType="{x:Type Shape}" x:Key="ThumbCorner">
+        <Setter Property="SnapsToDevicePixels" Value="true" />
+        <Setter Property="Stroke" Value="Purple" />
+        <Setter Property="StrokeThickness" Value="4" />
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Margin" Value="-15" />
+        <Setter Property="Fill" Value="LightBlue" />
+    </Style>
+
+    <!-- 旋转缩放样式 -->
+    <Style TargetType="{x:Type ad:ResizeRotateChrome}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ad:ResizeRotateChrome}">
+                    <Grid>
+                        <Grid Opacity="0" Margin="-15">
+                            <thumb:RotateThumb Width="40" Height="40" Margin="0,0,-60,0" Cursor="Hand" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                            <thumb:ResizeThumb Height="80" Width="80" Margin="0,-40,0,0" Cursor="SizeNS" VerticalAlignment="Top" HorizontalAlignment="Center" />
+                            <thumb:ResizeThumb Width="80" Height="80" Margin="-40,0,0,0" Cursor="SizeWE" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                            <thumb:ResizeThumb Width="80" Height="80" Margin="0,0,-40,0" Cursor="SizeWE" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                            <thumb:ResizeThumb Width="80" Height="80" Margin="0,0,0,-40" Cursor="SizeNS" VerticalAlignment="Bottom" HorizontalAlignment="Center" />
+                            <thumb:ResizeThumb Width="80" Height="80" Margin="-40,-40,0,0" Cursor="SizeNWSE" VerticalAlignment="Top" HorizontalAlignment="Left" />
+                            <thumb:ResizeThumb Width="80" Height="80" Margin="0,-40,-40,0" Cursor="SizeNESW" VerticalAlignment="Top" HorizontalAlignment="Right" />
+                            <thumb:ResizeThumb Width="80" Height="80" Margin="-40,0,0,-40" Cursor="SizeNESW" VerticalAlignment="Bottom" HorizontalAlignment="Left" />
+                            <thumb:ResizeThumb Width="80" Height="80" Margin="0,0,-40,-40" Cursor="SizeNWSE" VerticalAlignment="Bottom" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid IsHitTestVisible="False" Opacity="1" Margin="-15">
+                            <Rectangle SnapsToDevicePixels="True" StrokeThickness="2" Margin="0" Stroke="LightBlue" StrokeDashArray="8 8" />
+                            <Line StrokeThickness="1" X1="0" Y1="0" X2="0" Y2="20" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="Red" />
+                            <Line StrokeThickness="1" X1="0" Y1="0" X2="20" Y2="0" HorizontalAlignment="Center" VerticalAlignment="Center" Stroke="Red" />
+                            <Rectangle Style="{StaticResource ThumbCorner}" HorizontalAlignment="Center" VerticalAlignment="Top" />
+                            <Rectangle Style="{StaticResource ThumbCorner}" HorizontalAlignment="Center" VerticalAlignment="Bottom" />
+                            <Rectangle Style="{StaticResource ThumbCorner}" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                            <Rectangle Style="{StaticResource ThumbCorner}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <Rectangle Style="{StaticResource ThumbCorner}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                            <Rectangle Style="{StaticResource ThumbCorner}" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                            <Rectangle Style="{StaticResource ThumbCorner}" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                            <Rectangle Style="{StaticResource ThumbCorner}" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            <Polygon StrokeThickness="2" Stroke="Red" StrokeLineJoin="Bevel" Fill="Red" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,5,-60,0">
+                                <Polygon.Points>
+                                    <Point X="0" Y="0" />
+                                    <Point X="60" Y="0" />
+                                    <Point X="40" Y="5.4" />
+                                    <Point X="40" Y="-5.4" />
+                                    <Point X="60" Y="0" />
+                                </Polygon.Points>
+                            </Polygon>
+                        </Grid>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 移动Thumb -->
+    <ControlTemplate x:Key="MoveThumbTemplate" TargetType="{x:Type thumb:MoveThumb}">
+        <Rectangle Fill="Transparent" />
+    </ControlTemplate>
+
+    <!-- ImageItem -->
+    <Style TargetType="{x:Type local:ImageItem}">
+        <Setter Property="MinHeight" Value="5" />
+        <Setter Property="MinWidth" Value="5" />
+        <Setter Property="SnapsToDevicePixels" Value="true" />
+        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:ImageItem}">
+                    <Grid DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=.}">
+                        <thumb:MoveThumb x:Name="PART_MoveThumb" Cursor="SizeAll" Template="{StaticResource MoveThumbTemplate}" />
+                        <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding ContentControl.Content}" Margin="{TemplateBinding Padding}" />
+                        <d:ImageItemDecorator x:Name="PART_DesignerItemDecorator" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="PART_DesignerItemDecorator" Property="ShowDecorator" Value="True" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ImageViewer -->
+    <Style TargetType="{x:Type local:ImageViewer}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:ImageViewer}">
+                    <ControlTemplate.Resources>
+                        <cvt:OperModeBoolConverter x:Key="OperModeBoolConvert" />
+                        <cvt:ShapeModeBoolConverter x:Key="ShapeModeBoolConvert" />
+                    </ControlTemplate.Resources>
+                    <Border x:Name="PART_Border" Background="{TemplateBinding Background}" BorderBrush="Black" BorderThickness="1" ClipToBounds="True">
+                        <Border.ContextMenu>
+                            <ContextMenu Style="{x:Null}">
+                                <MenuItem Header="View" IsCheckable="True" IsChecked="{TemplateBinding OperationMode,Converter={StaticResource OperModeBoolConvert},ConverterParameter=Disable}" Command="interactivity:ControlCommands.ViewMode" />
+                                <MenuItem Header="Move" IsCheckable="True" IsChecked="{TemplateBinding OperationMode,Converter={StaticResource OperModeBoolConvert},ConverterParameter=Move}" Command="interactivity:ControlCommands.MoveMode" />
+                                <MenuItem Header="Select" IsCheckable="True" IsEnabled="{TemplateBinding IsSelectable}" IsChecked="{TemplateBinding OperationMode,Converter={StaticResource OperModeBoolConvert},ConverterParameter=Select}" Command="interactivity:ControlCommands.SelectMode" />
+                                <MenuItem Header="Draw" IsEnabled="{TemplateBinding IsDrawable}" IsChecked="{TemplateBinding OperationMode,Converter={StaticResource OperModeBoolConvert},ConverterParameter=Draw}">
+                                    <MenuItem Header="Rectangle" IsCheckable="True" IsChecked="{TemplateBinding DrawShape,Converter={StaticResource ShapeModeBoolConvert},ConverterParameter=Rectangle}" Command="interactivity:ControlCommands.DrawRectangle" />
+                                    <MenuItem Header="Line" IsCheckable="True" IsChecked="{TemplateBinding DrawShape,Converter={StaticResource ShapeModeBoolConvert},ConverterParameter=Line}" Command="interactivity:ControlCommands.DrawLine" />
+                                    <MenuItem Header="Circle" IsCheckable="True" IsChecked="{TemplateBinding DrawShape,Converter={StaticResource ShapeModeBoolConvert},ConverterParameter=Circle}" Command="interactivity:ControlCommands.DrawCircle" />
+                                    <MenuItem Header="Ellipse" IsCheckable="True" IsChecked="{TemplateBinding DrawShape,Converter={StaticResource ShapeModeBoolConvert},ConverterParameter=Ellipse}" Command="interactivity:ControlCommands.DrawEllipse" />
+                                    <MenuItem Header="Polygon" IsCheckable="True" IsChecked="{TemplateBinding DrawShape,Converter={StaticResource ShapeModeBoolConvert},ConverterParameter=Polygon}" Command="interactivity:ControlCommands.DrawPolygon" />
+                                    <MenuItem Header="Freeform" IsCheckable="True" IsChecked="{TemplateBinding DrawShape,Converter={StaticResource ShapeModeBoolConvert},ConverterParameter=Any}" Command="interactivity:ControlCommands.DrawAny" />
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Header="Fit Image" Command="interactivity:ControlCommands.FitImage" />
+                                <MenuItem Header="Fit Window" Command="interactivity:ControlCommands.FitWindow" />
+                                <Separator />
+                                <MenuItem Header="Save Image" Command="interactivity:ControlCommands.SaveImage" />
+                                <MenuItem Header="Save Window" Command="interactivity:ControlCommands.SaveWindow" />
+                            </ContextMenu>
+                        </Border.ContextMenu>
+                        <local:ImageCanvas x:Name="PART_MainCanvas" Focusable="True" SnapsToDevicePixels="True" Background="{TemplateBinding Background}" Width="{TemplateBinding MaxImageWidth}" Height="{TemplateBinding MaxImageHeight}">
+                            <Image x:Name="PART_MainImage" RenderOptions.BitmapScalingMode="NearestNeighbor" Stretch="None" IsHitTestVisible="False" Source="{TemplateBinding SourceImage}" />
+                        </local:ImageCanvas>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>
