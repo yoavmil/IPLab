@@ -1,12 +1,178 @@
-﻿<Window x:Class="IPLab.MainWindow"
+<Window x:Class="IPLab.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:IPLab"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        xmlns:nodify="clr-namespace:Nodify;assembly=Nodify"
+        xmlns:vm="clr-namespace:IPLab.ViewModels"
+        Title="IPLab" Height="720" Width="1280"
+        Background="#1E1E1E" Foreground="#DCDCDC">
 
-    </Grid>
+    <Window.Resources>
+
+        <!-- Vertical pill connector: PART_Connector is the named element Nodify requires -->
+        <Style x:Key="ConnectorStyle" TargetType="{x:Type nodify:Connector}">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Background" Value="#007ACC" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type nodify:Connector}">
+                        <Border Background="Transparent" Height="12">
+                            <Border x:Name="PART_Connector"
+                                    Background="{TemplateBinding Background}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    Height="3" CornerRadius="1" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </Window.Resources>
+
+    <DockPanel>
+
+        <!-- ── Toolbar ─────────────────────────────────────────────────── -->
+        <ToolBarTray DockPanel.Dock="Top" Background="#2D2D30">
+            <ToolBar Band="0" BandIndex="0">
+                <Button Content="Run All"      Padding="8 2" />
+                <Button Content="Run Selected" Padding="8 2" />
+                <Separator />
+                <Button Content="Clear Results" Padding="8 2" />
+            </ToolBar>
+        </ToolBarTray>
+
+        <!-- ── Status bar ──────────────────────────────────────────────── -->
+        <StatusBar DockPanel.Dock="Bottom" Background="#007ACC">
+            <StatusBarItem>
+                <TextBlock Text="{Binding Status}" Foreground="White" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <!-- ── Main split: Pipeline Editor | Inspector ─────────────────── -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" MinWidth="300" />
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition Width="380" MinWidth="200" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Pipeline Editor — tabs at bottom -->
+            <TabControl Grid.Column="0" Background="#252526" BorderBrush="#3F3F46"
+                        TabStripPlacement="Bottom">
+                <TabItem Header="Graph">
+                    <nodify:NodifyEditor ItemsSource="{Binding Flow.Nodes}"
+                                         Connections="{Binding Flow.Connections}"
+                                         Background="#1E1E1E">
+
+                        <nodify:NodifyEditor.ItemContainerStyle>
+                            <Style TargetType="{x:Type nodify:ItemContainer}">
+                                <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                            </Style>
+                        </nodify:NodifyEditor.ItemContainerStyle>
+
+                        <nodify:NodifyEditor.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:OperatorNodeViewModel}">
+                                <Border Background="#2D2D30"
+                                        BorderBrush="#555"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        MinWidth="140">
+                                    <StackPanel>
+
+                                        <!-- Input connectors row at top -->
+                                        <ItemsControl ItemsSource="{Binding Inputs}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal"
+                                                                HorizontalAlignment="Center" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
+                                                    <nodify:Connector
+                                                        Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                        VerticalContentAlignment="Top"
+                                                        IsConnected="True"
+                                                        Style="{StaticResource ConnectorStyle}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Node header -->
+                                        <Border Background="#007ACC" CornerRadius="0" Padding="8 4">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="White" />
+                                                <TextBlock Text="{Binding TypeName}"
+                                                           FontSize="10"
+                                                           Foreground="#AAD4F5" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Output connectors row at bottom -->
+                                        <ItemsControl ItemsSource="{Binding Outputs}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal"
+                                                                HorizontalAlignment="Center" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
+                                                    <nodify:Connector
+                                                        Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                        VerticalContentAlignment="Bottom"
+                                                        IsConnected="True"
+                                                        Style="{StaticResource ConnectorStyle}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </nodify:NodifyEditor.ItemTemplate>
+
+                        <nodify:NodifyEditor.ConnectionTemplate>
+                            <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
+                                <nodify:LineConnection Source="{Binding Source.Anchor}"
+                                                       Target="{Binding Target.Anchor}"
+                                                       SourceOrientation="Vertical"
+                                                       TargetOrientation="Vertical" />
+                            </DataTemplate>
+                        </nodify:NodifyEditor.ConnectionTemplate>
+
+                    </nodify:NodifyEditor>
+                </TabItem>
+                <TabItem Header="JSON">
+                    <TextBox Text="{Binding Flow.Json, Mode=OneTime}"
+                             IsReadOnly="True"
+                             FontFamily="Consolas" FontSize="12"
+                             Background="#1E1E1E" Foreground="#DCDCDC"
+                             HorizontalScrollBarVisibility="Auto"
+                             VerticalScrollBarVisibility="Auto" />
+                </TabItem>
+            </TabControl>
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
+                          Background="#3F3F46" />
+
+            <!-- Right: Inspector — tabs at bottom -->
+            <TabControl Grid.Column="2" Background="#252526" BorderBrush="#3F3F46"
+                        TabStripPlacement="Bottom">
+                <TabItem Header="Image Preview">
+                    <Border Background="#1E1E1E">
+                        <TextBlock Text="Select an operator to preview its output"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="#666" FontStyle="Italic" />
+                    </Border>
+                </TabItem>
+                <TabItem Header="Data">
+                    <Border Background="#1E1E1E" />
+                </TabItem>
+            </TabControl>
+        </Grid>
+
+    </DockPanel>
 </Window>
