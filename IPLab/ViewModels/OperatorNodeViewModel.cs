@@ -7,10 +7,10 @@ namespace IPLab.ViewModels;
 
 public class OperatorNodeViewModel : ViewModelBase
 {
-    public string     Id          { get; }
-    public string     DisplayName { get; }
-    public string     TypeName    { get; }
-    public IOperator  Operator    { get; }
+    public string    Id          { get; }
+    public string    DisplayName { get; }
+    public string    TypeName    { get; }
+    public IOperator Operator    { get; }
 
     private Point _location;
     public Point Location
@@ -19,32 +19,26 @@ public class OperatorNodeViewModel : ViewModelBase
         set { _location = value; RaisePropertyChanged(); }
     }
 
-    public ObservableCollection<ConnectorViewModel>    Inputs     { get; } = [];
-    public ObservableCollection<ConnectorViewModel>    Outputs    { get; } = [];
-    public IReadOnlyList<ParameterEditViewModel>       Parameters { get; }
-    public ICommand                                    OpenSettingsCommand { get; }
+    // One connector per side, always visible.
+    public ConnectorViewModel TopConnector    { get; } = new("Top",    ConnectionSide.Top);
+    public ConnectorViewModel BottomConnector { get; } = new("Bottom", ConnectionSide.Bottom);
+    public ConnectorViewModel LeftConnector   { get; } = new("Left",   ConnectionSide.Left);
+    public ConnectorViewModel RightConnector  { get; } = new("Right",  ConnectionSide.Right);
 
-    public IEnumerable<ConnectorViewModel> TopConnectors    => Inputs.Concat(Outputs).Where(c => c.Side == ConnectionSide.Top);
-    public IEnumerable<ConnectorViewModel> BottomConnectors => Inputs.Concat(Outputs).Where(c => c.Side == ConnectionSide.Bottom);
-    public IEnumerable<ConnectorViewModel> LeftConnectors   => Inputs.Concat(Outputs).Where(c => c.Side == ConnectionSide.Left);
-    public IEnumerable<ConnectorViewModel> RightConnectors  => Inputs.Concat(Outputs).Where(c => c.Side == ConnectionSide.Right);
+    public IReadOnlyList<ParameterEditViewModel> Parameters { get; }
+    public ICommand                              OpenSettingsCommand { get; }
+
+    public bool HasConnector(ConnectorViewModel c) =>
+        TopConnector == c || BottomConnector == c || LeftConnector == c || RightConnector == c;
 
     public OperatorNodeViewModel(IOperator op,
                                   IEnumerable<SourceRefViewModel> availableSources,
-                                  Func<string, ConnectionSide>? getInputSide  = null,
-                                  Func<string, ConnectionSide>? getOutputSide = null,
                                   Action<OperatorNodeViewModel>? onOpenSettings = null)
     {
         Operator    = op;
         Id          = op.Id;
         DisplayName = op.DisplayName;
         TypeName    = op.Type.TypeName;
-
-        foreach (var p in op.Type.ParameterSchema.Where(p => p.IsConnectable))
-            Inputs.Add(new ConnectorViewModel(p.Name, p.Label, getInputSide?.Invoke(p.Name) ?? ConnectionSide.Top));
-
-        foreach (var port in op.Type.OutputPorts)
-            Outputs.Add(new ConnectorViewModel(port, port, getOutputSide?.Invoke(port) ?? ConnectionSide.Bottom));
 
         var sources = availableSources.ToList();
         Parameters = op.Type.ParameterSchema

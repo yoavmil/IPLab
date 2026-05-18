@@ -129,7 +129,10 @@ public class MainViewModel : ViewModelBase
             DisplayName  = node.Operator.DisplayName,
             Type         = node.Operator.Type,
             Parameters   = node.Parameters.Select(p => p.ToParameterValue()).ToList(),
-            Dependencies = node.Operator.Dependencies
+            Dependencies = node.Parameters
+                .Where(p => p.IsWired && p.SelectedSource is not null)
+                .Select(p => new Dependency($"D_{node.Id}_{p.Name}", p.SelectedSource!.OperatorId))
+                .ToList()
         }));
 
     private static BitmapSource BytesToBitmapSource(byte[] bytes)
@@ -147,10 +150,8 @@ public class MainViewModel : ViewModelBase
     private static IReadOnlyDictionary<string, (ConnectionSide, ConnectionSide)> BuildSampleConnectionSides() =>
         new Dictionary<string, (ConnectionSide, ConnectionSide)>
         {
-            // D2: "To Grayscale" → "Threshold" exits right and enters left
-            ["D2"] = (ConnectionSide.Right, ConnectionSide.Left),
-            ["D3"] = (ConnectionSide.Bottom, ConnectionSide.Right)
-		};
+            ["D2"] = (ConnectionSide.Bottom, ConnectionSide.Left),
+        };
 
     private static FlowDef BuildSampleFlow() => new(
     [

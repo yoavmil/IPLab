@@ -4,8 +4,7 @@ namespace IPLab.ViewModels;
 
 public class ConnectorViewModel : ViewModelBase
 {
-    public string        Name  { get; }
-    public string        Title { get; }
+    public string         Name { get; }
     public ConnectionSide Side { get; }
 
     private Point _anchor;
@@ -15,10 +14,9 @@ public class ConnectorViewModel : ViewModelBase
         set { _anchor = value; RaisePropertyChanged(); }
     }
 
-    public ConnectorViewModel(string name, string title, ConnectionSide side = ConnectionSide.Top)
+    public ConnectorViewModel(string name, ConnectionSide side)
     {
-        Name  = name;
-        Title = title;
-        Side  = side;
+        Name = name;
+        Side = side;
     }
 }

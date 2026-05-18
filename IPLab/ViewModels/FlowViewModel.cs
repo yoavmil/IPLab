@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Input;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Serialization;
 
@@ -10,52 +11,57 @@ public class FlowViewModel
     public ObservableCollection<OperatorNodeViewModel> Nodes       { get; } = [];
     public ObservableCollection<ConnectionViewModel>   Connections { get; } = [];
     public string                                      Json        { get; }
+    public ICommand                                    ConnectCommand { get; }
 
     public FlowViewModel(IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings = null,
         IReadOnlyDictionary<string, (ConnectionSide Source, ConnectionSide Target)>? connectionSides = null)
     {
-        Json = FlowDefSerializer.Serialize(flow);
+        Json           = FlowDefSerializer.Serialize(flow);
+        ConnectCommand = new RelayCommand<(object, object?)>(OnConnect);
 
-        var (inputSides, outputSides) = ComputeConnectorSides(flow, connectionSides);
-        var nodeMap = BuildNodes(flow, inputSides, outputSides, onOpenSettings);
+        var nodeMap = BuildNodes(flow, onOpenSettings);
         BuildConnections(flow, nodeMap, connectionSides);
     }
 
-    // Returns per-connector sides keyed by (operatorId, portOrParamName).
-    private static (Dictionary<(string, string), ConnectionSide> inputs,
-                    Dictionary<(string, string), ConnectionSide> outputs)
-        ComputeConnectorSides(IFlowDef flow,
-            IReadOnlyDictionary<string, (ConnectionSide Source, ConnectionSide Target)>? connectionSides)
+    private void OnConnect((object Source, object? Target) args)
     {
-        var inputs  = new Dictionary<(string, string), ConnectionSide>();
-        var outputs = new Dictionary<(string, string), ConnectionSide>();
+        if (args.Target is not ConnectorViewModel targetConnector ||
+            args.Source is not ConnectorViewModel sourceConnector)
+            return;
 
-        if (connectionSides is null) return (inputs, outputs);
+        var sourceNode = Nodes.FirstOrDefault(n => n.HasConnector(sourceConnector));
+        var targetNode = Nodes.FirstOrDefault(n => n.HasConnector(targetConnector));
 
-        foreach (var op in flow.Operators)
-            foreach (var param in op.Parameters.Where(p => p.Source is not null))
-            {
-                var src = param.Source!;
-                var dep = op.Dependencies.FirstOrDefault(d => d.OperatorId == src.OperatorId);
-                if (dep is null || !connectionSides.TryGetValue(dep.DependencyId, out var sides)) continue;
+        if (sourceNode is null || targetNode is null || sourceNode == targetNode) return;
 
-                outputs[(src.OperatorId, src.Port)] = sides.Source;
-                inputs[(op.Id, param.Name)]          = sides.Target;
-            }
+        // Req 3: replace any existing connection between the same source→target node pair.
+        foreach (var old in Connections
+            .Where(c => sourceNode.HasConnector(c.Source) && targetNode.HasConnector(c.Target))
+            .ToList())
+            Connections.Remove(old);
 
-        return (inputs, outputs);
+        // Wire the first connectable parameter of the target to the source's first output.
+        var param = targetNode.Parameters.FirstOrDefault(p => p.CanBeWired);
+        if (param is not null)
+        {
+            var port      = sourceNode.Operator.Type.OutputPorts.FirstOrDefault() ?? string.Empty;
+            var sourceRef = new SourceRefViewModel(sourceNode.Id, sourceNode.DisplayName, port);
+
+            if (!param.AvailableSources.Any(s => s.OperatorId == sourceRef.OperatorId && s.Port == sourceRef.Port))
+                param.AvailableSources.Add(sourceRef);
+
+            param.SelectedSource = param.AvailableSources.First(s => s.OperatorId == sourceRef.OperatorId && s.Port == sourceRef.Port);
+            param.IsWired        = true;
+        }
+
+        Connections.Add(new ConnectionViewModel(sourceConnector, targetConnector));
     }
 
     private Dictionary<string, OperatorNodeViewModel> BuildNodes(
-        IFlowDef flow,
-        Dictionary<(string, string), ConnectionSide> inputSides,
-        Dictionary<(string, string), ConnectionSide> outputSides,
-        Action<OperatorNodeViewModel>? onOpenSettings)
+        IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings)
     {
         var levels  = ComputeLevels(flow);
-        var byLevel = flow.Operators
-            .GroupBy(o => levels[o.Id])
-            .OrderBy(g => g.Key);
+        var byLevel = flow.Operators.GroupBy(o => levels[o.Id]).OrderBy(g => g.Key);
 
         const double xStep = 240;
         const double yStep = 180;
@@ -69,23 +75,20 @@ public class FlowViewModel
             var ops = levelGroup.ToList();
             double y = levelGroup.Key * yStep + yPad;
 
+            // Sources from all already-placed nodes.
             var availableSources = nodeMap.Values
-                .SelectMany(n => n.Outputs.Select(o => new SourceRefViewModel(n.Id, n.DisplayName, o.Name)))
+                .SelectMany(n => n.Operator.Type.OutputPorts
+                    .Select(port => new SourceRefViewModel(n.Id, n.DisplayName, port)))
                 .ToList();
 
             for (int i = 0; i < ops.Count; i++)
             {
-                var opId = ops[i].Id;
-                var node = new OperatorNodeViewModel(
-                    ops[i], availableSources,
-                    getInputSide:  name => inputSides.GetValueOrDefault((opId, name),  ConnectionSide.Top),
-                    getOutputSide: name => outputSides.GetValueOrDefault((opId, name), ConnectionSide.Bottom),
-                    onOpenSettings: onOpenSettings)
+                var node = new OperatorNodeViewModel(ops[i], availableSources, onOpenSettings)
                 {
                     Location = new Point(i * xStep + xPad, y)
                 };
                 Nodes.Add(node);
-                nodeMap[opId] = node;
+                nodeMap[ops[i].Id] = node;
             }
         }
 
@@ -98,25 +101,29 @@ public class FlowViewModel
         foreach (var op in flow.Operators)
         {
             var targetNode = nodeMap[op.Id];
-            foreach (var param in op.Parameters.Where(p => p.Source is not null))
+            foreach (var dep in op.Dependencies)
             {
-                var src        = param.Source!;
-                var sourceNode = nodeMap[src.OperatorId];
-                var output     = sourceNode.Outputs.FirstOrDefault(c => c.Name == src.Port);
-                var input      = targetNode.Inputs.FirstOrDefault(c => c.Name == param.Name);
+                if (!nodeMap.TryGetValue(dep.OperatorId, out var sourceNode)) continue;
 
-                if (output is null || input is null) continue;
-
-                var depId = op.Dependencies.FirstOrDefault(d => d.OperatorId == src.OperatorId)?.DependencyId;
-                var (sourceSide, targetSide) = depId is not null
-                    && connectionSides?.TryGetValue(depId, out var sides) == true
-                    ? sides
+                var (srcSide, tgtSide) = connectionSides?.TryGetValue(dep.DependencyId, out var s) == true
+                    ? s
                     : (ConnectionSide.Bottom, ConnectionSide.Top);
 
-                Connections.Add(new ConnectionViewModel(output, input, sourceSide, targetSide));
+                Connections.Add(new ConnectionViewModel(
+                    GetConnector(sourceNode, srcSide),
+                    GetConnector(targetNode, tgtSide)));
             }
         }
     }
+
+    private static ConnectorViewModel GetConnector(OperatorNodeViewModel node, ConnectionSide side) => side switch
+    {
+        ConnectionSide.Top    => node.TopConnector,
+        ConnectionSide.Bottom => node.BottomConnector,
+        ConnectionSide.Left   => node.LeftConnector,
+        ConnectionSide.Right  => node.RightConnector,
+        _                     => node.BottomConnector
+    };
 
     private static Dictionary<string, int> ComputeLevels(IFlowDef flow)
     {
@@ -129,11 +136,7 @@ public class FlowViewModel
                 foreach (var dep in op.Dependencies)
                 {
                     var candidate = levels[dep.OperatorId] + 1;
-                    if (candidate > levels[op.Id])
-                    {
-                        levels[op.Id] = candidate;
-                        changed = true;
-                    }
+                    if (candidate > levels[op.Id]) { levels[op.Id] = candidate; changed = true; }
                 }
         }
         return levels;

@@ -85,6 +85,7 @@
                         <nodify:NodifyEditor ItemsSource="{Binding Flow.Nodes}"
                                              Connections="{Binding Flow.Connections}"
                                              SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                                             ConnectionCompletedCommand="{Binding Flow.ConnectCommand}"
                                              Background="#1E1E1E">
 
                             <nodify:NodifyEditor.ItemContainerStyle>
@@ -112,45 +113,23 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Top connectors -->
-                                            <ItemsControl Grid.Row="0" Grid.Column="1"
-                                                          ItemsSource="{Binding TopConnectors}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Horizontal"
-                                                                    HorizontalAlignment="Center" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
-                                                        <nodify:Connector
-                                                            Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                            VerticalContentAlignment="Top"
-                                                            IsConnected="True"
-                                                            Style="{StaticResource ConnectorStyle}" />
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                            <!-- Top connector -->
+                                            <nodify:Connector Grid.Row="0" Grid.Column="1"
+                                                DataContext="{Binding TopConnector}"
+                                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                HorizontalAlignment="Center"
+                                                VerticalContentAlignment="Top"
+                                                IsConnected="True"
+                                                Style="{StaticResource ConnectorStyle}" />
 
-                                            <!-- Left connectors -->
-                                            <ItemsControl Grid.Row="1" Grid.Column="0"
-                                                          ItemsSource="{Binding LeftConnectors}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Vertical"
-                                                                    VerticalAlignment="Center" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
-                                                        <nodify:Connector
-                                                            Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                            HorizontalContentAlignment="Left"
-                                                            IsConnected="True"
-                                                            Style="{StaticResource SideConnectorStyle}" />
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                            <!-- Left connector -->
+                                            <nodify:Connector Grid.Row="1" Grid.Column="0"
+                                                DataContext="{Binding LeftConnector}"
+                                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                VerticalAlignment="Center"
+                                                HorizontalContentAlignment="Left"
+                                                IsConnected="True"
+                                                Style="{StaticResource SideConnectorStyle}" />
 
                                             <!-- Node header with gear icon -->
                                             <Border Grid.Row="1" Grid.Column="1"
@@ -178,45 +157,23 @@
                                                 </Grid>
                                             </Border>
 
-                                            <!-- Right connectors -->
-                                            <ItemsControl Grid.Row="1" Grid.Column="2"
-                                                          ItemsSource="{Binding RightConnectors}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Vertical"
-                                                                    VerticalAlignment="Center" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
-                                                        <nodify:Connector
-                                                            Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                            HorizontalContentAlignment="Right"
-                                                            IsConnected="True"
-                                                            Style="{StaticResource SideConnectorStyle}" />
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                            <!-- Right connector -->
+                                            <nodify:Connector Grid.Row="1" Grid.Column="2"
+                                                DataContext="{Binding RightConnector}"
+                                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                VerticalAlignment="Center"
+                                                HorizontalContentAlignment="Right"
+                                                IsConnected="True"
+                                                Style="{StaticResource SideConnectorStyle}" />
 
-                                            <!-- Bottom connectors -->
-                                            <ItemsControl Grid.Row="2" Grid.Column="1"
-                                                          ItemsSource="{Binding BottomConnectors}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Horizontal"
-                                                                    HorizontalAlignment="Center" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type vm:ConnectorViewModel}">
-                                                        <nodify:Connector
-                                                            Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                            VerticalContentAlignment="Bottom"
-                                                            IsConnected="True"
-                                                            Style="{StaticResource ConnectorStyle}" />
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                            <!-- Bottom connector -->
+                                            <nodify:Connector Grid.Row="2" Grid.Column="1"
+                                                DataContext="{Binding BottomConnector}"
+                                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                HorizontalAlignment="Center"
+                                                VerticalContentAlignment="Bottom"
+                                                IsConnected="True"
+                                                Style="{StaticResource ConnectorStyle}" />
 
                                         </Grid>
                                     </Border>

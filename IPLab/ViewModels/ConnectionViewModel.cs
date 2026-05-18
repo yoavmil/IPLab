@@ -10,18 +10,13 @@ public class ConnectionViewModel : ViewModelBase
 {
     public ConnectorViewModel Source { get; }
     public ConnectorViewModel Target { get; }
-    public ConnectionSide SourceSide { get; }
-    public ConnectionSide TargetSide { get; }
 
     private const double ControlOffset = 80.0;
 
-    public ConnectionViewModel(ConnectorViewModel source, ConnectorViewModel target,
-        ConnectionSide sourceSide = ConnectionSide.Bottom, ConnectionSide targetSide = ConnectionSide.Top)
+    public ConnectionViewModel(ConnectorViewModel source, ConnectorViewModel target)
     {
         Source = source;
         Target = target;
-        SourceSide = sourceSide;
-        TargetSide = targetSide;
 
         source.PropertyChanged += OnAnchorChanged;
         target.PropertyChanged += OnAnchorChanged;
@@ -37,8 +32,8 @@ public class ConnectionViewModel : ViewModelBase
     {
         get
         {
-            var p1 = ControlPoint(Source.Anchor, SourceSide);
-            var p2 = ControlPoint(Target.Anchor, TargetSide);
+            var p1 = ControlPoint(Source.Anchor, Source.Side);
+            var p2 = ControlPoint(Target.Anchor, Target.Side);
 
             var geometry = new StreamGeometry();
             using (var ctx = geometry.Open())
