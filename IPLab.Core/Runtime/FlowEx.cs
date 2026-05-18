@@ -23,10 +23,23 @@ public class FlowEx : IFlowEx
 
     public async Task RunAllAsync()
     {
-        var levels = TopologicalLevels();
+        var tasks = new Dictionary<string, Task>();
+        var byId  = Flow.Operators.ToDictionary(o => o.Id);
 
-		foreach (var level in levels)
-            await Task.WhenAll(level.Select(RunOperatorAsync));
+        Task GetTask(string id)
+        {
+            if (tasks.TryGetValue(id, out var t)) return t;
+            var op           = byId[id];
+            var predecessors = op.Dependencies.Select(d => GetTask(d.OperatorId)).ToArray();
+            return tasks[id] = Task.WhenAll(predecessors)
+                .ContinueWith(_ => RunOperatorAsync(op), TaskScheduler.Default)
+                .Unwrap();
+        }
+
+        foreach (var op in Flow.Operators)
+            _ = GetTask(op.Id);
+
+        await Task.WhenAll(tasks.Values);
     }
 
     public async Task RunSingleAsync(string operatorId)
@@ -79,38 +92,4 @@ public class FlowEx : IFlowEx
         return resolved;
     }
 
-    // Groups operators into dependency levels. All operators within a level are
-    // independent of each other and can run in parallel.
-    private IEnumerable<IReadOnlyList<IOperator>> TopologicalLevels()
-    {
-        var inDegree = Flow.Operators.ToDictionary(o => o.Id, _ => 0);
-        var graph    = Flow.Operators.ToDictionary(o => o.Id, _ => new List<string>());
-
-        foreach (var op in Flow.Operators)
-            foreach (var dep in op.Dependencies)
-            {
-                graph[dep.OperatorId].Add(op.Id);
-                inDegree[op.Id]++;
-            }
-
-        var byId      = Flow.Operators.ToDictionary(o => o.Id);
-        var remaining = new HashSet<string>(Flow.Operators.Select(o => o.Id));
-
-        while (remaining.Count > 0)
-        {
-            var level = remaining.Where(id => inDegree[id] == 0)
-                                 .Select(id => byId[id])
-                                 .ToList();
-            if (level.Count == 0) break; // cycle — Validate() should have caught this
-
-            yield return level;
-
-            foreach (var op in level)
-            {
-                remaining.Remove(op.Id);
-                foreach (var next in graph[op.Id])
-                    inDegree[next]--;
-            }
-        }
-    }
 }
