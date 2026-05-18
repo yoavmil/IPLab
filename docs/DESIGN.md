@@ -112,7 +112,16 @@ classDiagram
 
     class DependencyLayout {
         +string DependencyId
-        +IReadOnlyList~Point~ Waypoints
+        +ConnectionSide SourceSide
+        +ConnectionSide TargetSide
+    }
+
+    class ConnectionSide {
+        <<enumeration>>
+        Left
+        Top
+        Right
+        Bottom
     }
 
     class OperatorStatus {
@@ -143,7 +152,7 @@ classDiagram
 | `IOperatorType` | The operator **template** — type name, icon, parameter schema (structure + constraints), output port names, and the OpenCV execution logic. Shared across all instances of the same type. |
 | `IOperator` | A specific operator **instance** in a flow — ID, display name, reference to its `IOperatorType`, current parameter values (literal or wired), and direct dependencies. |
 | `IFlowDef` | The serializable flow **definition** — the list of operator instances. Also owns flow-level validation (no circular dependencies, all connectable parameters wired to a declared dependency). Saved as JSON for headless use. |
-| `IFlowLayout` | The **visual layout** — canvas positions per operator, and waypoints per dependency line. Serialized alongside `IFlowDef` in the project file, but not needed for headless execution. |
+| `IFlowLayout` | The **visual layout** — canvas positions per operator, and the connection side (Left/Top/Right/Bottom) for each end of a dependency line. Serialized alongside `IFlowDef` in the project file, but not needed for headless execution. |
 | `IFlowEx` | Standalone runtime **executor**, constructed from an `IFlowDef`. Runs the full flow or a single operator. Owns all intermediate results (OpenCV `Mat`, contours, etc.) and per-operator status. Transient — created on demand, never serialized. |
 | `IFlow` | The **open project document** — holds `IFlowDef` and `IFlowLayout`. This is what the desktop app keeps in memory. Not serialized itself; its two parts are serialized separately. |
 
@@ -168,7 +177,7 @@ Each parameter in an operator instance carries either a literal `value` or a `so
 These operate at two different levels of granularity:
 
 - **Port connection** — stored inside a `ParameterValue.Source`. Specifies exactly which output port of which operator feeds this parameter. Fine-grained, execution-level. Not visualized individually.
-- **Dependency** — stored in `IOperator.Dependencies`. One entry per unique upstream operator. Has an ID so `IFlowLayout` can store waypoints for the visual connecting line.
+- **Dependency** — stored in `IOperator.Dependencies`. One entry per unique upstream operator. Has an ID so `IFlowLayout` can store the source/target connection sides for the visual connecting line.
 
 If an operator has two parameters both sourced from the same upstream operator, there is one `Dependency` (one visual line) but two `ParameterValue.Source` entries.
 

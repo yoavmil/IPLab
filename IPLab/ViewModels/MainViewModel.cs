@@ -34,22 +34,42 @@ public class MainViewModel : ViewModelBase
         private set { _selectedImage = value; RaisePropertyChanged(); }
     }
 
-    private FlowEx? _executor;
-    private string _imagePath = string.Empty;
+    private OperatorNodeViewModel? _editingNode;
+    public OperatorNodeViewModel? EditingNode
+    {
+        get => _editingNode;
+        private set
+        {
+            _editingNode = value;
+            RaisePropertyChanged();
+            RaisePropertyChanged(nameof(IsSettingsPanelOpen));
+        }
+    }
 
-    public ICommand RunAllCommand { get; }
-    public ICommand ClearResultsCommand { get; }
+    public bool IsSettingsPanelOpen => _editingNode is not null;
+
+    private FlowEx? _executor;
+
+    public ICommand RunAllCommand        { get; }
+    public ICommand ClearResultsCommand  { get; }
+    public ICommand CloseSettingsCommand { get; }
 
     public MainViewModel()
     {
-        Flow = new FlowViewModel(BuildSampleFlow());
-        RunAllCommand = new RelayCommand(RunAll);
-        ClearResultsCommand = new RelayCommand(ClearResults);
+        Flow = new FlowViewModel(BuildSampleFlow(), node => EditingNode = node, BuildSampleConnectionSides());
+        RunAllCommand        = new RelayCommand(RunAll);
+        ClearResultsCommand  = new RelayCommand(ClearResults);
+        CloseSettingsCommand = new RelayCommand(() => EditingNode = null);
     }
 
     private async void RunAll()
     {
-        if (string.IsNullOrEmpty(_imagePath))
+        // If no image path set yet, prompt via the LoadImage node's FilePath parameter
+        var filePathParam = Flow.Nodes
+            .SelectMany(n => n.Parameters)
+            .FirstOrDefault(p => p.Name == "FilePath");
+
+        if (filePathParam is not null && string.IsNullOrEmpty(filePathParam.ValueText))
         {
             var dialog = new OpenFileDialog
             {
@@ -57,16 +77,16 @@ public class MainViewModel : ViewModelBase
                 Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff|All files|*.*"
             };
             if (dialog.ShowDialog() != true) return;
-            _imagePath = dialog.FileName;
+            filePathParam.ValueText = dialog.FileName;
         }
 
         Status = "Running…";
         try
         {
-            var flow = BuildSampleFlow(_imagePath);
+            var flow = BuildExecutionFlow();
             _executor = new FlowEx(flow);
             await _executor.RunAllAsync();
-            Status = $"Done  |  {Path.GetFileName(_imagePath)}";
+            Status = $"Done  |  {Path.GetFileName(filePathParam?.ValueText ?? string.Empty)}";
             UpdateSelectedImage();
         }
         catch (Exception ex)
@@ -78,9 +98,15 @@ public class MainViewModel : ViewModelBase
     private void ClearResults()
     {
         _executor     = null;
-        _imagePath    = string.Empty;
         SelectedImage = null;
         Status        = "Ready";
+
+        // Reset FilePath so the dialog appears again on next Run All
+        var filePathParam = Flow.Nodes
+            .SelectMany(n => n.Parameters)
+            .FirstOrDefault(p => p.Name == "FilePath");
+        if (filePathParam is not null)
+            filePathParam.ValueText = string.Empty;
     }
 
     private void UpdateSelectedImage()
@@ -96,6 +122,16 @@ public class MainViewModel : ViewModelBase
         SelectedImage = bytes is not null ? BytesToBitmapSource(bytes) : null;
     }
 
+    private FlowDef BuildExecutionFlow() => new(
+        Flow.Nodes.Select(node => new Operator
+        {
+            Id           = node.Operator.Id,
+            DisplayName  = node.Operator.DisplayName,
+            Type         = node.Operator.Type,
+            Parameters   = node.Parameters.Select(p => p.ToParameterValue()).ToList(),
+            Dependencies = node.Operator.Dependencies
+        }));
+
     private static BitmapSource BytesToBitmapSource(byte[] bytes)
     {
         using var ms = new MemoryStream(bytes);
@@ -108,14 +144,22 @@ public class MainViewModel : ViewModelBase
         return bi;
     }
 
-    private static FlowDef BuildSampleFlow(string imagePath = "") => new(
+    private static IReadOnlyDictionary<string, (ConnectionSide, ConnectionSide)> BuildSampleConnectionSides() =>
+        new Dictionary<string, (ConnectionSide, ConnectionSide)>
+        {
+            // D2: "To Grayscale" → "Threshold" exits right and enters left
+            ["D2"] = (ConnectionSide.Right, ConnectionSide.Left),
+            ["D3"] = (ConnectionSide.Bottom, ConnectionSide.Right)
+		};
+
+    private static FlowDef BuildSampleFlow() => new(
     [
         new Operator
         {
             Id           = "O1",
             DisplayName  = "Load Image",
             Type         = new LoadImageOperator(),
-            Parameters   = [new ParameterValue { Name = "FilePath", Value = imagePath }],
+            Parameters   = [new ParameterValue { Name = "FilePath", Value = string.Empty }],
             Dependencies = []
         },
         new Operator
