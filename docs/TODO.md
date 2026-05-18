@@ -5,6 +5,10 @@
 - **README.md** — root-level project introduction: what IPLab is, who it's for,
   quick-start (how to build and run), and links to OPERATORS.md
 
+## IPLab (UI project)
+
+- **Rename `IPLab` folder and project to `IPLab.UI`** — the folder, `.csproj`, namespace root, and any ProjectReference entries in the solution should all be updated to reflect that this is the WPF UI layer, not the whole product.
+
 ## IPLab.Core.Tests
 
 - **Test: `ConvertToGrayscale` throws when input is already grayscale**
