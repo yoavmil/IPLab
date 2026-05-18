@@ -33,10 +33,10 @@
         <!-- ── Toolbar ─────────────────────────────────────────────────── -->
         <ToolBarTray DockPanel.Dock="Top" Background="#2D2D30">
             <ToolBar Band="0" BandIndex="0">
-                <Button Content="Run All"      Padding="8 2" />
+                <Button Content="Run All"      Padding="8 2" Command="{Binding RunAllCommand}" />
                 <Button Content="Run Selected" Padding="8 2" />
                 <Separator />
-                <Button Content="Clear Results" Padding="8 2" />
+                <Button Content="Clear Results" Padding="8 2" Command="{Binding ClearResultsCommand}" />
             </ToolBar>
         </ToolBarTray>
 
@@ -61,6 +61,7 @@
                 <TabItem Header="Graph">
                     <nodify:NodifyEditor ItemsSource="{Binding Flow.Nodes}"
                                          Connections="{Binding Flow.Connections}"
+                                         SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                                          Background="#1E1E1E">
 
                         <nodify:NodifyEditor.ItemContainerStyle>
@@ -162,10 +163,9 @@
                         TabStripPlacement="Bottom">
                 <TabItem Header="Image Preview">
                     <Border Background="#1E1E1E">
-                        <TextBlock Text="Select an operator to preview its output"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Foreground="#666" FontStyle="Italic" />
+                        <Image Source="{Binding SelectedImage}"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
                     </Border>
                 </TabItem>
                 <TabItem Header="Data">
