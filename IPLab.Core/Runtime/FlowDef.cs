@@ -41,6 +41,14 @@ public class FlowDef : IFlowDef
                 if (!ids.Contains(dep.OperatorId))
                     errors.Add($"Operator '{op.Id}' references unknown dependency '{dep.OperatorId}'.");
 
+        foreach (var op in Operators)
+        {
+            var declaredDeps = op.Dependencies.Select(d => d.OperatorId).ToHashSet();
+            foreach (var pv in op.Parameters)
+                if (pv.Source is { } src && !declaredDeps.Contains(src.OperatorId))
+                    errors.Add($"Operator '{op.Id}' wires parameter '{pv.Name}' from '{src.OperatorId}' but that operator is not listed in its dependencies.");
+        }
+
         if (HasCycle())
             errors.Add("Flow contains circular dependencies.");
 
