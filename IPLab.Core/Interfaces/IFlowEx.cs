@@ -10,4 +10,7 @@ public interface IFlowEx
     IReadOnlyDictionary<string, object?> IntermediateResults { get; }
     IReadOnlyDictionary<string, OperatorStatus> Statuses { get; }
     void ClearResults();
+
+    /// <summary>Fired on every status transition. Exception is non-null only when status is Failed.</summary>
+    event Action<string, OperatorStatus, Exception?> StatusChanged;
 }

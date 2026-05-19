@@ -45,7 +45,7 @@ public class ConvertToGrayscaleTests
 
         var executor = new FlowEx(flow);
 
-        await Assert.ThrowsAnyAsync<Exception>(() => executor.RunAllAsync());
+        await executor.RunAllAsync();
         Assert.Equal(OperatorStatus.Failed, executor.Statuses["O2"]);
     }
 }

@@ -21,6 +21,8 @@ public class FlowEx : IFlowEx
     public IReadOnlyDictionary<string, object?> IntermediateResults => _results;
     public IReadOnlyDictionary<string, OperatorStatus> Statuses => _statuses;
 
+    public event Action<string, OperatorStatus, Exception?>? StatusChanged;
+
     public async Task RunAllAsync()
     {
         var tasks = new Dictionary<string, Task>();
@@ -57,18 +59,23 @@ public class FlowEx : IFlowEx
 
     private async Task RunOperatorAsync(IOperator op)
     {
-        _statuses[op.Id] = OperatorStatus.Running;
+        SetStatus(op.Id, OperatorStatus.Running, null);
         try
         {
             var resolved = ResolveParameters(op);
             _results[op.Id] = await Task.Run(() => op.Type.Execute(resolved));
-            _statuses[op.Id] = OperatorStatus.Success;
+            SetStatus(op.Id, OperatorStatus.Success, null);
         }
-        catch
+        catch (Exception ex)
         {
-            _statuses[op.Id] = OperatorStatus.Failed;
-            throw;
+            SetStatus(op.Id, OperatorStatus.Failed, ex);
         }
+    }
+
+    private void SetStatus(string id, OperatorStatus status, Exception? ex)
+    {
+        _statuses[id] = status;
+        StatusChanged?.Invoke(id, status, ex);
     }
 
     private IReadOnlyDictionary<string, object?> ResolveParameters(IOperator op)
@@ -78,7 +85,8 @@ public class FlowEx : IFlowEx
         {
             if (param.Source is { } source)
             {
-                var raw = _results[source.OperatorId];
+                if (!_results.TryGetValue(source.OperatorId, out var raw))
+                    throw new InvalidOperationException($"Operator '{source.OperatorId}' did not produce a result — it may have failed.");
                 var sourceOp = Flow.Operators.First(o => o.Id == source.OperatorId);
                 resolved[param.Name] = sourceOp.Type.OutputPorts.Count == 1
                     ? raw

@@ -11,7 +11,14 @@
                             Background="#1E1E1E" />
         </TabItem>
         <TabItem Header="Data">
-            <Border Background="#1E1E1E" />
+            <Border Background="#1E1E1E" Padding="10">
+                <TextBlock Text="{Binding SelectedNode.ErrorMessage}"
+                           TextWrapping="Wrap"
+                           Foreground="#FF6666"
+                           FontFamily="Consolas"
+                           FontSize="12"
+                           VerticalAlignment="Top" />
+            </Border>
         </TabItem>
     </TabControl>
 </UserControl>

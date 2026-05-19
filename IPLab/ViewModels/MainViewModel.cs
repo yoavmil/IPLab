@@ -1,5 +1,6 @@
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 using IPLab.Core.Operators;
 using IPLab.Core.Runtime;
 using IPLab.Core.Serialization;
@@ -107,8 +108,13 @@ public class MainViewModel : ViewModelBase
         {
             var flow = BuildExecutionFlow();
             _executor = new FlowEx(flow);
+            _executor.StatusChanged += OnOperatorStatusChanged;
             await _executor.RunAllAsync();
-            Status = $"Done  |  {Path.GetFileName(filePathParam?.ValueText ?? string.Empty)}";
+
+            var failed = Flow.Nodes.Count(n => n.Status == OperatorStatus.Failed);
+            Status = failed > 0
+                ? $"{failed} operator(s) failed"
+                : $"Done  |  {Path.GetFileName(filePathParam?.ValueText ?? string.Empty)}";
             UpdateSelectedImage();
         }
         catch (Exception ex)
@@ -117,11 +123,28 @@ public class MainViewModel : ViewModelBase
         }
     }
 
+    private void OnOperatorStatusChanged(string id, OperatorStatus status, Exception? ex)
+    {
+        Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            var node = Flow.Nodes.FirstOrDefault(n => n.Id == id);
+            if (node is null) return;
+            node.Status       = status;
+            node.ErrorMessage = ex?.Message;
+        });
+    }
+
     private void ClearResults()
     {
         _executor     = null;
         SelectedImage = null;
         Status        = "Ready";
+
+        foreach (var node in Flow.Nodes)
+        {
+            node.Status       = OperatorStatus.NotRun;
+            node.ErrorMessage = null;
+        }
 
         var filePathParam = Flow.Nodes
             .SelectMany(n => n.Parameters)

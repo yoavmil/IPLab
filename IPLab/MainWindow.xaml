@@ -5,11 +5,13 @@
         xmlns:nodify="clr-namespace:Nodify;assembly=Nodify"
         xmlns:vm="clr-namespace:IPLab.ViewModels"
         xmlns:rc="clr-namespace:RControls;assembly=RControls"
+        xmlns:conv="clr-namespace:IPLab.Converters"
         Title="IPLab" Height="720" Width="1280"
         Background="#1E1E1E" Foreground="#DCDCDC">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:OperatorStatusToBrushConverter x:Key="StatusToBrush" />
 
         <!-- Top/Bottom pill connector -->
         <Style x:Key="ConnectorStyle" TargetType="{x:Type nodify:Connector}">
@@ -84,18 +86,34 @@
 
                             <nodify:NodifyEditor.ItemContainerStyle>
                                 <Style TargetType="{x:Type nodify:ItemContainer}">
-                                    <Setter Property="Location"   Value="{Binding Location,    Mode=TwoWay}" />
-                                    <Setter Property="IsSelected" Value="{Binding IsSelected,  Mode=TwoWay}" />
+                                    <Setter Property="Location"                Value="{Binding Location,   Mode=TwoWay}" />
+                                    <Setter Property="IsSelected"              Value="{Binding IsSelected, Mode=TwoWay}" />
+                                    <Setter Property="BorderThickness"         Value="0" />
+                                    <Setter Property="SelectedBorderThickness" Value="0" />
                                 </Style>
                             </nodify:NodifyEditor.ItemContainerStyle>
 
                             <nodify:NodifyEditor.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:OperatorNodeViewModel}">
                                     <Border Background="#2D2D30"
-                                            BorderBrush="#555"
-                                            BorderThickness="1"
+                                            BorderThickness="2"
                                             CornerRadius="4"
                                             MinWidth="140">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="BorderBrush" Value="{Binding Status, Converter={StaticResource StatusToBrush}}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="Effect">
+                                                            <Setter.Value>
+                                                                <DropShadowEffect Color="White" BlurRadius="8"
+                                                                                  ShadowDepth="0" Opacity="0.5" />
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />

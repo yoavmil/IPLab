@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 
 namespace IPLab.ViewModels;
 
@@ -28,6 +29,20 @@ public class OperatorNodeViewModel : ViewModelBase
 
     public IReadOnlyList<ParameterEditViewModel> Parameters { get; }
     public ICommand                              OpenSettingsCommand { get; }
+
+    private OperatorStatus _status = OperatorStatus.NotRun;
+    public OperatorStatus Status
+    {
+        get => _status;
+        set { _status = value; RaisePropertyChanged(); }
+    }
+
+    private string? _errorMessage;
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        set { _errorMessage = value; RaisePropertyChanged(); }
+    }
 
     private bool _isSelected;
     public bool IsSelected
