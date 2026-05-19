@@ -359,18 +359,8 @@
             <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
                           Background="#3F3F46" />
 
-            <!-- Right: Inspector — tabs at bottom -->
-            <TabControl Grid.Column="2" Background="#252526" BorderBrush="#3F3F46"
-                        TabStripPlacement="Bottom">
-                <TabItem Header="Image Preview">
-                    <rc:ImageViewer SourceImage="{Binding SelectedImage}"
-                                    OperationMode="Move"
-                                    Background="#1E1E1E" />
-                </TabItem>
-                <TabItem Header="Data">
-                    <Border Background="#1E1E1E" />
-                </TabItem>
-            </TabControl>
+            <!-- Right: Inspector -->
+            <local:InspectorControl Grid.Column="2" />
         </Grid>
 
     </DockPanel>
