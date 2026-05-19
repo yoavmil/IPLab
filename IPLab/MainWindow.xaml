@@ -79,6 +79,7 @@
                         <nodify:NodifyEditor ItemsSource="{Binding Flow.Nodes}"
                                              Connections="{Binding Flow.Connections}"
                                              ConnectionCompletedCommand="{Binding Flow.ConnectCommand}"
+                                             RemoveConnectionCommand="{Binding Flow.DeleteConnectionCommand}"
                                              Background="#1E1E1E">
 
                             <nodify:NodifyEditor.ItemContainerStyle>

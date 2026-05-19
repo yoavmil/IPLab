@@ -4,6 +4,7 @@ using System.Windows.Input;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.Core.Serialization;
+using IPLab.Core.Utilities;
 
 namespace IPLab.ViewModels;
 
@@ -13,13 +14,15 @@ public class FlowViewModel
     public ObservableCollection<ConnectionViewModel>   Connections { get; } = [];
     public string                                      Json        { get; }
     public ICommand                                    ConnectCommand { get; }
+    public ICommand                                    DeleteConnectionCommand { get; }
 
     public FlowViewModel(IFlow flow,
                          Action<OperatorNodeViewModel>? onOpenSettings = null,
                          Action<OperatorNodeViewModel>? onSelected = null)
     {
-        Json           = FlowDefSerializer.Serialize(flow);
-        ConnectCommand = new RelayCommand<(object, object?)>(OnConnect);
+        Json                   = FlowDefSerializer.Serialize(flow);
+        ConnectCommand         = new RelayCommand<(object, object?)>(OnConnect);
+        DeleteConnectionCommand = new RelayCommand<ConnectionViewModel>(OnDeleteConnection);
 
         var positionsLookup = flow.Layout.Operators
             .ToDictionary(o => o.OperatorId, o => new Point(o.Position.X, o.Position.Y));
@@ -44,6 +47,9 @@ public class FlowViewModel
         // Top connector is input-only; prevent it from being used as a source.
         if (sourceConnector == sourceNode.TopConnector) return;
 
+        // Reject connections that would form a cycle.
+        if (WouldCreateCycle(sourceNode, targetNode)) return;
+
         // Replace any existing connection between the same source→target node pair.
         foreach (var old in Connections
             .Where(c => sourceNode.HasConnector(c.Source) && targetNode.HasConnector(c.Target))
@@ -67,6 +73,51 @@ public class FlowViewModel
         var depId = $"D_{sourceNode.Id}_{targetNode.Id}";
         Connections.Add(new ConnectionViewModel(sourceConnector, targetConnector, depId));
     }
+
+    private void OnDeleteConnection(ConnectionViewModel? conn)
+    {
+        if (conn is null || !Connections.Contains(conn)) return;
+
+        var targetNode = Nodes.FirstOrDefault(n => n.HasConnector(conn.Target));
+
+        Connections.Remove(conn);
+
+        if (targetNode is null) return;
+
+        // Prune stale sources from the target and every node downstream of it.
+        foreach (var node in GetSelfAndDescendants(targetNode))
+            PruneStaleSources(node);
+    }
+
+    private void PruneStaleSources(OperatorNodeViewModel node)
+    {
+        var reachable = FlowGraph.GetAncestors(node.Id, ConnectionEdges());
+
+        foreach (var param in node.Parameters)
+        {
+            foreach (var stale in param.AvailableSources.Where(s => !reachable.Contains(s.OperatorId)).ToList())
+                param.AvailableSources.Remove(stale);
+
+            if (param.IsWired && param.SelectedSource is not null && !reachable.Contains(param.SelectedSource.OperatorId))
+            {
+                param.IsWired        = false;
+                param.SelectedSource = null;
+            }
+        }
+    }
+
+    private IEnumerable<OperatorNodeViewModel> GetSelfAndDescendants(OperatorNodeViewModel start) =>
+        FlowGraph.GetSelfAndDescendants(start.Id, ConnectionEdges())
+                 .Select(id => Nodes.FirstOrDefault(n => n.Id == id))
+                 .OfType<OperatorNodeViewModel>();
+
+    private IEnumerable<(string Source, string Target)> ConnectionEdges() =>
+        Connections
+            .Select(c => (
+                Source: Nodes.FirstOrDefault(n => n.HasConnector(c.Source))?.Id,
+                Target: Nodes.FirstOrDefault(n => n.HasConnector(c.Target))?.Id))
+            .Where(e => e.Source is not null && e.Target is not null)
+            .Select(e => (e.Source!, e.Target!));
 
     private Dictionary<string, OperatorNodeViewModel> BuildNodes(
         IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings,
@@ -140,6 +191,32 @@ public class FlowViewModel
         ConnectionSide.Right  => node.RightConnector,
         _                     => node.BottomConnector
     };
+
+    // Returns true if adding source→target would create a cycle.
+    // Checks whether 'source' is already reachable from 'target' via existing connections.
+    private bool WouldCreateCycle(OperatorNodeViewModel source, OperatorNodeViewModel target)
+    {
+        var visited = new HashSet<string>();
+        var queue   = new Queue<OperatorNodeViewModel>();
+        queue.Enqueue(target);
+
+        while (queue.Count > 0)
+        {
+            var node = queue.Dequeue();
+            if (!visited.Add(node.Id)) continue;
+            if (node == source) return true;
+
+            foreach (var conn in Connections)
+            {
+                var connSource = Nodes.FirstOrDefault(n => n.HasConnector(conn.Source));
+                if (connSource != node) continue;
+                var connTarget = Nodes.FirstOrDefault(n => n.HasConnector(conn.Target));
+                if (connTarget is not null) queue.Enqueue(connTarget);
+            }
+        }
+
+        return false;
+    }
 
     private static Dictionary<string, int> ComputeLevels(IFlowDef flow)
     {
