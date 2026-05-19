@@ -78,13 +78,13 @@
                     <Grid>
                         <nodify:NodifyEditor ItemsSource="{Binding Flow.Nodes}"
                                              Connections="{Binding Flow.Connections}"
-                                             SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                                              ConnectionCompletedCommand="{Binding Flow.ConnectCommand}"
                                              Background="#1E1E1E">
 
                             <nodify:NodifyEditor.ItemContainerStyle>
                                 <Style TargetType="{x:Type nodify:ItemContainer}">
-                                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                                    <Setter Property="Location"   Value="{Binding Location,    Mode=TwoWay}" />
+                                    <Setter Property="IsSelected" Value="{Binding IsSelected,  Mode=TwoWay}" />
                                 </Style>
                             </nodify:NodifyEditor.ItemContainerStyle>
 
@@ -107,23 +107,27 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Top connector -->
-                                            <nodify:Connector Grid.Row="0" Grid.Column="1"
-                                                DataContext="{Binding TopConnector}"
-                                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                HorizontalAlignment="Center"
-                                                VerticalContentAlignment="Top"
-                                                IsConnected="True"
-                                                Style="{StaticResource ConnectorStyle}" />
+                                            <!-- Top connector — DataContext on wrapper so Connector inherits it resolved -->
+                                            <Grid Grid.Row="0" Grid.Column="1"
+                                                  DataContext="{Binding TopConnector}"
+                                                  HorizontalAlignment="Center">
+                                                <nodify:Connector
+                                                    Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                    VerticalContentAlignment="Top"
+                                                    IsConnected="True"
+                                                    Style="{StaticResource ConnectorStyle}" />
+                                            </Grid>
 
-                                            <!-- Left connector -->
-                                            <nodify:Connector Grid.Row="1" Grid.Column="0"
-                                                DataContext="{Binding LeftConnector}"
-                                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                VerticalAlignment="Center"
-                                                HorizontalContentAlignment="Left"
-                                                IsConnected="True"
-                                                Style="{StaticResource SideConnectorStyle}" />
+                                            <!-- Left connector — DataContext on wrapper so Connector inherits it resolved -->
+                                            <Grid Grid.Row="1" Grid.Column="0"
+                                                  DataContext="{Binding LeftConnector}"
+                                                  VerticalAlignment="Center">
+                                                <nodify:Connector
+                                                    Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                    HorizontalContentAlignment="Left"
+                                                    IsConnected="True"
+                                                    Style="{StaticResource SideConnectorStyle}" />
+                                            </Grid>
 
                                             <!-- Node header with gear icon -->
                                             <Border Grid.Row="1" Grid.Column="1"
@@ -151,23 +155,27 @@
                                                 </Grid>
                                             </Border>
 
-                                            <!-- Right connector -->
-                                            <nodify:Connector Grid.Row="1" Grid.Column="2"
-                                                DataContext="{Binding RightConnector}"
-                                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                VerticalAlignment="Center"
-                                                HorizontalContentAlignment="Right"
-                                                IsConnected="True"
-                                                Style="{StaticResource SideConnectorStyle}" />
+                                            <!-- Right connector — DataContext on wrapper so Connector inherits it resolved -->
+                                            <Grid Grid.Row="1" Grid.Column="2"
+                                                  DataContext="{Binding RightConnector}"
+                                                  VerticalAlignment="Center">
+                                                <nodify:Connector
+                                                    Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                    HorizontalContentAlignment="Right"
+                                                    IsConnected="True"
+                                                    Style="{StaticResource SideConnectorStyle}" />
+                                            </Grid>
 
-                                            <!-- Bottom connector -->
-                                            <nodify:Connector Grid.Row="2" Grid.Column="1"
-                                                DataContext="{Binding BottomConnector}"
-                                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                HorizontalAlignment="Center"
-                                                VerticalContentAlignment="Bottom"
-                                                IsConnected="True"
-                                                Style="{StaticResource ConnectorStyle}" />
+                                            <!-- Bottom connector — DataContext on wrapper so Connector inherits it resolved -->
+                                            <Grid Grid.Row="2" Grid.Column="1"
+                                                  DataContext="{Binding BottomConnector}"
+                                                  HorizontalAlignment="Center">
+                                                <nodify:Connector
+                                                    Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                    VerticalContentAlignment="Bottom"
+                                                    IsConnected="True"
+                                                    Style="{StaticResource ConnectorStyle}" />
+                                            </Grid>
 
                                         </Grid>
                                     </Border>

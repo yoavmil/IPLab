@@ -29,17 +29,34 @@ public class OperatorNodeViewModel : ViewModelBase
     public IReadOnlyList<ParameterEditViewModel> Parameters { get; }
     public ICommand                              OpenSettingsCommand { get; }
 
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            RaisePropertyChanged();
+            if (value) _onSelected?.Invoke(this);
+        }
+    }
+
+    private readonly Action<OperatorNodeViewModel>? _onSelected;
+
     public bool HasConnector(ConnectorViewModel c) =>
         TopConnector == c || BottomConnector == c || LeftConnector == c || RightConnector == c;
 
     public OperatorNodeViewModel(IOperator op,
                                   IEnumerable<SourceRefViewModel> availableSources,
-                                  Action<OperatorNodeViewModel>? onOpenSettings = null)
+                                  Action<OperatorNodeViewModel>? onOpenSettings = null,
+                                  Action<OperatorNodeViewModel>? onSelected = null)
     {
         Operator    = op;
         Id          = op.Id;
         DisplayName = op.DisplayName;
         TypeName    = op.Type.TypeName;
+        _onSelected = onSelected;
 
         var sources = availableSources.ToList();
         Parameters = op.Type.ParameterSchema

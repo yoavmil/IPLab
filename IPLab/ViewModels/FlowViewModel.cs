@@ -14,7 +14,9 @@ public class FlowViewModel
     public string                                      Json        { get; }
     public ICommand                                    ConnectCommand { get; }
 
-    public FlowViewModel(IFlow flow, Action<OperatorNodeViewModel>? onOpenSettings = null)
+    public FlowViewModel(IFlow flow,
+                         Action<OperatorNodeViewModel>? onOpenSettings = null,
+                         Action<OperatorNodeViewModel>? onSelected = null)
     {
         Json           = FlowDefSerializer.Serialize(flow);
         ConnectCommand = new RelayCommand<(object, object?)>(OnConnect);
@@ -24,7 +26,7 @@ public class FlowViewModel
         var sidesLookup = flow.Layout.Dependencies
             .ToDictionary(d => d.DependencyId, d => (d.SourceSide, d.TargetSide));
 
-        var nodeMap = BuildNodes(flow.Def, onOpenSettings, positionsLookup);
+        var nodeMap = BuildNodes(flow.Def, onOpenSettings, onSelected, positionsLookup);
         BuildConnections(flow.Def, nodeMap, sidesLookup);
     }
 
@@ -68,6 +70,7 @@ public class FlowViewModel
 
     private Dictionary<string, OperatorNodeViewModel> BuildNodes(
         IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings,
+        Action<OperatorNodeViewModel>? onSelected,
         IReadOnlyDictionary<string, Point> positionsLookup)
     {
         var levels  = ComputeLevels(flow);
@@ -95,7 +98,7 @@ public class FlowViewModel
                 var autoPos = new Point(i * xStep + xPad, y);
                 var pos     = positionsLookup.TryGetValue(ops[i].Id, out var p) ? p : autoPos;
 
-                var node = new OperatorNodeViewModel(ops[i], availableSources, onOpenSettings)
+                var node = new OperatorNodeViewModel(ops[i], availableSources, onOpenSettings, onSelected)
                 {
                     Location = pos
                 };

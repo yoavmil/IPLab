@@ -67,7 +67,9 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
-        Flow = new FlowViewModel(BuildSampleFlow(), node => EditingNode = node);
+        Flow = new FlowViewModel(BuildSampleFlow(),
+            onOpenSettings: node => EditingNode = node,
+            onSelected:     node => SelectedNode = node);
         RunAllCommand        = new RelayCommand(RunAll);
         ClearResultsCommand  = new RelayCommand(ClearResults);
         CloseSettingsCommand = new RelayCommand(() => EditingNode = null);
@@ -174,7 +176,9 @@ public class MainViewModel : ViewModelBase
             EditingNode   = null;
             _executor     = null;
             SelectedImage = null;
-            Flow   = new FlowViewModel(flow, node => EditingNode = node);
+            Flow   = new FlowViewModel(flow,
+                onOpenSettings: node => EditingNode = node,
+                onSelected:     node => SelectedNode = node);
             Status = $"Loaded: {Path.GetFileName(dialog.FileName)}";
         }
         catch (Exception ex)
