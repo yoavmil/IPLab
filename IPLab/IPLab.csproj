@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\3rd\Nodify\Nodify.csproj" />
+    <ProjectReference Include="..\3rd\RControls\RControls.csproj" />
     <ProjectReference Include="..\IPLab.Core\IPLab.Core.csproj" />
   </ItemGroup>
 
