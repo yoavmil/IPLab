@@ -11,9 +11,10 @@ public static class FlowDefSerializer
 {
     private static readonly JsonSerializerOptions Options = new()
     {
-        PropertyNamingPolicy        = JsonNamingPolicy.CamelCase,
-        WriteIndented               = true,
-        DefaultIgnoreCondition      = JsonIgnoreCondition.WhenWritingNull
+        PropertyNamingPolicy   = JsonNamingPolicy.CamelCase,
+        WriteIndented          = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters             = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
     // ── DTOs ────────────────────────────────────────────────────────────────
@@ -24,26 +25,45 @@ public static class FlowDefSerializer
         string Id,
         string DisplayName,
         string Type,
-        List<ParameterDto> Parameters,
-        List<DependencyDto> Dependencies);
+        List<ParameterDto>  Parameters,
+        List<DependencyDto> Dependencies,
+        double? X = null,
+        double? Y = null);
 
     private record ParameterDto(string Name, JsonElement? Value, SourceRefDto? Source);
 
     private record SourceRefDto(string OperatorId, string Port);
 
-    private record DependencyDto(string DependencyId, string OperatorId);
+    private record DependencyDto(
+        string DependencyId,
+        string OperatorId,
+        ConnectionSide? SourceSide = null,
+        ConnectionSide? TargetSide = null);
 
     // ── Serialize ────────────────────────────────────────────────────────────
 
-    public static string Serialize(IFlowDef flow)
+    public static string Serialize(IFlow flow)
     {
-        var dto = new FlowDto(flow.Operators.Select(op => new OperatorDto(
-            op.Id,
-            op.DisplayName,
-            op.Type.TypeName,
-            op.Parameters.Select(ToParameterDto).ToList(),
-            op.Dependencies.Select(d => new DependencyDto(d.DependencyId, d.OperatorId)).ToList()
-        )).ToList());
+        var opLayouts  = flow.Layout.Operators.ToDictionary(o => o.OperatorId);
+        var depLayouts = flow.Layout.Dependencies.ToDictionary(d => d.DependencyId);
+
+        var dto = new FlowDto(flow.Def.Operators.Select(op =>
+        {
+            opLayouts.TryGetValue(op.Id, out var ol);
+            return new OperatorDto(
+                op.Id,
+                op.DisplayName,
+                op.Type.TypeName,
+                op.Parameters.Select(ToParameterDto).ToList(),
+                op.Dependencies.Select(d =>
+                {
+                    depLayouts.TryGetValue(d.DependencyId, out var dl);
+                    return new DependencyDto(d.DependencyId, d.OperatorId,
+                        dl?.SourceSide, dl?.TargetSide);
+                }).ToList(),
+                ol?.Position.X,
+                ol?.Position.Y);
+        }).ToList());
 
         return JsonSerializer.Serialize(dto, Options);
     }
@@ -55,12 +75,12 @@ public static class FlowDefSerializer
 
     // ── Deserialize ──────────────────────────────────────────────────────────
 
-    public static FlowDef Deserialize(string json, OperatorRegistry registry)
+    public static Flow Deserialize(string json, OperatorRegistry registry)
     {
         var dto = JsonSerializer.Deserialize<FlowDto>(json, Options)
             ?? throw new JsonException("Failed to deserialize flow.");
 
-        return new FlowDef(dto.Operators.Select(opDto =>
+        var operators = dto.Operators.Select(opDto =>
         {
             var type   = registry.Resolve(opDto.Type);
             var schema = type.ParameterSchema.ToDictionary(p => p.Name);
@@ -77,12 +97,25 @@ public static class FlowDefSerializer
                 DisplayName  = opDto.DisplayName,
                 Type         = type,
                 Parameters   = parameters,
-                Dependencies = opDto.Dependencies.Select(d => new Dependency(d.DependencyId, d.OperatorId)).ToList()
+                Dependencies = opDto.Dependencies
+                    .Select(d => new Dependency(d.DependencyId, d.OperatorId)).ToList()
             };
-        }));
+        }).ToList();
+
+        var opLayouts = dto.Operators
+            .Where(o => o.X.HasValue && o.Y.HasValue)
+            .Select(o => new OperatorLayout(o.Id, new LayoutPoint(o.X!.Value, o.Y!.Value)));
+
+        var depLayouts = dto.Operators
+            .SelectMany(o => o.Dependencies)
+            .Where(d => d.SourceSide.HasValue && d.TargetSide.HasValue)
+            .Select(d => new DependencyLayout(d.DependencyId, d.SourceSide!.Value, d.TargetSide!.Value));
+
+        return new Flow(new FlowDef(operators), new FlowLayout(opLayouts, depLayouts));
     }
 
-    private static object? CoerceValue(JsonElement? element, Dictionary<string, ParameterDescriptor> schema, string name)
+    private static object? CoerceValue(JsonElement? element,
+        Dictionary<string, ParameterDescriptor> schema, string name)
     {
         if (element is not { } el) return null;
 

@@ -176,10 +176,14 @@ Each parameter in an operator instance carries either a literal `value` or a `so
 
 These operate at two different levels of granularity:
 
-- **Port connection** — stored inside a `ParameterValue.Source`. Specifies exactly which output port of which operator feeds this parameter. Fine-grained, execution-level. Not visualized individually.
-- **Dependency** — stored in `IOperator.Dependencies`. One entry per unique upstream operator. Has an ID so `IFlowLayout` can store the source/target connection sides for the visual connecting line.
+- **Port connection** — stored inside a `ParameterValue.Source`. Specifies exactly which output port of which operator feeds this parameter. Fine-grained, execution-level data-flow detail. Not visualized individually.
+- **Dependency** — stored in `IOperator.Dependencies`. Expresses execution ordering only: *this operator cannot run until that upstream operator has finished*. **One entry per unique upstream operator** — it does not matter how many parameters are wired to that operator.
 
-If an operator has two parameters both sourced from the same upstream operator, there is one `Dependency` (one visual line) but two `ParameterValue.Source` entries.
+Dependency ID format: `D_{sourceOperatorId}_{targetOperatorId}` (e.g. `D_O2_O3`). This uniquely identifies the visual connection line between the two nodes and is the key used by `IFlowLayout.Dependencies` to store connector sides.
+
+If an operator has two parameters both sourced from the same upstream operator, there is still only one `Dependency` (one visual line) but two `ParameterValue.Source` entries.
+
+Visual connections and `Dependency` entries are always 1-to-1: one visual line = one `Dependency` = one `DependencyLayout`. Duplicate connections from the same source to the same target are not allowed; drawing one replaces the previous.
 
 ## Validation
 

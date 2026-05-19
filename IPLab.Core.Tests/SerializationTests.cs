@@ -18,7 +18,7 @@ public class SerializationTests
         var minDist = probe.Width / 10.0;
 
         // Build flow: Load → ConvertToGrayscale(HsvValue) → Threshold → DetectCircles
-        var original = new FlowDef(
+        var flowDef = new FlowDef(
         [
             new Operator
             {
@@ -38,7 +38,7 @@ public class SerializationTests
                     new ParameterValue { Name = "Image",  Source = new SourceRef("O1", "Image") },
                     new ParameterValue { Name = "Method", Value  = "HsvValue" }
                 ],
-                Dependencies = [new Dependency("D1", "O1")]
+                Dependencies = [new Dependency("D_O1_O2", "O1")]
             },
             new Operator
             {
@@ -50,7 +50,7 @@ public class SerializationTests
                     new ParameterValue { Name = "Image",  Source = new SourceRef("O2", "Image") },
                     new ParameterValue { Name = "Thresh", Value  = 128.0 }
                 ],
-                Dependencies = [new Dependency("D2", "O2")]
+                Dependencies = [new Dependency("D_O2_O3", "O2")]
             },
             new Operator
             {
@@ -66,18 +66,56 @@ public class SerializationTests
                     new ParameterValue { Name = "MinRadius", Value  = 30      },
                     new ParameterValue { Name = "MaxRadius", Value  = 50      }
                 ],
-                Dependencies = [new Dependency("D3", "O3")]
+                Dependencies = [new Dependency("D_O3_O4", "O3")]
             }
         ]);
 
-        // Round-trip through JSON
-        var json     = FlowDefSerializer.Serialize(original);
-        var restored = FlowDefSerializer.Deserialize(json, OperatorRegistry.CreateDefault());
+        // Non-default positions and sides to make the round-trip checks meaningful
+        var layout = new FlowLayout(
+            operators:
+            [
+                new OperatorLayout("O1", new LayoutPoint(40,  40)),
+                new OperatorLayout("O2", new LayoutPoint(40,  220)),
+                new OperatorLayout("O3", new LayoutPoint(280, 400)),
+                new OperatorLayout("O4", new LayoutPoint(140, 580)),
+            ],
+            dependencies:
+            [
+                new DependencyLayout("D_O1_O2", ConnectionSide.Bottom, ConnectionSide.Top),
+                new DependencyLayout("D_O2_O3", ConnectionSide.Right,  ConnectionSide.Left),
+                new DependencyLayout("D_O3_O4", ConnectionSide.Bottom, ConnectionSide.Top),
+            ]);
 
-        var executor = new FlowEx(restored);
+        // Round-trip through JSON
+        var json      = FlowDefSerializer.Serialize(new Flow(flowDef, layout));
+        var restored  = FlowDefSerializer.Deserialize(json, OperatorRegistry.CreateDefault());
+
+        // ── Execution check ──────────────────────────────────────────────────
+        var executor = new FlowEx(restored.Def);
         await executor.RunAllAsync();
 
         var circles = (CircleSegment[])executor.IntermediateResults["O4"]!;
         Assert.Equal(8, circles.Length); // 2 red + 3 green + 3 blue
+
+        // ── Layout round-trip check ──────────────────────────────────────────
+        var restoredOps  = restored.Layout.Operators.ToDictionary(o => o.OperatorId);
+        var restoredDeps = restored.Layout.Dependencies.ToDictionary(d => d.DependencyId);
+
+        Assert.Equal(layout.Operators.Count,    restoredOps.Count);
+        Assert.Equal(layout.Dependencies.Count, restoredDeps.Count);
+
+        foreach (var orig in layout.Operators)
+        {
+            Assert.True(restoredOps.TryGetValue(orig.OperatorId, out var r));
+            Assert.Equal(orig.Position.X, r.Position.X);
+            Assert.Equal(orig.Position.Y, r.Position.Y);
+        }
+
+        foreach (var orig in layout.Dependencies)
+        {
+            Assert.True(restoredDeps.TryGetValue(orig.DependencyId, out var r));
+            Assert.Equal(orig.SourceSide, r.SourceSide);
+            Assert.Equal(orig.TargetSide, r.TargetSide);
+        }
     }
 }

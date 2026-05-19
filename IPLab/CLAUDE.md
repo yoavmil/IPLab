@@ -69,11 +69,12 @@ In XAML, each is bound with `DataContext="{Binding TopConnector}"` (etc.) so tha
 ## Connection rules
 
 - **Default sides**: source exits `Bottom`, target enters `Top`. This produces top-to-bottom vertical S-curves for a standard pipeline flow.
-- **Per-dependency overrides**: pass `IReadOnlyDictionary<string, (ConnectionSide Source, ConnectionSide Target)>` keyed by dependency ID to `FlowViewModel`'s constructor. Unrecognised IDs fall back to the default.
+- **Per-dependency overrides**: `IFlowLayout.Dependencies` carries a `DependencyLayout` per dependency ID. `FlowViewModel` builds a lookup at construction; unrecognised IDs fall back to `(Bottom, Top)`.
 - **Bezier geometry**: `ConnectionViewModel.BezierGeometry` is a `StreamGeometry` bezier computed from `Source.Anchor`/`Target.Anchor`. Control points are offset along the connector's declared `Side` by `ControlOffset = 80` pixels. It re-evaluates whenever either anchor raises `PropertyChanged`.
-- **Multiple connections allowed**: any number of visual connections may exist simultaneously, including to the same connector. The last wired source wins for execution.
-- **Replace on reconnect**: if the user draws a new connection between two nodes that already have a connection, the old one is removed first (de-duplicated by source-node / target-node pair, not by specific connector).
-- **Parameter wiring**: `OnConnect` wires the **first `CanBeWired` parameter** of the target node to the **first output port** of the source node. The `ParameterEditViewModel` updates `IsWired = true` and `SelectedSource`. `BuildExecutionFlow` derives `Dependencies` from wired parameters — it does **not** read `IOperator.Dependencies`, which is immutable.
+- **One connection per node pair**: at most one visual connection may exist between any (sourceNode, targetNode) pair. Drawing a new connection between a pair that already has one removes the old first.
+- **Dependency ID format**: `D_{sourceOperatorId}_{targetOperatorId}` (e.g. `D_O2_O3`). Connections carry this ID so the serializer can match visual connector sides to the correct `DependencyLayout`.
+- **Parameter wiring**: `OnConnect` wires the **first `CanBeWired` parameter** of the target node to the **first output port** of the source node. The `ParameterEditViewModel` updates `IsWired = true` and `SelectedSource`. `BuildExecutionFlow` derives `Dependencies` — one per unique upstream operator, grouped from wired parameters — it does **not** read `IOperator.Dependencies`, which is immutable.
+- **Dep vs. param wiring**: a `Dependency` expresses execution ordering only (one per unique upstream operator). The fine-grained data-flow detail (which output port feeds which parameter) lives in `ParameterValue.Source`, not in `Dependency`.
 
 ## ViewModel structure
 

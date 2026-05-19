@@ -1,0 +1,16 @@
+<UserControl x:Class="IPLab.RibbonControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ToolBarTray Background="#2D2D30">
+        <ToolBar Band="0" BandIndex="0" Header="File">
+            <Button Content="Open Flow" Padding="8 2" Command="{Binding LoadFlowCommand}" />
+            <Button Content="Save Flow" Padding="8 2" Command="{Binding SaveFlowCommand}" />
+        </ToolBar>
+        <ToolBar Band="0" BandIndex="1" Header="Run">
+            <Button Content="Run All"       Padding="8 2" Command="{Binding RunAllCommand}" />
+            <Button Content="Run Selected"  Padding="8 2" />
+            <Separator />
+            <Button Content="Clear Results" Padding="8 2" Command="{Binding ClearResultsCommand}" />
+        </ToolBar>
+    </ToolBarTray>
+</UserControl>

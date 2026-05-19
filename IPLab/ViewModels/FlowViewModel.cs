@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using IPLab.Core.Interfaces;
+using IPLab.Core.Models;
 using IPLab.Core.Serialization;
 
 namespace IPLab.ViewModels;
@@ -13,15 +14,18 @@ public class FlowViewModel
     public string                                      Json        { get; }
     public ICommand                                    ConnectCommand { get; }
 
-    public FlowViewModel(IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings = null,
-        IReadOnlyDictionary<string, (ConnectionSide Source, ConnectionSide Target)>? connectionSides = null,
-        IReadOnlyDictionary<string, Point>? nodePositions = null)
+    public FlowViewModel(IFlow flow, Action<OperatorNodeViewModel>? onOpenSettings = null)
     {
         Json           = FlowDefSerializer.Serialize(flow);
         ConnectCommand = new RelayCommand<(object, object?)>(OnConnect);
 
-        var nodeMap = BuildNodes(flow, onOpenSettings, nodePositions);
-        BuildConnections(flow, nodeMap, connectionSides);
+        var positionsLookup = flow.Layout.Operators
+            .ToDictionary(o => o.OperatorId, o => new Point(o.Position.X, o.Position.Y));
+        var sidesLookup = flow.Layout.Dependencies
+            .ToDictionary(d => d.DependencyId, d => (d.SourceSide, d.TargetSide));
+
+        var nodeMap = BuildNodes(flow.Def, onOpenSettings, positionsLookup);
+        BuildConnections(flow.Def, nodeMap, sidesLookup);
     }
 
     private void OnConnect((object Source, object? Target) args)
@@ -38,13 +42,12 @@ public class FlowViewModel
         // Top connector is input-only; prevent it from being used as a source.
         if (sourceConnector == sourceNode.TopConnector) return;
 
-        // Req 3: replace any existing connection between the same source→target node pair.
+        // Replace any existing connection between the same source→target node pair.
         foreach (var old in Connections
             .Where(c => sourceNode.HasConnector(c.Source) && targetNode.HasConnector(c.Target))
             .ToList())
             Connections.Remove(old);
 
-        // Wire the first connectable parameter of the target to the source's first output.
         var param = targetNode.Parameters.FirstOrDefault(p => p.CanBeWired);
         if (param is not null)
         {
@@ -54,16 +57,18 @@ public class FlowViewModel
             if (!param.AvailableSources.Any(s => s.OperatorId == sourceRef.OperatorId && s.Port == sourceRef.Port))
                 param.AvailableSources.Add(sourceRef);
 
-            param.SelectedSource = param.AvailableSources.First(s => s.OperatorId == sourceRef.OperatorId && s.Port == sourceRef.Port);
-            param.IsWired        = true;
+            param.SelectedSource = param.AvailableSources.First(s =>
+                s.OperatorId == sourceRef.OperatorId && s.Port == sourceRef.Port);
+            param.IsWired = true;
         }
 
-        Connections.Add(new ConnectionViewModel(sourceConnector, targetConnector));
+        var depId = $"D_{sourceNode.Id}_{targetNode.Id}";
+        Connections.Add(new ConnectionViewModel(sourceConnector, targetConnector, depId));
     }
 
     private Dictionary<string, OperatorNodeViewModel> BuildNodes(
         IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings,
-        IReadOnlyDictionary<string, Point>? nodePositions)
+        IReadOnlyDictionary<string, Point> positionsLookup)
     {
         var levels  = ComputeLevels(flow);
         var byLevel = flow.Operators.GroupBy(o => levels[o.Id]).OrderBy(g => g.Key);
@@ -80,7 +85,6 @@ public class FlowViewModel
             var ops = levelGroup.ToList();
             double y = levelGroup.Key * yStep + yPad;
 
-            // Sources from all already-placed nodes.
             var availableSources = nodeMap.Values
                 .SelectMany(n => n.Operator.Type.OutputPorts
                     .Select(port => new SourceRefViewModel(n.Id, n.DisplayName, port)))
@@ -89,7 +93,7 @@ public class FlowViewModel
             for (int i = 0; i < ops.Count; i++)
             {
                 var autoPos = new Point(i * xStep + xPad, y);
-                var pos     = nodePositions?.TryGetValue(ops[i].Id, out var p) == true ? p : autoPos;
+                var pos     = positionsLookup.TryGetValue(ops[i].Id, out var p) ? p : autoPos;
 
                 var node = new OperatorNodeViewModel(ops[i], availableSources, onOpenSettings)
                 {
@@ -104,7 +108,7 @@ public class FlowViewModel
     }
 
     private void BuildConnections(IFlowDef flow, Dictionary<string, OperatorNodeViewModel> nodeMap,
-        IReadOnlyDictionary<string, (ConnectionSide Source, ConnectionSide Target)>? connectionSides)
+        IReadOnlyDictionary<string, (ConnectionSide Source, ConnectionSide Target)> sidesLookup)
     {
         foreach (var op in flow.Operators)
         {
@@ -113,13 +117,14 @@ public class FlowViewModel
             {
                 if (!nodeMap.TryGetValue(dep.OperatorId, out var sourceNode)) continue;
 
-                var (srcSide, tgtSide) = connectionSides?.TryGetValue(dep.DependencyId, out var s) == true
+                var (srcSide, tgtSide) = sidesLookup.TryGetValue(dep.DependencyId, out var s)
                     ? s
                     : (ConnectionSide.Bottom, ConnectionSide.Top);
 
                 Connections.Add(new ConnectionViewModel(
                     GetConnector(sourceNode, srcSide),
-                    GetConnector(targetNode, tgtSide)));
+                    GetConnector(targetNode, tgtSide),
+                    dep.DependencyId));
             }
         }
     }

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using IPLab.Core.Interfaces;
+using IPLab.Core.Models;
 
 namespace IPLab.ViewModels;
 
