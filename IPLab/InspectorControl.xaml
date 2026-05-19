@@ -5,7 +5,8 @@
     <TabControl Background="#252526" BorderBrush="#3F3F46"
                 TabStripPlacement="Bottom">
         <TabItem Header="Image Preview">
-            <rc:ImageViewer SourceImage="{Binding SelectedImage}"
+            <rc:ImageViewer x:Name="ImageViewer"
+                            SourceImage="{Binding SelectedImage}"
                             OperationMode="Move"
                             Background="#1E1E1E" />
         </TabItem>

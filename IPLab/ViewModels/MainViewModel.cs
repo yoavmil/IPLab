@@ -5,6 +5,7 @@ using IPLab.Core.Runtime;
 using IPLab.Core.Serialization;
 using IPLab.Core.Utilities;
 using Microsoft.Win32;
+using OpenCvSharp;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -41,6 +42,13 @@ public class MainViewModel : ViewModelBase
     {
         get => _selectedImage;
         private set { _selectedImage = value; RaisePropertyChanged(); }
+    }
+
+    private CircleSegment[]? _selectedCircles;
+    public CircleSegment[]? SelectedCircles
+    {
+        get => _selectedCircles;
+        private set { _selectedCircles = value; RaisePropertyChanged(); }
     }
 
     private OperatorNodeViewModel? _editingNode;
@@ -191,13 +199,34 @@ public class MainViewModel : ViewModelBase
     {
         if (_selectedNode is null || _executor is null)
         {
-            SelectedImage = null;
+            SelectedImage   = null;
+            SelectedCircles = null;
             return;
         }
 
         _executor.IntermediateResults.TryGetValue(_selectedNode.Id, out var result);
+
+        if (result is CircleSegment[] circles)
+        {
+            SelectedImage   = GetSourceImage();
+            SelectedCircles = circles;
+            return;
+        }
+
+        SelectedCircles = null;
         var bytes = ImageHelper.TryGetPngBytes(result);
         SelectedImage = bytes is not null ? BytesToBitmapSource(bytes) : null;
+    }
+
+    private BitmapSource? GetSourceImage()
+    {
+        var imageParam = _selectedNode!.Parameters
+            .FirstOrDefault(p => p.Name == "Image" && p.IsWired && p.SelectedSource is not null);
+        if (imageParam is null) return null;
+
+        _executor!.IntermediateResults.TryGetValue(imageParam.SelectedSource!.OperatorId, out var sourceResult);
+        var bytes = ImageHelper.TryGetPngBytes(sourceResult);
+        return bytes is not null ? BytesToBitmapSource(bytes) : null;
     }
 
     private FlowDef BuildExecutionFlow() => new(
