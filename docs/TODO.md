@@ -15,7 +15,11 @@
 
 - **Delete connection with confirmation** — before `OnDeleteConnection` removes a connection, show a brief confirmation (e.g. "Remove this connection? Downstream nodes may lose their inputs.") so the user doesn't accidentally break the flow.
 
-- **Blob detection overlay in `RControls.ImageViewer`** — display `DetectBlobs` output (a `KeyPoint[]`) as an overlay on the source image in the Inspector, similar to the existing circle overlay. Render each blob as a filled polygon (approximated circle or ellipse) using whichever `RControls` drawing primitive is most appropriate. The overlay color and opacity should follow the same display settings as circle annotations.
+- **`InvertImage` operator** — add an operator that wraps `Cv2.BitwiseNot()` to invert a grayscale or colour image. No parameters beyond the input image. Useful as a pre-processing step before `DetectSimpleBlobs` when blobs are dark on a bright background.
+
+- **`FindContours` operator** — add a `FindContours` operator that wraps `Cv2.FindContours()`. Takes a binary (thresholded) `Mat` as input and returns `Point[][]` — one polygon per connected region. Visualise each contour as a polygon overlay in the Inspector. Pairs naturally with `Threshold` upstream.
+
+- **`ConnectedComponents` operator** — add a `ConnectedComponents` operator that wraps `Cv2.ConnectedComponentsWithStats()`. Takes a binary `Mat` and returns labelled regions with per-component stats (area, bounding box, centroid). Visualise as coloured bounding-box or centroid overlays.
 
 - **ROI (Region of Interest)** — let the user draw one or more ROI shapes on an operator's input image. Each ROI specifies the spatial region the operator acts on; outside the ROI the original pixel data is preserved or masked. Some ROIs also carry a direction vector (e.g. for oriented filters or directional edge detection). Design questions to resolve: how ROIs are stored in `IOperator.Parameters` vs. a new dedicated field; whether ROI drawing lives inside `ImageViewer` or in a separate overlay canvas; and how the direction is visualised (arrow overlay) and stored.
 

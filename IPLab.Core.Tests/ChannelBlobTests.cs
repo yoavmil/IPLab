@@ -39,7 +39,7 @@ public class ChannelBlobTests
             {
                 Id           = "O3",
                 DisplayName  = "BlobsRed",
-                Type         = new DetectBlobsOperator(),
+                Type         = new DetectSimpleBlobsOperator(),
                 Parameters   =
                 [
                     new ParameterValue { Name = "Image",               Source = new SourceRef("O2", "Red") },
@@ -56,7 +56,7 @@ public class ChannelBlobTests
             {
                 Id           = "O4",
                 DisplayName  = "BlobsGreen",
-                Type         = new DetectBlobsOperator(),
+                Type         = new DetectSimpleBlobsOperator(),
                 Parameters   =
                 [
                     new ParameterValue { Name = "Image",               Source = new SourceRef("O2", "Green") },
@@ -73,7 +73,7 @@ public class ChannelBlobTests
             {
                 Id           = "O5",
                 DisplayName  = "BlobsBlue",
-                Type         = new DetectBlobsOperator(),
+                Type         = new DetectSimpleBlobsOperator(),
                 Parameters   =
                 [
                     new ParameterValue { Name = "Image",               Source = new SourceRef("O2", "Blue") },

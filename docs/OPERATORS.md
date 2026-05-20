@@ -13,7 +13,7 @@
 
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
-- [DetectBlobs](#detectblobs) — detect circular blobs using SimpleBlobDetector
+- [DetectSimpleBlobs](#detectsimpleblobs) — detect circular blobs using SimpleBlobDetector
 
 ---
 
@@ -108,19 +108,22 @@ Detects circles in a single-channel image using the Hough Gradient transform (`C
 
 ---
 
-## DetectBlobs
+## DetectSimpleBlobs
 
 Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 
 | Parameter          | Type   | Connectable | Description                                      |
 |--------------------|--------|-------------|--------------------------------------------------|
 | Image              | Object | Yes         | Single-channel input Mat                         |
+| Polarity           | Enum   | No          | `Light on Dark` (default) or `Dark on Light`     |
 | MinCircularity     | Double | No          | Minimum circularity score (0–1); higher = rounder |
 | MinArea            | Double | No          | Minimum blob area in pixels²                     |
 | MaxArea            | Double | No          | Maximum blob area in pixels²                     |
 | MinDistBetweenBlobs| Double | No          | Minimum distance between blob centers in pixels  |
-| MinThreshold       | Double | No          | Lower bound of the internal binarization range   |
-| MaxThreshold       | Double | No          | Upper bound of the internal binarization range   |
+| MinThreshold       | Double | No          | Lower bound of the internal threshold sweep      |
+| MaxThreshold       | Double | No          | Upper bound of the internal threshold sweep      |
+| ThresholdStep      | Double | No          | Step size between threshold levels (default 10)  |
+| MinRepeatability   | Int    | No          | How many threshold levels a blob must appear in to be kept (default 2) |
 
 | Output Port | Type       |
 |-------------|------------|

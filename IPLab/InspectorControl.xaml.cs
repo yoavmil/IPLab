@@ -39,6 +39,9 @@ public partial class InspectorControl : UserControl
             case nameof(MainViewModel.SelectedCircles):
                 DrawCircles(_vm!.SelectedCircles);
                 break;
+            case nameof(MainViewModel.SelectedBlobs):
+                DrawBlobs(_vm!.SelectedBlobs);
+                break;
         }
     }
 
@@ -48,5 +51,13 @@ public partial class InspectorControl : UserControl
         foreach (var c in circles)
             ImageViewer.DrawCircle(c.Center.Y, c.Center.X, c.Radius,
                                    string.Empty, Brushes.Lime, bFilled: false);
+    }
+
+    private void DrawBlobs(KeyPoint[]? blobs)
+    {
+        if (blobs is null) return;
+        foreach (var b in blobs)
+            ImageViewer.DrawCircle(b.Pt.Y, b.Pt.X, b.Size / 2.0,
+                                   string.Empty, Brushes.Cyan, bFilled: false);
     }
 }

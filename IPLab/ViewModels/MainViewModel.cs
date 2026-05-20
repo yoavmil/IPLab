@@ -52,6 +52,13 @@ public class MainViewModel : ViewModelBase
         private set { _selectedCircles = value; RaisePropertyChanged(); }
     }
 
+    private KeyPoint[]? _selectedBlobs;
+    public KeyPoint[]? SelectedBlobs
+    {
+        get => _selectedBlobs;
+        private set { _selectedBlobs = value; RaisePropertyChanged(); }
+    }
+
     private OperatorNodeViewModel? _editingNode;
     public OperatorNodeViewModel? EditingNode
     {
@@ -226,6 +233,7 @@ public class MainViewModel : ViewModelBase
         {
             SelectedImage   = null;
             SelectedCircles = null;
+            SelectedBlobs   = null;
             return;
         }
 
@@ -235,10 +243,20 @@ public class MainViewModel : ViewModelBase
         {
             SelectedImage   = GetSourceImage();
             SelectedCircles = circles;
+            SelectedBlobs   = null;
+            return;
+        }
+
+        if (result is KeyPoint[] blobs)
+        {
+            SelectedImage   = GetSourceImage();
+            SelectedBlobs   = blobs;
+            SelectedCircles = null;
             return;
         }
 
         SelectedCircles = null;
+        SelectedBlobs   = null;
         var bytes = ImageHelper.TryGetPngBytes(result);
         SelectedImage = bytes is not null ? BytesToBitmapSource(bytes) : null;
     }
