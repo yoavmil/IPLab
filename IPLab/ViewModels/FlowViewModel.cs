@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using IPLab.Core.Runtime;
 using IPLab.Core.Serialization;
 using IPLab.Core.Utilities;
 
@@ -16,10 +17,15 @@ public class FlowViewModel
     public ICommand                                    ConnectCommand { get; }
     public ICommand                                    DeleteConnectionCommand { get; }
 
+    private readonly Action<OperatorNodeViewModel>? _onOpenSettings;
+    private readonly Action<OperatorNodeViewModel>? _onSelected;
+
     public FlowViewModel(IFlow flow,
                          Action<OperatorNodeViewModel>? onOpenSettings = null,
                          Action<OperatorNodeViewModel>? onSelected = null)
     {
+        _onOpenSettings        = onOpenSettings;
+        _onSelected            = onSelected;
         Json                   = FlowDefSerializer.Serialize(flow);
         ConnectCommand         = new RelayCommand<(object, object?)>(OnConnect);
         DeleteConnectionCommand = new RelayCommand<ConnectionViewModel>(OnDeleteConnection);
@@ -29,8 +35,44 @@ public class FlowViewModel
         var sidesLookup = flow.Layout.Dependencies
             .ToDictionary(d => d.DependencyId, d => (d.SourceSide, d.TargetSide));
 
-        var nodeMap = BuildNodes(flow.Def, onOpenSettings, onSelected, positionsLookup);
+        var nodeMap = BuildNodes(flow.Def, positionsLookup);
         BuildConnections(flow.Def, nodeMap, sidesLookup);
+    }
+
+    public void AddNode(IOperatorType type)
+    {
+        int maxNum = Nodes
+            .Select(n => n.Id)
+            .Where(id => id.StartsWith("O") && int.TryParse(id[1..], out _))
+            .Select(id => int.Parse(id[1..]))
+            .DefaultIfEmpty(0)
+            .Max();
+        var newId = $"O{maxNum + 1}";
+
+        var parameters = type.ParameterSchema
+            .Select(p => new ParameterValue { Name = p.Name, Value = p.DefaultValue })
+            .ToList();
+
+        var op = new Operator
+        {
+            Id           = newId,
+            DisplayName  = type.TypeName,
+            Type         = type,
+            Parameters   = parameters,
+            Dependencies = []
+        };
+
+        var pos = new Point(40 + Nodes.Count * 30, 40 + Nodes.Count * 30);
+
+        var availableSources = Nodes
+            .SelectMany(n => n.Operator.Type.OutputPorts
+                .Select(port => new SourceRefViewModel(n.Id, n.DisplayName, port)))
+            .ToList();
+
+        Nodes.Add(new OperatorNodeViewModel(op, availableSources, _onOpenSettings, _onSelected)
+        {
+            Location = pos
+        });
     }
 
     private void OnConnect((object Source, object? Target) args)
@@ -120,8 +162,7 @@ public class FlowViewModel
             .Select(e => (e.Source!, e.Target!));
 
     private Dictionary<string, OperatorNodeViewModel> BuildNodes(
-        IFlowDef flow, Action<OperatorNodeViewModel>? onOpenSettings,
-        Action<OperatorNodeViewModel>? onSelected,
+        IFlowDef flow,
         IReadOnlyDictionary<string, Point> positionsLookup)
     {
         var levels  = ComputeLevels(flow);
@@ -149,7 +190,7 @@ public class FlowViewModel
                 var autoPos = new Point(i * xStep + xPad, y);
                 var pos     = positionsLookup.TryGetValue(ops[i].Id, out var p) ? p : autoPos;
 
-                var node = new OperatorNodeViewModel(ops[i], availableSources, onOpenSettings, onSelected)
+                var node = new OperatorNodeViewModel(ops[i], availableSources, _onOpenSettings, _onSelected)
                 {
                     Location = pos
                 };

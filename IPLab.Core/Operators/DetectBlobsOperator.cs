@@ -6,8 +6,9 @@ namespace IPLab.Core.Operators;
 
 public class DetectBlobsOperator : IOperatorType
 {
-    public string TypeName => "DetectBlobs";
-    public string Icon => "blob";
+    public string TypeName  => "DetectBlobs";
+    public string Category  => "Detection";
+    public string Icon      => "blob";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",              Label = "Image",                Type = ParameterType.Object, IsConnectable = true  },

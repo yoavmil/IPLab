@@ -6,8 +6,9 @@ namespace IPLab.Core.Operators;
 
 public class SplitChannelsOperator : IOperatorType
 {
-    public string TypeName => "SplitChannels";
-    public string Icon => "split";
+    public string TypeName  => "SplitChannels";
+    public string Category  => "Color & Channels";
+    public string Icon      => "split";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image", Label = "Image", Type = ParameterType.Object, IsConnectable = true }

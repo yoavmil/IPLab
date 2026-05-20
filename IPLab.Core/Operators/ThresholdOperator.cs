@@ -6,8 +6,9 @@ namespace IPLab.Core.Operators;
 
 public class ThresholdOperator : IOperatorType
 {
-    public string TypeName => "Threshold";
-    public string Icon => "threshold";
+    public string TypeName  => "Threshold";
+    public string Category  => "Filters";
+    public string Icon      => "threshold";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",  Label = "Image",     Type = ParameterType.Object, IsConnectable = true  },

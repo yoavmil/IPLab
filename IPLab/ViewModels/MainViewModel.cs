@@ -68,6 +68,7 @@ public class MainViewModel : ViewModelBase
 
     private FlowEx? _executor;
 
+    public ToolboxViewModel Toolbox      { get; }
     public ICommand RunAllCommand        { get; }
     public ICommand ClearResultsCommand  { get; }
     public ICommand CloseSettingsCommand { get; }
@@ -76,6 +77,7 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        Toolbox = new ToolboxViewModel(OperatorRegistry.CreateDefault(), type => Flow.AddNode(type));
         Flow = new FlowViewModel(BuildSampleFlow(),
             onOpenSettings: node => EditingNode = node,
             onSelected:     node => SelectedNode = node);

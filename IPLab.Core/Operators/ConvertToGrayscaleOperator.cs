@@ -6,8 +6,9 @@ namespace IPLab.Core.Operators;
 
 public class ConvertToGrayscaleOperator : IOperatorType
 {
-    public string TypeName => "ConvertToGrayscale";
-    public string Icon => "palette";
+    public string TypeName  => "ConvertToGrayscale";
+    public string Category  => "Color & Channels";
+    public string Icon      => "palette";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",  Label = "Image",  Type = ParameterType.Object, IsConnectable = true  },

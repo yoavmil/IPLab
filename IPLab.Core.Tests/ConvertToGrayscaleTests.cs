@@ -11,8 +11,9 @@ public class ConvertToGrayscaleTests
     // Injects a single-channel Mat without touching the file system.
     private class GrayscaleSourceOperator : IOperatorType
     {
-        public string TypeName => "GrayscaleSource";
-        public string Icon => "";
+        public string TypeName  => "GrayscaleSource";
+        public string Category  => "Test";
+        public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
         public IReadOnlyList<string> OutputPorts => ["Image"];
         public object? Execute(IReadOnlyDictionary<string, object?> _)

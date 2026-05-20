@@ -6,8 +6,9 @@ namespace IPLab.Core.Operators;
 
 public class SaveImageOperator : IOperatorType
 {
-    public string TypeName => "SaveImage";
-    public string Icon => "save";
+    public string TypeName  => "SaveImage";
+    public string Category  => "I/O";
+    public string Icon      => "save";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",    Label = "Image",     Type = ParameterType.Object, IsConnectable = true  },

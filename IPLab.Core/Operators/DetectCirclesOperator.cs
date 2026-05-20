@@ -6,8 +6,9 @@ namespace IPLab.Core.Operators;
 
 public class DetectCirclesOperator : IOperatorType
 {
-    public string TypeName => "DetectCircles";
-    public string Icon => "circle";
+    public string TypeName  => "DetectCircles";
+    public string Category  => "Detection";
+    public string Icon      => "circle";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",     Label = "Image",              Type = ParameterType.Object, IsConnectable = true  },

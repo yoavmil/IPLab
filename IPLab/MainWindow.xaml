@@ -63,16 +63,24 @@
             </StatusBarItem>
         </StatusBar>
 
-        <!-- ── Main split: Pipeline Editor | Inspector ─────────────────── -->
+        <!-- ── Main split: Toolbox | Pipeline Editor | Inspector ──────────── -->
         <Grid>
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200" MinWidth="140" />
+                <ColumnDefinition Width="4" />
                 <ColumnDefinition Width="2*" MinWidth="300" />
                 <ColumnDefinition Width="4" />
                 <ColumnDefinition Width="380" MinWidth="200" />
             </Grid.ColumnDefinitions>
 
+            <!-- Toolbox -->
+            <local:ToolboxControl Grid.Column="0" DataContext="{Binding Toolbox}" />
+
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
+                          Background="#3F3F46" />
+
             <!-- Left: Pipeline Editor — tabs at bottom -->
-            <TabControl Grid.Column="0" Background="#252526" BorderBrush="#3F3F46"
+            <TabControl Grid.Column="2" Background="#252526" BorderBrush="#3F3F46"
                         TabStripPlacement="Bottom">
                 <TabItem Header="Graph">
 
@@ -375,11 +383,11 @@
                 </TabItem>
             </TabControl>
 
-            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
+            <GridSplitter Grid.Column="3" HorizontalAlignment="Stretch"
                           Background="#3F3F46" />
 
             <!-- Right: Inspector -->
-            <local:InspectorControl Grid.Column="2" />
+            <local:InspectorControl Grid.Column="4" />
         </Grid>
 
     </DockPanel>

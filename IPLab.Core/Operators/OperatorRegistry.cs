@@ -12,6 +12,9 @@ public class OperatorRegistry
         _operators.TryGetValue(typeName, out var op) ? op
             : throw new KeyNotFoundException($"Operator type '{typeName}' is not registered.");
 
+    public IReadOnlyList<IOperatorType> GetAll() =>
+        _operators.Values.OrderBy(op => op.Category).ThenBy(op => op.TypeName).ToList();
+
     // Scans the IPLab.Core assembly and registers every concrete IOperatorType.
     // Requires a public parameterless constructor on each operator class.
     public static OperatorRegistry CreateDefault()
