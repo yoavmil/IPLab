@@ -1,10 +1,10 @@
-using IPLab.Core.Interfaces;
-using IPLab.Core.Models;
+using IPLab.UI.Core.Interfaces;
+using IPLab.UI.Core.Models;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
-using IPLab.Core.Operators;
-using IPLab.Core.Runtime;
-using IPLab.Core.Serialization;
-using IPLab.Core.Utilities;
+using IPLab.UI.Core.Operators;
+using IPLab.UI.Core.Runtime;
+using IPLab.UI.Core.Serialization;
+using IPLab.UI.Core.Utilities;
 using Microsoft.Win32;
 using OpenCvSharp;
 using System.IO;
@@ -13,7 +13,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using CoreFlow = IPLab.Core.Runtime.Flow;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {

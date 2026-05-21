@@ -1,6 +1,6 @@
 using System.Windows.Controls;
 
-namespace IPLab;
+namespace IPLab.UI;
 
 public partial class ToolboxControl : UserControl
 {

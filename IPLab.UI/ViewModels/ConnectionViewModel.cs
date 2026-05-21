@@ -1,7 +1,7 @@
-using IPLab.Core.Models;
+using IPLab.UI.Core.Models;
 using Nodify;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class ConnectionViewModel : ViewModelBase
 {

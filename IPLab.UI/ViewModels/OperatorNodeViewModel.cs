@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
-using IPLab.Core.Interfaces;
-using IPLab.Core.Models;
+using IPLab.UI.Core.Interfaces;
+using IPLab.UI.Core.Models;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class OperatorNodeViewModel : ViewModelBase
 {

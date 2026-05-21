@@ -1,8 +1,8 @@
-using IPLab.Core.Models;
+using IPLab.UI.Core.Models;
 using System.Collections.ObjectModel;
 using System.Globalization;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class ParameterEditViewModel : ViewModelBase
 {

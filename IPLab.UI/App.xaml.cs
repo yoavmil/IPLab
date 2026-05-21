@@ -2,7 +2,7 @@
 using System.Data;
 using System.Windows;
 
-namespace IPLab
+namespace IPLab.UI
 {
 	/// <summary>
 	/// Interaction logic for App.xaml

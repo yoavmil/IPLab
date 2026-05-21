@@ -1,13 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
-using IPLab.Core.Interfaces;
-using IPLab.Core.Models;
-using IPLab.Core.Runtime;
-using IPLab.Core.Serialization;
-using IPLab.Core.Utilities;
+using IPLab.UI.Core.Interfaces;
+using IPLab.UI.Core.Models;
+using IPLab.UI.Core.Runtime;
+using IPLab.UI.Core.Serialization;
+using IPLab.UI.Core.Utilities;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class FlowViewModel
 {

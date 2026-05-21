@@ -1,6 +1,6 @@
 using System.Windows.Input;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public sealed class RelayCommand(Action execute, Func<bool>? canExecute = null) : ICommand
 {

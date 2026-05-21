@@ -1,7 +1,7 @@
 using System.Windows;
-using IPLab.Core.Models;
+using IPLab.UI.Core.Models;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class ConnectorViewModel : ViewModelBase
 {

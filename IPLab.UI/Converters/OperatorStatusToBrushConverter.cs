@@ -1,9 +1,9 @@
-using IPLab.Core.Models;
+using IPLab.UI.Core.Models;
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
 
-namespace IPLab.Converters;
+namespace IPLab.UI.Converters;
 
 public class OperatorStatusToBrushConverter : IValueConverter
 {
