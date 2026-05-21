@@ -1,3 +1,4 @@
+using IPLab.Core.Models;
 using IPLab.ViewModels;
 using OpenCvSharp;
 using RControls;
@@ -35,12 +36,16 @@ public partial class InspectorControl : UserControl
         {
             case nameof(MainViewModel.SelectedImage):
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
+                ImageViewer.RemoveRegion(string.Empty, ShapeMode.Rectangle);
                 break;
             case nameof(MainViewModel.SelectedCircles):
                 DrawCircles(_vm!.SelectedCircles);
                 break;
             case nameof(MainViewModel.SelectedBlobs):
                 DrawBlobs(_vm!.SelectedBlobs);
+                break;
+            case nameof(MainViewModel.SelectedComponents):
+                DrawComponents(_vm!.SelectedComponents);
                 break;
         }
     }
@@ -59,5 +64,18 @@ public partial class InspectorControl : UserControl
         foreach (var b in blobs)
             ImageViewer.DrawCircle(b.Pt.Y, b.Pt.X, b.Size / 2.0,
                                    string.Empty, Brushes.Cyan, bFilled: false);
+    }
+
+    private void DrawComponents(ConnectedComponentInfo[]? components)
+    {
+        if (components is null) return;
+        foreach (var comp in components)
+        {
+            var r = comp.BoundingBox;
+            ImageViewer.DrawRectangle(r.Top, r.Left, r.Bottom, r.Right,
+                                      string.Empty, Brushes.Orange, bFilled: false);
+            ImageViewer.DrawCross(comp.Centroid.Y, comp.Centroid.X, 0,
+                                  string.Empty, 6, Brushes.Orange);
+        }
     }
 }

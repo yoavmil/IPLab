@@ -1,5 +1,6 @@
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using ConnectedComponentInfo = IPLab.Core.Models.ConnectedComponentInfo;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 using IPLab.Core.Operators;
 using IPLab.Core.Runtime;
@@ -57,6 +58,13 @@ public class MainViewModel : ViewModelBase
     {
         get => _selectedBlobs;
         private set { _selectedBlobs = value; RaisePropertyChanged(); }
+    }
+
+    private ConnectedComponentInfo[]? _selectedComponents;
+    public ConnectedComponentInfo[]? SelectedComponents
+    {
+        get => _selectedComponents;
+        private set { _selectedComponents = value; RaisePropertyChanged(); }
     }
 
     private OperatorNodeViewModel? _editingNode;
@@ -145,9 +153,10 @@ public class MainViewModel : ViewModelBase
 
     private void ClearResults()
     {
-        _executor     = null;
-        SelectedImage = null;
-        Status        = "Ready";
+        _executor          = null;
+        SelectedImage      = null;
+        SelectedComponents = null;
+        Status             = "Ready";
 
         foreach (var node in Flow.Nodes)
         {
@@ -241,22 +250,34 @@ public class MainViewModel : ViewModelBase
 
         if (result is CircleSegment[] circles)
         {
-            SelectedImage   = GetSourceImage();
-            SelectedCircles = circles;
-            SelectedBlobs   = null;
+            SelectedImage      = GetSourceImage();
+            SelectedCircles    = circles;
+            SelectedBlobs      = null;
+            SelectedComponents = null;
             return;
         }
 
         if (result is KeyPoint[] blobs)
         {
-            SelectedImage   = GetSourceImage();
-            SelectedBlobs   = blobs;
-            SelectedCircles = null;
+            SelectedImage      = GetSourceImage();
+            SelectedBlobs      = blobs;
+            SelectedCircles    = null;
+            SelectedComponents = null;
             return;
         }
 
-        SelectedCircles = null;
-        SelectedBlobs   = null;
+        if (result is ConnectedComponentInfo[] components)
+        {
+            SelectedImage      = GetSourceImage();
+            SelectedComponents = components;
+            SelectedCircles    = null;
+            SelectedBlobs      = null;
+            return;
+        }
+
+        SelectedCircles    = null;
+        SelectedBlobs      = null;
+        SelectedComponents = null;
         var bytes = ImageHelper.TryGetPngBytes(result);
         SelectedImage = bytes is not null ? BytesToBitmapSource(bytes) : null;
     }
