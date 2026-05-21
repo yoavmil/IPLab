@@ -14,6 +14,7 @@
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
 - [DetectSimpleBlobs](#detectsimpleblobs) — detect circular blobs using SimpleBlobDetector
+- [FindContours](#findcontours) — find contours in a binary image, returned as polygon arrays
 
 ---
 
@@ -128,3 +129,19 @@ Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 | Output Port | Type       |
 |-------------|------------|
 | Blobs       | KeyPoint[] |
+
+---
+
+## FindContours
+
+Finds contours in a binary (thresholded) single-channel image using `Cv2.FindContours`. Each contour is a polygon — an ordered array of points tracing one connected boundary. Visualised as yellow polygon overlays in the Inspector.
+
+| Parameter | Type   | Connectable | Description                                                                                  |
+|-----------|--------|-------------|----------------------------------------------------------------------------------------------|
+| Image     | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)                                   |
+| Mode      | Enum   | No          | `External` (default) — outermost contours only; `List` — all contours flat; `CComp` — two-level hierarchy; `Tree` — full hierarchy |
+| Method    | Enum   | No          | `Simple` (default) — compress horizontal/vertical/diagonal segments; `None` — all points; `TC89L1` / `TC89KCOS` — Teh-Chin chain approximation |
+
+| Output Port | Type       |
+|-------------|------------|
+| Contours    | Point[][]  |

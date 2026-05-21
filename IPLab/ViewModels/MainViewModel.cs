@@ -59,6 +59,13 @@ public class MainViewModel : ViewModelBase
         private set { _selectedBlobs = value; RaisePropertyChanged(); }
     }
 
+    private OpenCvSharp.Point[][]? _selectedContours;
+    public OpenCvSharp.Point[][]? SelectedContours
+    {
+        get => _selectedContours;
+        private set { _selectedContours = value; RaisePropertyChanged(); }
+    }
+
     private OperatorNodeViewModel? _editingNode;
     public OperatorNodeViewModel? EditingNode
     {
@@ -145,9 +152,10 @@ public class MainViewModel : ViewModelBase
 
     private void ClearResults()
     {
-        _executor     = null;
-        SelectedImage = null;
-        Status        = "Ready";
+        _executor        = null;
+        SelectedImage    = null;
+        SelectedContours = null;
+        Status           = "Ready";
 
         foreach (var node in Flow.Nodes)
         {
@@ -241,22 +249,34 @@ public class MainViewModel : ViewModelBase
 
         if (result is CircleSegment[] circles)
         {
-            SelectedImage   = GetSourceImage();
-            SelectedCircles = circles;
-            SelectedBlobs   = null;
+            SelectedImage    = GetSourceImage();
+            SelectedCircles  = circles;
+            SelectedBlobs    = null;
+            SelectedContours = null;
             return;
         }
 
         if (result is KeyPoint[] blobs)
         {
-            SelectedImage   = GetSourceImage();
-            SelectedBlobs   = blobs;
-            SelectedCircles = null;
+            SelectedImage    = GetSourceImage();
+            SelectedBlobs    = blobs;
+            SelectedCircles  = null;
+            SelectedContours = null;
             return;
         }
 
-        SelectedCircles = null;
-        SelectedBlobs   = null;
+        if (result is OpenCvSharp.Point[][] contours)
+        {
+            SelectedImage    = GetSourceImage();
+            SelectedContours = contours;
+            SelectedCircles  = null;
+            SelectedBlobs    = null;
+            return;
+        }
+
+        SelectedCircles  = null;
+        SelectedBlobs    = null;
+        SelectedContours = null;
         var bytes = ImageHelper.TryGetPngBytes(result);
         SelectedImage = bytes is not null ? BytesToBitmapSource(bytes) : null;
     }
