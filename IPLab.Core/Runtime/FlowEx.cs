@@ -23,7 +23,7 @@ public class FlowEx : IFlowEx
 
     public event Action<string, OperatorStatus, Exception?>? StatusChanged;
 
-    public async Task RunAllAsync()
+    public async Task RunAllAsync(CancellationToken ct = default)
     {
         var tasks = new Dictionary<string, Task>();
         var byId  = Flow.Operators.ToDictionary(o => o.Id);
@@ -34,7 +34,7 @@ public class FlowEx : IFlowEx
             var op           = byId[id];
             var predecessors = op.Dependencies.Select(d => GetTask(d.OperatorId)).ToArray();
             return tasks[id] = Task.WhenAll(predecessors)
-                .ContinueWith(_ => RunOperatorAsync(op), TaskScheduler.Default)
+                .ContinueWith(_ => RunOperatorAsync(op, ct), TaskScheduler.Default)
                 .Unwrap();
         }
 
@@ -44,10 +44,10 @@ public class FlowEx : IFlowEx
         await Task.WhenAll(tasks.Values);
     }
 
-    public async Task RunSingleAsync(string operatorId)
+    public async Task RunSingleAsync(string operatorId, CancellationToken ct = default)
     {
         var op = Flow.Operators.First(o => o.Id == operatorId);
-        await RunOperatorAsync(op);
+        await RunOperatorAsync(op, ct);
     }
 
     public void ClearResults()
@@ -57,14 +57,20 @@ public class FlowEx : IFlowEx
             _statuses[key] = OperatorStatus.NotRun;
     }
 
-    private async Task RunOperatorAsync(IOperator op)
+    private async Task RunOperatorAsync(IOperator op, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         SetStatus(op.Id, OperatorStatus.Running, null);
         try
         {
             var resolved = ResolveParameters(op);
-            _results[op.Id] = await Task.Run(() => op.Type.Execute(resolved));
+            _results[op.Id] = await Task.Run(() => op.Type.Execute(resolved), ct);
             SetStatus(op.Id, OperatorStatus.Success, null);
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus(op.Id, OperatorStatus.NotRun, null);
+            throw;
         }
         catch (Exception ex)
         {

@@ -74,9 +74,11 @@ public class MainViewModel : ViewModelBase
     public bool IsSettingsPanelOpen => _editingNode is not null;
 
     private FlowEx? _executor;
+    private CancellationTokenSource? _cts;
 
     public ToolboxViewModel Toolbox      { get; }
     public ICommand RunAllCommand        { get; }
+    public ICommand StopCommand          { get; }
     public ICommand ClearResultsCommand  { get; }
     public ICommand CloseSettingsCommand { get; }
     public ICommand SaveFlowCommand      { get; }
@@ -89,6 +91,7 @@ public class MainViewModel : ViewModelBase
             onOpenSettings: node => EditingNode = node,
             onSelected:     node => SelectedNode = node);
         RunAllCommand        = new RelayCommand(RunAll);
+        StopCommand          = new RelayCommand(Stop);
         ClearResultsCommand  = new RelayCommand(ClearResults);
         CloseSettingsCommand = new RelayCommand(() => EditingNode = null);
         SaveFlowCommand      = new RelayCommand(SaveFlow);
@@ -113,12 +116,13 @@ public class MainViewModel : ViewModelBase
         }
 
         Status = "Running…";
+        _cts = new CancellationTokenSource();
         try
         {
             var flow = BuildExecutionFlow();
             _executor = new FlowEx(flow);
             _executor.StatusChanged += OnOperatorStatusChanged;
-            await _executor.RunAllAsync();
+            await _executor.RunAllAsync(_cts.Token);
 
             var failed = Flow.Nodes.Count(n => n.Status == OperatorStatus.Failed);
             Status = failed > 0
@@ -126,11 +130,22 @@ public class MainViewModel : ViewModelBase
                 : $"Done  |  {Path.GetFileName(filePathParam?.ValueText ?? string.Empty)}";
             UpdateSelectedImage();
         }
+        catch (OperationCanceledException)
+        {
+            Status = "Stopped";
+        }
         catch (Exception ex)
         {
             Status = $"Error: {ex.Message}";
         }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
+        }
     }
+
+    private void Stop() => _cts?.Cancel();
 
     private void OnOperatorStatusChanged(string id, OperatorStatus status, Exception? ex)
     {
@@ -145,6 +160,9 @@ public class MainViewModel : ViewModelBase
 
     private void ClearResults()
     {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts      = null;
         _executor     = null;
         SelectedImage = null;
         Status        = "Ready";
