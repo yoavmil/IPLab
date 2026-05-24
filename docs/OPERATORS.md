@@ -7,6 +7,23 @@
 ## Color & Channels
 - [ConvertToGrayscale](#converttograyscale) — convert BGR image to single-channel grayscale
 - [SplitChannels](#splitchannels) — split BGR image into separate R, G, B channel images
+- [InvertImage](#invertimage) — invert all pixel values (bitwise NOT)
+
+---
+
+## InvertImage
+
+Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Works on any channel count (grayscale or color). Useful as a pre-processing step when blobs are dark on a bright background and the downstream detector expects light on dark.
+
+| Parameter | Type   | Connectable | Description   |
+|-----------|--------|-------------|---------------|
+| Image     | Object | Yes         | Input Mat     |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
 
 ## Filters
 - [Threshold](#threshold) — apply binary threshold to a single-channel image

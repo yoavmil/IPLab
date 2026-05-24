@@ -1,6 +1,6 @@
 # IPLab UI – Notes for Claude
 
-This project (currently named `IPLab`, to be renamed `IPLab.UI`) is the WPF front-end.
+This project (`IPLab.UI`) is the WPF front-end.
 See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 
 ## Layout

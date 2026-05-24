@@ -34,7 +34,7 @@ First version: **offline image processing only** — no live camera, no video, n
 See [docs/DESIGN.md](docs/DESIGN.md) for core interface definitions and diagrams.
 See [docs/OPERATORS.md](docs/OPERATORS.md) for the catalogue of built-in operators.
 See [docs/TODO.md](docs/TODO.md) for the backlog of planned work and known gaps.
-See [IPLab/CLAUDE.md](IPLab/CLAUDE.md) for UI-specific rules and Nodify implementation notes.
+See [IPLab.UI/CLAUDE.md](IPLab.UI/CLAUDE.md) for UI-specific rules and Nodify implementation notes.
 
 **Rule: whenever a new operator is added to `IPLab.Core.Operators`, add a corresponding entry to [docs/OPERATORS.md](docs/OPERATORS.md).**
 

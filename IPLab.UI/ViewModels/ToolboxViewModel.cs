@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Operators;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class ToolboxViewModel
 {

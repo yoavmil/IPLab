@@ -13,7 +13,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using CoreFlow = IPLab.Core.Runtime.Flow;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
