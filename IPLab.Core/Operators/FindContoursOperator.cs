@@ -44,6 +44,7 @@ public class FindContoursOperator : IOperatorType
         };
 
         Cv2.FindContours(image, out Point[][] contours, out _, retrievalMode, approxMethod);
-        return contours;
+        // Contours with < 3 points are degenerate (single pixel or straight line) — no area, can't form a polygon.
+        return contours.Where(c => c.Length >= 3).ToArray();
     }
 }
