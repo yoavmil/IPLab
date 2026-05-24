@@ -493,12 +493,14 @@ namespace RControls
 				matrix.OffsetY = 0;
 			}
 			_canvasMain.RenderTransform = new MatrixTransform(matrix);
+			_canvasMain.RefreshShapeThicknesses();
 		}
 
 		public void FitToImage()
 		{
 			scaleRatio = 1.0;
 			_canvasMain.RenderTransform = new MatrixTransform(Matrix.Identity);
+			_canvasMain.RefreshShapeThicknesses();
 		}
 
 		public void ScaleImage(double ratio)

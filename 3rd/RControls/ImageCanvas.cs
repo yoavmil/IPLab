@@ -49,11 +49,7 @@ namespace RControls
             base.OnMouseWheel(e);
 
             // 根据缩放比例对形状的变宽进行缩放
-            foreach (ImageItem item in this.Children.OfType<ImageItem>())
-            {
-                Shape rc = (Shape)item.Content;
-                rc.StrokeThickness = 2.0 / Viewer.scaleRatio;
-            }
+            RefreshShapeThicknesses();
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -360,6 +356,15 @@ namespace RControls
             this.Children.Add(item);
         }
 
+        public void RefreshShapeThicknesses()
+        {
+            foreach (ImageItem item in this.Children.OfType<ImageItem>())
+            {
+                if (item.Content is Shape shape)
+                    shape.StrokeThickness = 2.0 / Viewer.scaleRatio;
+            }
+        }
+
         public void DrawPolygon(List<Point> pts, string name, Brush color, bool bFilled)
         {
             ImageItem item = new ImageItem();
@@ -387,39 +392,42 @@ namespace RControls
             this.DeselectAll();
         }
 
+        /// <summary>
+        /// Draws multiple closed polygons as a single Path in absolute image coordinates.
+        /// Callers must pre-filter degenerate polygons (zero area/arc-length) before calling.
+        /// </summary>
         public void DrawPolygons(IReadOnlyList<List<Point>> polygons, string name, Brush color)
         {
             if (polygons.Count == 0) return;
 
-            Rect rc = GetBounds(polygons.SelectMany(p => p).ToList());
             var geometry = new PathGeometry();
             foreach (var pts in polygons)
             {
-                if (pts.Count < 2) continue;
-                var figure = new PathFigure
-                {
-                    StartPoint = new Point(pts[0].X - rc.Left, pts[0].Y - rc.Top),
-                    IsClosed = true
-                };
+                if (pts.Count < 3) continue;
+                var figure = new PathFigure { StartPoint = pts[0], IsClosed = true };
                 for (int i = 1; i < pts.Count; i++)
-                    figure.Segments.Add(new LineSegment(new Point(pts[i].X - rc.Left, pts[i].Y - rc.Top), true));
+                    figure.Segments.Add(new LineSegment(pts[i], true));
                 geometry.Figures.Add(figure);
             }
+            if (geometry.Figures.Count == 0) return;
 
-            ImageItem item = new ImageItem();
-            item.ItemName = name;
-            item.ItemType = ShapeMode.Polygon;
-            item.Content = new Path
+            ImageItem item = new ImageItem
             {
-                Stroke = color,
-                StrokeThickness = 2.0 / Viewer.scaleRatio,
-                Data = geometry
+                ItemName = name,
+                ItemType = ShapeMode.Polygon,
+                Content  = new Path
+                {
+                    Stroke          = color,
+                    StrokeThickness = 2.0 / Viewer.scaleRatio,
+                    Data            = geometry,
+                    Width           = this.Width,
+                    Height          = this.Height,
+                }
             };
-            item.Width = rc.Width;
-            item.Height = rc.Height;
-            Canvas.SetLeft(item, Math.Max(0, rc.Left));
-            Canvas.SetTop(item, Math.Max(0, rc.Top));
-
+            item.Width  = this.Width;
+            item.Height = this.Height;
+            Canvas.SetLeft(item, 0);
+            Canvas.SetTop(item, 0);
             this.Children.Add(item);
             this.DeselectAll();
         }
@@ -509,6 +517,7 @@ namespace RControls
 
         public void RemoveRegion(string name, ShapeMode shape)
         {
+
             IEnumerable<ImageItem> selectedItems = null;
             if (string.IsNullOrEmpty(name) && shape != ShapeMode.None)
             {

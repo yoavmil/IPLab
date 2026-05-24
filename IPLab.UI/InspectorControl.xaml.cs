@@ -69,9 +69,13 @@ public partial class InspectorControl : UserControl
     private void DrawContours(OpenCvSharp.Point[][]? contours)
     {
         if (contours is null || contours.Length == 0) return;
+
         var polygons = contours
             .Select(c => c.Select(p => new System.Windows.Point(p.X, p.Y)).ToList())
+            .Where(pts => pts.Count >= 3)
             .ToList();
+
+        if (polygons.Count == 0) return;
         ImageViewer.DrawPolygons(polygons, string.Empty, Brushes.Yellow);
     }
 }
