@@ -493,12 +493,14 @@ namespace RControls
 				matrix.OffsetY = 0;
 			}
 			_canvasMain.RenderTransform = new MatrixTransform(matrix);
+			_canvasMain.RefreshShapeThicknesses();
 		}
 
 		public void FitToImage()
 		{
 			scaleRatio = 1.0;
 			_canvasMain.RenderTransform = new MatrixTransform(Matrix.Identity);
+			_canvasMain.RefreshShapeThicknesses();
 		}
 
 		public void ScaleImage(double ratio)
@@ -607,6 +609,12 @@ namespace RControls
 		{
 			if (_canvasMain != null)
 				_canvasMain.DrawPolygon(pts, name, color, bFilled);
+		}
+
+		public void DrawPolygons(IReadOnlyList<List<Point>> polygons, string name, Brush color)
+		{
+			if (_canvasMain != null)
+				_canvasMain.DrawPolygons(polygons, name, color);
 		}
 
 		public void DrawAnyShape(List<Point> pts, string name, Brush color, bool bFilled)

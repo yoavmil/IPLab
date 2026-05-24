@@ -59,6 +59,13 @@ public class MainViewModel : ViewModelBase
         private set { _selectedBlobs = value; RaisePropertyChanged(); }
     }
 
+    private OpenCvSharp.Point[][]? _selectedContours;
+    public OpenCvSharp.Point[][]? SelectedContours
+    {
+        get => _selectedContours;
+        private set { _selectedContours = value; RaisePropertyChanged(); }
+    }
+
     private OperatorNodeViewModel? _editingNode;
     public OperatorNodeViewModel? EditingNode
     {
@@ -145,9 +152,10 @@ public class MainViewModel : ViewModelBase
 
     private void ClearResults()
     {
-        _executor     = null;
-        SelectedImage = null;
-        Status        = "Ready";
+        _executor        = null;
+        SelectedImage    = null;
+        SelectedContours = null;
+        Status           = "Ready";
 
         foreach (var node in Flow.Nodes)
         {
@@ -239,27 +247,50 @@ public class MainViewModel : ViewModelBase
 
         _executor.IntermediateResults.TryGetValue(_selectedNode.Id, out var result);
 
-        if (result is CircleSegment[] circles)
+        var circles = Unwrap<CircleSegment[]>(result);
+        if (circles is not null)
         {
-            SelectedImage   = GetSourceImage();
-            SelectedCircles = circles;
-            SelectedBlobs   = null;
+            SelectedImage    = GetSourceImage();
+            SelectedCircles  = circles;
+            SelectedBlobs    = null;
+            SelectedContours = null;
             return;
         }
 
-        if (result is KeyPoint[] blobs)
+        var blobs = Unwrap<KeyPoint[]>(result);
+        if (blobs is not null)
         {
-            SelectedImage   = GetSourceImage();
-            SelectedBlobs   = blobs;
-            SelectedCircles = null;
+            SelectedImage    = GetSourceImage();
+            SelectedBlobs    = blobs;
+            SelectedCircles  = null;
+            SelectedContours = null;
             return;
         }
 
-        SelectedCircles = null;
-        SelectedBlobs   = null;
-        var bytes = ImageHelper.TryGetPngBytes(result);
+        var contours = Unwrap<OpenCvSharp.Point[][]>(result);
+        if (contours is not null)
+        {
+            SelectedImage    = GetSourceImage();
+            SelectedContours = contours;
+            SelectedCircles  = null;
+            SelectedBlobs    = null;
+            return;
+        }
+
+        SelectedCircles  = null;
+        SelectedBlobs    = null;
+        SelectedContours = null;
+        // For multi-port operators, try each output value as an image.
+        var imageSource = result is Dictionary<string, object?> dict
+            ? dict.Values.FirstOrDefault(v => v is OpenCvSharp.Mat)
+            : result;
+        var bytes = ImageHelper.TryGetPngBytes(imageSource);
         SelectedImage = bytes is not null ? BytesToBitmapSource(bytes) : null;
     }
+
+    private static T? Unwrap<T>(object? result) where T : class
+        => result as T
+           ?? (result as Dictionary<string, object?>)?.Values.OfType<T>().FirstOrDefault();
 
     private BitmapSource? GetSourceImage()
     {

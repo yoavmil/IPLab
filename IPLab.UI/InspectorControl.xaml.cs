@@ -2,6 +2,7 @@ using IPLab.UI.ViewModels;
 using OpenCvSharp;
 using RControls;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -35,12 +36,16 @@ public partial class InspectorControl : UserControl
         {
             case nameof(MainViewModel.SelectedImage):
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
+                ImageViewer.RemoveRegion(string.Empty, ShapeMode.Polygon);
                 break;
             case nameof(MainViewModel.SelectedCircles):
                 DrawCircles(_vm!.SelectedCircles);
                 break;
             case nameof(MainViewModel.SelectedBlobs):
                 DrawBlobs(_vm!.SelectedBlobs);
+                break;
+            case nameof(MainViewModel.SelectedContours):
+                DrawContours(_vm!.SelectedContours);
                 break;
         }
     }
@@ -59,5 +64,18 @@ public partial class InspectorControl : UserControl
         foreach (var b in blobs)
             ImageViewer.DrawCircle(b.Pt.Y, b.Pt.X, b.Size / 2.0,
                                    string.Empty, Brushes.Cyan, bFilled: false);
+    }
+
+    private void DrawContours(OpenCvSharp.Point[][]? contours)
+    {
+        if (contours is null || contours.Length == 0) return;
+
+        var polygons = contours
+            .Select(c => c.Select(p => new System.Windows.Point(p.X, p.Y)).ToList())
+            .Where(pts => pts.Count >= 3)
+            .ToList();
+
+        if (polygons.Count == 0) return;
+        ImageViewer.DrawPolygons(polygons, string.Empty, Brushes.Yellow);
     }
 }

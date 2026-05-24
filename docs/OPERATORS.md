@@ -31,6 +31,7 @@ Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Wo
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
 - [DetectSimpleBlobs](#detectsimpleblobs) — detect circular blobs using SimpleBlobDetector
+- [FindContours](#findcontours) — find contours in a binary image with built-in filter/repair
 
 ---
 
@@ -145,3 +146,23 @@ Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 | Output Port | Type       |
 |-------------|------------|
 | Blobs       | KeyPoint[] |
+
+---
+
+## FindContours
+
+Finds contours in a binary (thresholded) single-channel image using `Cv2.FindContours`. Each contour is a polygon — an ordered array of points tracing one connected boundary. Includes built-in filtering/repair to remove degenerate contours before they reach downstream operators. Visualised as yellow polygon overlays in the Inspector.
+
+Raw output commonly contains degenerate contours (zero area, self-intersecting rings) that render as visual artifacts in the Inspector — use `Filter` or `Fix` to clean them up.
+
+| Parameter | Type   | Connectable | Description                                                                                  |
+|-----------|--------|-------------|----------------------------------------------------------------------------------------------|
+| Image     | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)                                   |
+| Mode      | Enum   | No          | `List` (default) — all contours flat; `External` — outermost only; `CComp` — two-level hierarchy; `Tree` — full hierarchy |
+| Method    | Enum   | No          | `Simple` (default) — compress collinear segments; `None` — all points; `TC89L1` / `TC89KCOS` — Teh-Chin approximation |
+| Filter    | Enum   | No          | `Fix` (default) — repair invalid rings via GeometryFixer, splitting self-intersecting rings into valid sub-polygons; `Filter` — drop invalid contours, preserve Hierarchy; `None` — raw output, no filtering |
+| MinArea   | Double | No          | Minimum contour area in px² (default 1.0); contours below this are always dropped (ignored when Filter = None) |
+
+| Output Port | Type      | Description                                        |
+|-------------|-----------|----------------------------------------------------|
+| Contours    | Point[][] | Array of contours, each an ordered array of points |
