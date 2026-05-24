@@ -13,7 +13,7 @@ public class FindContoursOperator : IOperatorType
     [
         new() { Name = "Image",  Label = "Image",  Type = ParameterType.Object, IsConnectable = true },
         new() { Name = "Mode",   Label = "Mode",   Type = ParameterType.Enum,   IsConnectable = false,
-                DefaultValue = "External",
+                DefaultValue = "List",
                 Options = ["External", "List", "CComp", "Tree"] },
         new() { Name = "Method", Label = "Method", Type = ParameterType.Enum,   IsConnectable = false,
                 DefaultValue = "Simple",
@@ -32,7 +32,7 @@ public class FindContoursOperator : IOperatorType
             "List"   => RetrievalModes.List,
             "CComp"  => RetrievalModes.CComp,
             "Tree"   => RetrievalModes.Tree,
-            _        => RetrievalModes.External
+            _        => RetrievalModes.List
         };
 
         var approxMethod = method switch
@@ -45,6 +45,8 @@ public class FindContoursOperator : IOperatorType
 
         Cv2.FindContours(image, out Point[][] contours, out _, retrievalMode, approxMethod);
         // Contours with < 3 points are degenerate (single pixel or straight line) — no area, can't form a polygon.
-        return contours.Where(c => c.Length >= 3).ToArray();
+        contours = contours.Where(c => c.Length >= 3).ToArray();
+
+		return contours;
     }
 }

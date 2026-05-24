@@ -156,7 +156,7 @@ Finds contours in a binary (thresholded) single-channel image using `Cv2.FindCon
 | Parameter | Type   | Connectable | Description                                                                                  |
 |-----------|--------|-------------|----------------------------------------------------------------------------------------------|
 | Image     | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)                                   |
-| Mode      | Enum   | No          | `External` (default) — outermost contours only; `List` — all contours flat; `CComp` — two-level hierarchy; `Tree` — full hierarchy |
+| Mode      | Enum   | No          | `List` (default) — all contours flat, including hole boundaries; `External` — outermost contours only; `CComp` — two-level hierarchy; `Tree` — full hierarchy |
 | Method    | Enum   | No          | `Simple` (default) — compress horizontal/vertical/diagonal segments; `None` — all points; `TC89L1` / `TC89KCOS` — Teh-Chin chain approximation |
 
 | Output Port | Type       |
