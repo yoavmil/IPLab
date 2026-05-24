@@ -19,20 +19,20 @@ public class FindContoursOperator : IOperatorType
                 DefaultValue = "Simple",
                 Options = ["None", "Simple", "TC89L1", "TC89KCOS"] }
     ];
-    public IReadOnlyList<string> OutputPorts => ["Contours"];
+    public IReadOnlyList<string> OutputPorts => ["Contours", "Hierarchy"];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image  = (Mat)parameters["Image"]!;
-        var mode   = (string?)parameters.GetValueOrDefault("Mode")   ?? "External";
+        var mode   = (string?)parameters.GetValueOrDefault("Mode")   ?? "List";
         var method = (string?)parameters.GetValueOrDefault("Method") ?? "Simple";
 
         var retrievalMode = mode switch
         {
-            "List"   => RetrievalModes.List,
-            "CComp"  => RetrievalModes.CComp,
-            "Tree"   => RetrievalModes.Tree,
-            _        => RetrievalModes.List
+            "External" => RetrievalModes.External,
+            "CComp"    => RetrievalModes.CComp,
+            "Tree"     => RetrievalModes.Tree,
+            _          => RetrievalModes.List
         };
 
         var approxMethod = method switch
@@ -43,10 +43,11 @@ public class FindContoursOperator : IOperatorType
             _          => ContourApproximationModes.ApproxSimple
         };
 
-        Cv2.FindContours(image, out Point[][] contours, out _, retrievalMode, approxMethod);
-        // Contours with < 3 points are degenerate (single pixel or straight line) — no area, can't form a polygon.
-        contours = contours.Where(c => c.Length >= 3).ToArray();
-
-		return contours;
+        Cv2.FindContours(image, out Point[][] contours, out HierarchyIndex[] hierarchy, retrievalMode, approxMethod);
+        return new Dictionary<string, object?>
+        {
+            ["Contours"]  = contours,
+            ["Hierarchy"] = hierarchy
+        };
     }
 }
