@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
-using IPLab.UI.Core.Interfaces;
-using IPLab.UI.Core.Models;
+using IPLab.Core.Interfaces;
+using IPLab.Core.Models;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 
 namespace IPLab.UI.ViewModels;

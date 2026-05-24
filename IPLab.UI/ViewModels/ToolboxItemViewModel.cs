@@ -1,5 +1,5 @@
 using System.Windows.Input;
-using IPLab.UI.Core.Interfaces;
+using IPLab.Core.Interfaces;
 
 namespace IPLab.UI.ViewModels;
 

@@ -1,4 +1,4 @@
-using IPLab.UI.Core.Models;
+using IPLab.Core.Models;
 using Nodify;
 
 namespace IPLab.UI.ViewModels;

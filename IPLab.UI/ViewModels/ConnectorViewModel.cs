@@ -1,5 +1,5 @@
 using System.Windows;
-using IPLab.UI.Core.Models;
+using IPLab.Core.Models;
 
 namespace IPLab.UI.ViewModels;
 

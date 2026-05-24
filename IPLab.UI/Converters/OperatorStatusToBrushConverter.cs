@@ -1,4 +1,4 @@
-using IPLab.UI.Core.Models;
+using IPLab.Core.Models;
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;

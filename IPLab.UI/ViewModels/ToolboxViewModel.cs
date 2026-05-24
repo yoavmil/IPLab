@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
-using IPLab.UI.Core.Interfaces;
-using IPLab.UI.Core.Operators;
+using IPLab.Core.Interfaces;
+using IPLab.Core.Operators;
 
 namespace IPLab.UI.ViewModels;
 

@@ -1,4 +1,4 @@
-using IPLab.UI.Core.Models;
+using IPLab.Core.Models;
 using System.Collections.ObjectModel;
 using System.Globalization;
 
