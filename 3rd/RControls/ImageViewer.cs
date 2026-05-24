@@ -609,6 +609,12 @@ namespace RControls
 				_canvasMain.DrawPolygon(pts, name, color, bFilled);
 		}
 
+		public void DrawPolygons(IReadOnlyList<List<Point>> polygons, string name, Brush color)
+		{
+			if (_canvasMain != null)
+				_canvasMain.DrawPolygons(polygons, name, color);
+		}
+
 		public void DrawAnyShape(List<Point> pts, string name, Brush color, bool bFilled)
 		{
 			if (_canvasMain != null)

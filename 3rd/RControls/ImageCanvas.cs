@@ -387,6 +387,43 @@ namespace RControls
             this.DeselectAll();
         }
 
+        public void DrawPolygons(IReadOnlyList<List<Point>> polygons, string name, Brush color)
+        {
+            if (polygons.Count == 0) return;
+
+            Rect rc = GetBounds(polygons.SelectMany(p => p).ToList());
+            var geometry = new PathGeometry();
+            foreach (var pts in polygons)
+            {
+                if (pts.Count < 2) continue;
+                var figure = new PathFigure
+                {
+                    StartPoint = new Point(pts[0].X - rc.Left, pts[0].Y - rc.Top),
+                    IsClosed = true
+                };
+                for (int i = 1; i < pts.Count; i++)
+                    figure.Segments.Add(new LineSegment(new Point(pts[i].X - rc.Left, pts[i].Y - rc.Top), true));
+                geometry.Figures.Add(figure);
+            }
+
+            ImageItem item = new ImageItem();
+            item.ItemName = name;
+            item.ItemType = ShapeMode.Any;
+            item.Content = new Path
+            {
+                Stroke = color,
+                StrokeThickness = 2.0 / Viewer.scaleRatio,
+                Data = geometry
+            };
+            item.Width = rc.Width;
+            item.Height = rc.Height;
+            Canvas.SetLeft(item, Math.Max(0, rc.Left));
+            Canvas.SetTop(item, Math.Max(0, rc.Top));
+
+            this.Children.Add(item);
+            this.DeselectAll();
+        }
+
         public void DrawAnyShape(List<Point> pts, string name, Brush color, bool bFilled)
         {
             // 获取点集包围盒
