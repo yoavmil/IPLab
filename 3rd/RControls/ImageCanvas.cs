@@ -408,7 +408,7 @@ namespace RControls
 
             ImageItem item = new ImageItem();
             item.ItemName = name;
-            item.ItemType = ShapeMode.Any;
+            item.ItemType = ShapeMode.Polygon;
             item.Content = new Path
             {
                 Stroke = color,
