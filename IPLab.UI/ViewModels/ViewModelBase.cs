@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public abstract class ViewModelBase : INotifyPropertyChanged
 {

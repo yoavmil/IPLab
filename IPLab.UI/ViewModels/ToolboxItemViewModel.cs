@@ -1,7 +1,7 @@
 using System.Windows.Input;
 using IPLab.Core.Interfaces;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class ToolboxItemViewModel
 {

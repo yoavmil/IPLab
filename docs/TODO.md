@@ -64,3 +64,28 @@
   `FlowDef.Validate()` can verify that a wired `ParameterValue.Source` port type
   is compatible with the target `ParameterDescriptor` type — the same way input
   parameters are already typed via `ParameterDescriptor`.
+
+- **Loop / per-item expansion (fan-out execution)**
+  When an operator emits a collection output (e.g. `CircleSegment[]`, `Point[][]`,
+  `Mat[]`), a downstream operator connected to that port should be able to run once
+  per element rather than receiving the whole array. Model this as a "fan-out" edge
+  in `FlowDef`: the edge carries a flag (e.g. `expandItems: true`) that tells
+  `FlowEx` to iterate over the collection and invoke the downstream operator for
+  each item, collecting individual results back into a new array. The graph UI
+  should mark such edges visually (e.g. a dashed or double-line style) and let the
+  user toggle the mode on a connection. Design questions to resolve: how fan-out
+  composes when multiple inputs are expanded simultaneously (zip vs. cross-product);
+  how the collected result array is typed and passed further downstream; and whether
+  partial failures (one item throws) abort the whole fan-out or accumulate errors.
+
+- **C# script operator**
+  Add a `CSharpScriptOperator` that accepts a user-written C# snippet (via
+  `Microsoft.CodeAnalysis.CSharp.Scripting` / Roslyn) and executes it at runtime.
+  The script receives the operator's input ports as named variables (e.g.
+  `Mat image`, `CircleSegment[] circles`) and must assign a value to a predefined
+  `result` variable that becomes the operator's output. Parameters are the script
+  text itself plus any named constants the script references. The parameter editor
+  shows a code editor control with syntax highlighting and inline error squiggles
+  (compile errors surfaced as operator status). Serialization stores the raw script
+  text in the JSON flow file. Security note: scripts run in full trust inside the
+  desktop process — no sandboxing in MVP, but document this clearly.

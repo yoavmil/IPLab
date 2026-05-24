@@ -1,9 +1,9 @@
 using Nodify;
 using Nodify.Interactivity;
 using System.Windows;
-using IPLab.ViewModels;
+using IPLab.UI.ViewModels;
 
-namespace IPLab;
+namespace IPLab.UI;
 
 public partial class MainWindow : Window
 {

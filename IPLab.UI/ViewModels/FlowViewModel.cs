@@ -7,7 +7,7 @@ using IPLab.Core.Runtime;
 using IPLab.Core.Serialization;
 using IPLab.Core.Utilities;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class FlowViewModel
 {

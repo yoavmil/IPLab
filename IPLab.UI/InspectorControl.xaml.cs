@@ -1,4 +1,4 @@
-using IPLab.ViewModels;
+using IPLab.UI.ViewModels;
 using OpenCvSharp;
 using RControls;
 using System.ComponentModel;
@@ -6,7 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace IPLab;
+namespace IPLab.UI;
 
 public partial class InspectorControl : UserControl
 {
