@@ -5,8 +5,8 @@ namespace IPLab.Core.Interfaces;
 public interface IFlowEx
 {
     IFlowDef Flow { get; }
-    Task RunAllAsync();
-    Task RunSingleAsync(string operatorId);
+    Task RunAllAsync(CancellationToken ct = default);
+    Task RunSingleAsync(string operatorId, CancellationToken ct = default);
     IReadOnlyDictionary<string, object?> IntermediateResults { get; }
     IReadOnlyDictionary<string, OperatorStatus> Statuses { get; }
     void ClearResults();
