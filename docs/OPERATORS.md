@@ -154,14 +154,16 @@ Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 
 Labels connected regions in a binary (thresholded) single-channel image using `Cv2.ConnectedComponentsWithStats`. Returns one `ConnectedComponentInfo` per region (background label 0 is excluded). Visualised as orange bounding-box rectangles with centroid cross-marks in the Inspector.
 
-| Parameter    | Type   | Connectable | Description                                                    |
-|--------------|--------|-------------|----------------------------------------------------------------|
-| Image        | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)     |
-| Connectivity | Enum   | No          | `8` (default) — 8-connected; `4` — 4-connected                 |
+| Parameter        | Type   | Connectable | Description                                                    |
+|------------------|--------|-------------|----------------------------------------------------------------|
+| Image            | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)     |
+| Connectivity     | Enum   | No          | `8` (default) — 8-connected; `4` — 4-connected                 |
+| OutputLabelImage | Bool   | No          | When `true` (default), produce the colored label image. Set to `false` for offline/batch use to skip the image build. |
 
-| Output Port | Type                      |
-|-------------|---------------------------|
-| Components  | ConnectedComponentInfo[]  |
+| Output Port | Type                      | Description |
+|-------------|---------------------------|-------------|
+| Components  | ConnectedComponentInfo[]  | Per-component stats (label, area, bounding box, centroid) |
+| LabelImage  | Mat                       | BGR image with each component painted a distinct color; background is black |
 
 `ConnectedComponentInfo` fields: `Label` (int), `Area` (int, pixels), `BoundingBox` (OpenCvSharp.Rect), `Centroid` (Point2f).
 

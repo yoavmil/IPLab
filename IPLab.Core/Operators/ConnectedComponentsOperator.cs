@@ -1,6 +1,7 @@
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
+using System.Runtime.InteropServices;
 
 namespace IPLab.Core.Operators;
 
@@ -11,16 +12,19 @@ public class ConnectedComponentsOperator : IOperatorType
     public string Icon      => "component";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",        Label = "Image",        Type = ParameterType.Object, IsConnectable = true },
-        new() { Name = "Connectivity", Label = "Connectivity", Type = ParameterType.Enum,   IsConnectable = false,
-                DefaultValue = "8", Options = ["4", "8"] }
+        new() { Name = "Image",            Label = "Image",             Type = ParameterType.Object, IsConnectable = true },
+        new() { Name = "Connectivity",     Label = "Connectivity",      Type = ParameterType.Enum,   IsConnectable = false,
+                DefaultValue = "8", Options = ["4", "8"] },
+        new() { Name = "OutputLabelImage", Label = "Output Label Image", Type = ParameterType.Bool,   IsConnectable = false,
+                DefaultValue = true }
     ];
-    public IReadOnlyList<string> OutputPorts => ["Components"];
+    public IReadOnlyList<string> OutputPorts => ["Components", "LabelImage"];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
-        var image        = (Mat)parameters["Image"]!;
-        var connectivity = (string?)parameters.GetValueOrDefault("Connectivity") ?? "8";
+        var image            = (Mat)parameters["Image"]!;
+        var connectivity     = (string?)parameters.GetValueOrDefault("Connectivity") ?? "8";
+        var outputLabelImage = parameters.GetValueOrDefault("OutputLabelImage") is not false;
 
         var conn = connectivity == "4" ? PixelConnectivity.Connectivity4 : PixelConnectivity.Connectivity8;
 
@@ -49,6 +53,55 @@ public class ConnectedComponentsOperator : IOperatorType
                 Centroid:    new Point2f(cx, cy));
         }
 
-        return result;
+        return new Dictionary<string, object?>
+        {
+            ["Components"] = result,
+            ["LabelImage"] = outputLabelImage ? BuildLabelImage(labels, result, randomColors: true) : null
+        };
+    }
+
+    private static Mat BuildLabelImage(Mat labels, ConnectedComponentInfo[] components, bool randomColors)
+    {
+        int n = components.Length;
+
+        // Build label→colorByte lookup — O(n) where n = component count.
+        // Index 0 = background, stays 0.
+        var colorByteOf = new byte[n + 1];
+        if (randomColors)
+        {
+            var ranks = Enumerable.Range(1, n).ToArray();
+            new Random(n).Shuffle(ranks);
+            for (int i = 0; i < n; i++)
+                colorByteOf[components[i].Label] = (byte)(ranks[i] * 255 / n);
+        }
+        else
+        {
+            var sorted = components.OrderBy(c => c.Area).ToArray();
+            for (int r = 0; r < n; r++)
+                colorByteOf[sorted[r].Label] = (byte)((r + 1) * 255 / n);
+        }
+
+        // Single pass over all pixels: label int32 → color byte — O(W*H).
+        int pixelCount = labels.Rows * labels.Cols;
+        var labelArray = new int[pixelCount];
+        Marshal.Copy(labels.Data, labelArray, 0, pixelCount);
+
+        var rankArray = new byte[pixelCount];
+        for (int i = 0; i < pixelCount; i++)
+            rankArray[i] = colorByteOf[labelArray[i]];
+
+        using var rank8 = new Mat(labels.Rows, labels.Cols, MatType.CV_8U);
+        Marshal.Copy(rankArray, 0, rank8.Data, pixelCount);
+
+        // Jet: 0=blue (small) → 255=red (large), no wrap-around.
+        var colored = new Mat();
+        Cv2.ApplyColorMap(rank8, colored, ColormapTypes.Jet);
+
+        // Zero out background (colorByte=0 still gets a Jet color).
+        using var bgMask = new Mat();
+        Cv2.Compare(labels, Scalar.All(0), bgMask, CmpTypes.EQ);
+        colored.SetTo(Scalar.Black, bgMask);
+
+        return colored;
     }
 }

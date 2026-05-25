@@ -13,6 +13,7 @@ namespace IPLab.UI;
 public partial class InspectorControl : UserControl
 {
     private MainViewModel? _vm;
+    private bool _showComponentOverlays = false;
 
     public InspectorControl()
     {
@@ -38,6 +39,7 @@ public partial class InspectorControl : UserControl
             case nameof(MainViewModel.SelectedImage):
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Rectangle);
+                ImageViewer.RemoveRegion(string.Empty, ShapeMode.Cross);
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Polygon);
                 break;
             case nameof(MainViewModel.SelectedCircles):
@@ -57,6 +59,7 @@ public partial class InspectorControl : UserControl
 
     private void DrawCircles(CircleSegment[]? circles)
     {
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
         if (circles is null) return;
         foreach (var c in circles)
             ImageViewer.DrawCircle(c.Center.Y, c.Center.X, c.Radius,
@@ -65,6 +68,7 @@ public partial class InspectorControl : UserControl
 
     private void DrawBlobs(KeyPoint[]? blobs)
     {
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
         if (blobs is null) return;
         foreach (var b in blobs)
             ImageViewer.DrawCircle(b.Pt.Y, b.Pt.X, b.Size / 2.0,
@@ -73,7 +77,9 @@ public partial class InspectorControl : UserControl
 
     private void DrawComponents(ConnectedComponentInfo[]? components)
     {
-        if (components is null) return;
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Rectangle);
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Cross);
+        if (components is null || !_showComponentOverlays) return;
         foreach (var comp in components)
         {
             var r = comp.BoundingBox;
@@ -86,6 +92,7 @@ public partial class InspectorControl : UserControl
 
     private void DrawContours(OpenCvSharp.Point[][]? contours)
     {
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Polygon);
         if (contours is null || contours.Length == 0) return;
 
         var polygons = contours

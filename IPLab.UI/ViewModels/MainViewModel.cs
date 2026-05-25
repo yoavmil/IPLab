@@ -248,9 +248,11 @@ public class MainViewModel : ViewModelBase
     {
         if (_selectedNode is null || _executor is null)
         {
-            SelectedImage   = null;
-            SelectedCircles = null;
-            SelectedBlobs   = null;
+            SelectedImage      = null;
+            SelectedCircles    = null;
+            SelectedBlobs      = null;
+            SelectedComponents = null;
+            SelectedContours   = null;
             return;
         }
 
@@ -281,7 +283,9 @@ public class MainViewModel : ViewModelBase
         var components = Unwrap<ConnectedComponentInfo[]>(result);
         if (components is not null)
         {
-            SelectedImage      = GetSourceImage();
+            var labelMat   = (result as Dictionary<string, object?>)?.GetValueOrDefault("LabelImage") as OpenCvSharp.Mat;
+            var labelBytes = labelMat is not null ? ImageHelper.TryGetPngBytes(labelMat) : null;
+            SelectedImage      = labelBytes is not null ? BytesToBitmapSource(labelBytes) : GetSourceImage();
             SelectedComponents = components;
             SelectedCircles    = null;
             SelectedBlobs      = null;
