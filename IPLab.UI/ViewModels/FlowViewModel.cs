@@ -101,14 +101,18 @@ public class FlowViewModel
         var param = targetNode.Parameters.FirstOrDefault(p => p.CanBeWired);
         if (param is not null)
         {
-            var port      = sourceNode.Operator.Type.OutputPorts.FirstOrDefault() ?? string.Empty;
-            var sourceRef = new SourceRefViewModel(sourceNode.Id, sourceNode.DisplayName, port);
+            // Add every output port of the source so the user can switch in the settings panel.
+            foreach (var port in sourceNode.Operator.Type.OutputPorts)
+            {
+                var sourceRef = new SourceRefViewModel(sourceNode.Id, sourceNode.DisplayName, port);
+                if (!param.AvailableSources.Any(s => s.OperatorId == sourceRef.OperatorId && s.Port == sourceRef.Port))
+                    param.AvailableSources.Add(sourceRef);
+            }
 
-            if (!param.AvailableSources.Any(s => s.OperatorId == sourceRef.OperatorId && s.Port == sourceRef.Port))
-                param.AvailableSources.Add(sourceRef);
-
+            // Default to the first port.
+            var firstPort = sourceNode.Operator.Type.OutputPorts.FirstOrDefault() ?? string.Empty;
             param.SelectedSource = param.AvailableSources.First(s =>
-                s.OperatorId == sourceRef.OperatorId && s.Port == sourceRef.Port);
+                s.OperatorId == sourceNode.Id && s.Port == firstPort);
             param.IsWired = true;
         }
 
