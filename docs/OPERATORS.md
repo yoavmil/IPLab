@@ -31,6 +31,7 @@ Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Wo
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
 - [DetectSimpleBlobs](#detectsimpleblobs) — detect circular blobs using SimpleBlobDetector
+- [ConnectedComponents](#connectedcomponents) — label connected regions and return per-component stats
 - [FindContours](#findcontours) — find contours in a binary image with built-in filter/repair
 
 ---
@@ -149,6 +150,25 @@ Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 
 ---
 
+## ConnectedComponents
+
+Labels connected regions in a binary (thresholded) single-channel image using `Cv2.ConnectedComponentsWithStats`. Returns one `ConnectedComponentInfo` per region (background label 0 is excluded). Visualised as orange bounding-box rectangles with centroid cross-marks in the Inspector.
+
+| Parameter        | Type   | Connectable | Description                                                    |
+|------------------|--------|-------------|----------------------------------------------------------------|
+| Image            | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)     |
+| Connectivity     | Enum   | No          | `8` (default) — 8-connected; `4` — 4-connected                 |
+| OutputLabelImage | Bool   | No          | When `true` (default), produce the colored label image. Set to `false` for offline/batch use to skip the image build. |
+
+| Output Port | Type                      | Description |
+|-------------|---------------------------|-------------|
+| Components  | ConnectedComponentInfo[]  | Per-component stats (label, area, bounding box, centroid) |
+| LabelImage  | Mat                       | BGR image with each component painted a distinct color; background is black |
+
+`ConnectedComponentInfo` fields: `Label` (int), `Area` (int, pixels), `BoundingBox` (OpenCvSharp.Rect), `Centroid` (Point2f).
+
+---
+
 ## FindContours
 
 Finds contours in a binary (thresholded) single-channel image using `Cv2.FindContours`. Each contour is a polygon — an ordered array of points tracing one connected boundary. Includes built-in filtering/repair to remove degenerate contours before they reach downstream operators. Visualised as yellow polygon overlays in the Inspector.
@@ -160,7 +180,7 @@ Raw output commonly contains degenerate contours (zero area, self-intersecting r
 | Image     | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)                                   |
 | Mode      | Enum   | No          | `List` (default) — all contours flat; `External` — outermost only; `CComp` — two-level hierarchy; `Tree` — full hierarchy |
 | Method    | Enum   | No          | `Simple` (default) — compress collinear segments; `None` — all points; `TC89L1` / `TC89KCOS` — Teh-Chin approximation |
-| Filter    | Enum   | No          | `Fix` (default) — repair invalid rings via GeometryFixer, splitting self-intersecting rings into valid sub-polygons; `Filter` — drop invalid contours, preserve Hierarchy; `None` — raw output, no filtering |
+| Filter    | Enum   | No          | `Fix` (default) — repair invalid rings via GeometryFixer, splitting self-intersecting rings into valid sub-polygons; `Filter` — drop invalid contours; `None` — raw output, no filtering |
 | MinArea   | Double | No          | Minimum contour area in px² (default 1.0); contours below this are always dropped (ignored when Filter = None) |
 
 | Output Port | Type      | Description                                        |

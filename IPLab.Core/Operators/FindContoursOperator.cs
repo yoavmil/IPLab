@@ -54,7 +54,7 @@ public class FindContoursOperator : IOperatorType
             _          => ContourApproximationModes.ApproxSimple
         };
 
-        Cv2.FindContours(image, out Point[][] contours, out HierarchyIndex[] hierarchy,
+        Cv2.FindContours(image, out Point[][] contours, out _,
                          retrievalMode, approxMethod);
 
         Point[][] output = filter switch

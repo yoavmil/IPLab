@@ -1,3 +1,4 @@
+using IPLab.Core.Models;
 using IPLab.UI.ViewModels;
 using OpenCvSharp;
 using RControls;
@@ -12,6 +13,7 @@ namespace IPLab.UI;
 public partial class InspectorControl : UserControl
 {
     private MainViewModel? _vm;
+    private bool _showComponentOverlays = false;
 
     public InspectorControl()
     {
@@ -36,6 +38,8 @@ public partial class InspectorControl : UserControl
         {
             case nameof(MainViewModel.SelectedImage):
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
+                ImageViewer.RemoveRegion(string.Empty, ShapeMode.Rectangle);
+                ImageViewer.RemoveRegion(string.Empty, ShapeMode.Cross);
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Polygon);
                 break;
             case nameof(MainViewModel.SelectedCircles):
@@ -43,6 +47,9 @@ public partial class InspectorControl : UserControl
                 break;
             case nameof(MainViewModel.SelectedBlobs):
                 DrawBlobs(_vm!.SelectedBlobs);
+                break;
+            case nameof(MainViewModel.SelectedComponents):
+                DrawComponents(_vm!.SelectedComponents);
                 break;
             case nameof(MainViewModel.SelectedContours):
                 DrawContours(_vm!.SelectedContours);
@@ -52,6 +59,7 @@ public partial class InspectorControl : UserControl
 
     private void DrawCircles(CircleSegment[]? circles)
     {
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
         if (circles is null) return;
         foreach (var c in circles)
             ImageViewer.DrawCircle(c.Center.Y, c.Center.X, c.Radius,
@@ -60,14 +68,31 @@ public partial class InspectorControl : UserControl
 
     private void DrawBlobs(KeyPoint[]? blobs)
     {
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
         if (blobs is null) return;
         foreach (var b in blobs)
             ImageViewer.DrawCircle(b.Pt.Y, b.Pt.X, b.Size / 2.0,
                                    string.Empty, Brushes.Cyan, bFilled: false);
     }
 
+    private void DrawComponents(ConnectedComponentInfo[]? components)
+    {
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Rectangle);
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Cross);
+        if (components is null || !_showComponentOverlays) return;
+        foreach (var comp in components)
+        {
+            var r = comp.BoundingBox;
+            ImageViewer.DrawRectangle(r.Top, r.Left, r.Bottom, r.Right,
+                                      string.Empty, Brushes.Orange, bFilled: false);
+            ImageViewer.DrawCross(comp.Centroid.Y, comp.Centroid.X, 0,
+                                  string.Empty, 6, Brushes.Orange);
+        }
+    }
+
     private void DrawContours(OpenCvSharp.Point[][]? contours)
     {
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Polygon);
         if (contours is null || contours.Length == 0) return;
 
         var polygons = contours

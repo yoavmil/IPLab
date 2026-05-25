@@ -1,5 +1,6 @@
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using ConnectedComponentInfo = IPLab.Core.Models.ConnectedComponentInfo;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 using IPLab.Core.Operators;
 using IPLab.Core.Runtime;
@@ -57,6 +58,13 @@ public class MainViewModel : ViewModelBase
     {
         get => _selectedBlobs;
         private set { _selectedBlobs = value; RaisePropertyChanged(); }
+    }
+
+    private ConnectedComponentInfo[]? _selectedComponents;
+    public ConnectedComponentInfo[]? SelectedComponents
+    {
+        get => _selectedComponents;
+        private set { _selectedComponents = value; RaisePropertyChanged(); }
     }
 
     private OpenCvSharp.Point[][]? _selectedContours;
@@ -152,10 +160,11 @@ public class MainViewModel : ViewModelBase
 
     private void ClearResults()
     {
-        _executor        = null;
-        SelectedImage    = null;
-        SelectedContours = null;
-        Status           = "Ready";
+        _executor          = null;
+        SelectedImage      = null;
+        SelectedComponents = null;
+        SelectedContours   = null;
+        Status             = "Ready";
 
         foreach (var node in Flow.Nodes)
         {
@@ -239,9 +248,11 @@ public class MainViewModel : ViewModelBase
     {
         if (_selectedNode is null || _executor is null)
         {
-            SelectedImage   = null;
-            SelectedCircles = null;
-            SelectedBlobs   = null;
+            SelectedImage      = null;
+            SelectedCircles    = null;
+            SelectedBlobs      = null;
+            SelectedComponents = null;
+            SelectedContours   = null;
             return;
         }
 
@@ -250,36 +261,53 @@ public class MainViewModel : ViewModelBase
         var circles = Unwrap<CircleSegment[]>(result);
         if (circles is not null)
         {
-            SelectedImage    = GetSourceImage();
-            SelectedCircles  = circles;
-            SelectedBlobs    = null;
-            SelectedContours = null;
+            SelectedImage      = GetSourceImage();
+            SelectedCircles    = circles;
+            SelectedBlobs      = null;
+            SelectedComponents = null;
+            SelectedContours   = null;
             return;
         }
 
         var blobs = Unwrap<KeyPoint[]>(result);
         if (blobs is not null)
         {
-            SelectedImage    = GetSourceImage();
-            SelectedBlobs    = blobs;
-            SelectedCircles  = null;
-            SelectedContours = null;
+            SelectedImage      = GetSourceImage();
+            SelectedBlobs      = blobs;
+            SelectedCircles    = null;
+            SelectedComponents = null;
+            SelectedContours   = null;
+            return;
+        }
+
+        var components = Unwrap<ConnectedComponentInfo[]>(result);
+        if (components is not null)
+        {
+            var labelMat   = (result as Dictionary<string, object?>)?.GetValueOrDefault("LabelImage") as OpenCvSharp.Mat;
+            var labelBytes = labelMat is not null ? ImageHelper.TryGetPngBytes(labelMat) : null;
+            SelectedImage      = labelBytes is not null ? BytesToBitmapSource(labelBytes) : GetSourceImage();
+            SelectedComponents = components;
+            SelectedCircles    = null;
+            SelectedBlobs      = null;
+            SelectedContours   = null;
             return;
         }
 
         var contours = Unwrap<OpenCvSharp.Point[][]>(result);
         if (contours is not null)
         {
-            SelectedImage    = GetSourceImage();
-            SelectedContours = contours;
-            SelectedCircles  = null;
-            SelectedBlobs    = null;
+            SelectedImage      = GetSourceImage();
+            SelectedContours   = contours;
+            SelectedCircles    = null;
+            SelectedBlobs      = null;
+            SelectedComponents = null;
             return;
         }
 
-        SelectedCircles  = null;
-        SelectedBlobs    = null;
-        SelectedContours = null;
+        SelectedCircles    = null;
+        SelectedBlobs      = null;
+        SelectedComponents = null;
+        SelectedContours   = null;
         // For multi-port operators, try each output value as an image.
         var imageSource = result is Dictionary<string, object?> dict
             ? dict.Values.FirstOrDefault(v => v is OpenCvSharp.Mat)
