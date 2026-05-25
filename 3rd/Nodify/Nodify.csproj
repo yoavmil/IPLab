@@ -17,6 +17,8 @@
     <RepositoryUrl>https://github.com/miroiu/nodify</RepositoryUrl>
     <PackageTags>wpf mvvm node network node-editor graph controls</PackageTags>
     <Version>7.3.0</Version>
+    <NoWarn>$(NoWarn);CS0618;CS1591;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8625;CS8765</NoWarn>
+    <WarningLevel>0</WarningLevel>
     <PackageReleaseNotes>
       &gt; - Breaking Changes:
       &gt; 	- Renamed BeginGesture to DragGesture in DragState
