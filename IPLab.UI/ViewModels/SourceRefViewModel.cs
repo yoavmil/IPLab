@@ -1,4 +1,4 @@
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class SourceRefViewModel(string operatorId, string displayName, string port)
 {

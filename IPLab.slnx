@@ -8,5 +8,5 @@
   </Folder>
   <Project Path="IPLab.Core.Tests/IPLab.Core.Tests.csproj" />
   <Project Path="IPLab.Core/IPLab.Core.csproj" />
-  <Project Path="IPLab/IPLab.csproj" />
+  <Project Path="IPLab.UI/IPLab.UI.csproj" />
 </Solution>

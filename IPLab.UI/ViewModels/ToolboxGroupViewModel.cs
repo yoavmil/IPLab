@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace IPLab.ViewModels;
+namespace IPLab.UI.ViewModels;
 
 public class ToolboxGroupViewModel : ViewModelBase
 {

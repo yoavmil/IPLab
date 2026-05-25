@@ -1,13 +1,14 @@
 using IPLab.Core.Models;
-using IPLab.ViewModels;
+using IPLab.UI.ViewModels;
 using OpenCvSharp;
 using RControls;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace IPLab;
+namespace IPLab.UI;
 
 public partial class InspectorControl : UserControl
 {
@@ -37,6 +38,7 @@ public partial class InspectorControl : UserControl
             case nameof(MainViewModel.SelectedImage):
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
                 ImageViewer.RemoveRegion(string.Empty, ShapeMode.Rectangle);
+                ImageViewer.RemoveRegion(string.Empty, ShapeMode.Polygon);
                 break;
             case nameof(MainViewModel.SelectedCircles):
                 DrawCircles(_vm!.SelectedCircles);
@@ -46,6 +48,9 @@ public partial class InspectorControl : UserControl
                 break;
             case nameof(MainViewModel.SelectedComponents):
                 DrawComponents(_vm!.SelectedComponents);
+                break;
+            case nameof(MainViewModel.SelectedContours):
+                DrawContours(_vm!.SelectedContours);
                 break;
         }
     }
@@ -77,5 +82,18 @@ public partial class InspectorControl : UserControl
             ImageViewer.DrawCross(comp.Centroid.Y, comp.Centroid.X, 0,
                                   string.Empty, 6, Brushes.Orange);
         }
+    }
+
+    private void DrawContours(OpenCvSharp.Point[][]? contours)
+    {
+        if (contours is null || contours.Length == 0) return;
+
+        var polygons = contours
+            .Select(c => c.Select(p => new System.Windows.Point(p.X, p.Y)).ToList())
+            .Where(pts => pts.Count >= 3)
+            .ToList();
+
+        if (polygons.Count == 0) return;
+        ImageViewer.DrawPolygons(polygons, string.Empty, Brushes.Yellow);
     }
 }
