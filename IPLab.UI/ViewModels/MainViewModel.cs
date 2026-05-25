@@ -1,5 +1,6 @@
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using System.Collections.ObjectModel;
 using ConnectedComponentInfo = IPLab.Core.Models.ConnectedComponentInfo;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 using IPLab.Core.Operators;
@@ -39,39 +40,18 @@ public class MainViewModel : ViewModelBase
         set { _selectedNode = value; RaisePropertyChanged(); UpdateSelectedImage(); }
     }
 
-    private BitmapSource? _selectedImage;
-    public BitmapSource? SelectedImage
-    {
-        get => _selectedImage;
-        private set { _selectedImage = value; RaisePropertyChanged(); }
-    }
+    public sealed record InspectorState(
+        BitmapSource?             Image      = null,
+        CircleSegment[]?          Circles    = null,
+        KeyPoint[]?               Blobs      = null,
+        ConnectedComponentInfo[]? Components = null,
+        OpenCvSharp.Point[][]?    Contours   = null);
 
-    private CircleSegment[]? _selectedCircles;
-    public CircleSegment[]? SelectedCircles
+    private InspectorState _state = new();
+    public  InspectorState State
     {
-        get => _selectedCircles;
-        private set { _selectedCircles = value; RaisePropertyChanged(); }
-    }
-
-    private KeyPoint[]? _selectedBlobs;
-    public KeyPoint[]? SelectedBlobs
-    {
-        get => _selectedBlobs;
-        private set { _selectedBlobs = value; RaisePropertyChanged(); }
-    }
-
-    private ConnectedComponentInfo[]? _selectedComponents;
-    public ConnectedComponentInfo[]? SelectedComponents
-    {
-        get => _selectedComponents;
-        private set { _selectedComponents = value; RaisePropertyChanged(); }
-    }
-
-    private OpenCvSharp.Point[][]? _selectedContours;
-    public OpenCvSharp.Point[][]? SelectedContours
-    {
-        get => _selectedContours;
-        private set { _selectedContours = value; RaisePropertyChanged(); }
+        get => _state;
+        private set { _state = value; RaisePropertyChanged(); }
     }
 
     private OperatorNodeViewModel? _editingNode;
@@ -87,6 +67,11 @@ public class MainViewModel : ViewModelBase
     }
 
     public bool IsSettingsPanelOpen => _editingNode is not null;
+
+    private readonly ObservableCollection<LayerViewModel> _overlayLayers = [];
+    public  ObservableCollection<LayerViewModel> OverlayLayers => _overlayLayers;
+
+    private readonly Dictionary<string, List<LayerViewModel>> _layersCache = new();
 
     private FlowEx? _executor;
     private CancellationTokenSource? _cts;
@@ -135,6 +120,7 @@ public class MainViewModel : ViewModelBase
         try
         {
             var flow = BuildExecutionFlow();
+            _layersCache.Clear();
             _executor = new FlowEx(flow);
             _executor.StatusChanged += OnOperatorStatusChanged;
             await _executor.RunAllAsync(_cts.Token);
@@ -177,12 +163,13 @@ public class MainViewModel : ViewModelBase
     {
         _cts?.Cancel();
         _cts?.Dispose();
-        _cts               = null;
-        _executor          = null;
-        SelectedImage      = null;
-        SelectedComponents = null;
-        SelectedContours   = null;
-        Status             = "Ready";
+        _cts      = null;
+        _executor = null;
+        State     = new InspectorState();
+        Status    = "Ready";
+
+        _overlayLayers.Clear();
+        _layersCache.Clear();
 
         foreach (var node in Flow.Nodes)
         {
@@ -248,10 +235,11 @@ public class MainViewModel : ViewModelBase
             var flow = FlowDefSerializer.Deserialize(
                 File.ReadAllText(dialog.FileName), OperatorRegistry.CreateDefault());
 
-            EditingNode   = null;
-            _executor     = null;
-            SelectedImage = null;
-            Flow   = new FlowViewModel(flow,
+            EditingNode = null;
+            _executor   = null;
+            State       = new InspectorState();
+            _layersCache.Clear();
+            Flow = new FlowViewModel(flow,
                 onOpenSettings: node => EditingNode = node,
                 onSelected:     node => SelectedNode = node);
             Status = $"Loaded: {Path.GetFileName(dialog.FileName)}";
@@ -266,11 +254,8 @@ public class MainViewModel : ViewModelBase
     {
         if (_selectedNode is null || _executor is null)
         {
-            SelectedImage      = null;
-            SelectedCircles    = null;
-            SelectedBlobs      = null;
-            SelectedComponents = null;
-            SelectedContours   = null;
+            State = new InspectorState();
+            UpdateOverlayLayers();
             return;
         }
 
@@ -279,22 +264,16 @@ public class MainViewModel : ViewModelBase
         var circles = Unwrap<CircleSegment[]>(result);
         if (circles is not null)
         {
-            SelectedImage      = GetSourceImage();
-            SelectedCircles    = circles;
-            SelectedBlobs      = null;
-            SelectedComponents = null;
-            SelectedContours   = null;
+            State = new InspectorState(Image: GetSourceImage(), Circles: circles);
+            UpdateOverlayLayers();
             return;
         }
 
         var blobs = Unwrap<KeyPoint[]>(result);
         if (blobs is not null)
         {
-            SelectedImage      = GetSourceImage();
-            SelectedBlobs      = blobs;
-            SelectedCircles    = null;
-            SelectedComponents = null;
-            SelectedContours   = null;
+            State = new InspectorState(Image: GetSourceImage(), Blobs: blobs);
+            UpdateOverlayLayers();
             return;
         }
 
@@ -303,35 +282,27 @@ public class MainViewModel : ViewModelBase
         {
             var labelMat   = (result as Dictionary<string, object?>)?.GetValueOrDefault("LabelImage") as OpenCvSharp.Mat;
             var labelBytes = labelMat is not null ? ImageHelper.TryGetPngBytes(labelMat) : null;
-            SelectedImage      = labelBytes is not null ? BytesToBitmapSource(labelBytes) : GetSourceImage();
-            SelectedComponents = components;
-            SelectedCircles    = null;
-            SelectedBlobs      = null;
-            SelectedContours   = null;
+            var image      = labelBytes is not null ? BytesToBitmapSource(labelBytes) : GetSourceImage();
+            State = new InspectorState(Image: image, Components: components);
+            UpdateOverlayLayers();
             return;
         }
 
         var contours = Unwrap<OpenCvSharp.Point[][]>(result);
         if (contours is not null)
         {
-            SelectedImage      = GetSourceImage();
-            SelectedContours   = contours;
-            SelectedCircles    = null;
-            SelectedBlobs      = null;
-            SelectedComponents = null;
+            State = new InspectorState(Image: GetSourceImage(), Contours: contours);
+            UpdateOverlayLayers();
             return;
         }
 
-        SelectedCircles    = null;
-        SelectedBlobs      = null;
-        SelectedComponents = null;
-        SelectedContours   = null;
         // For multi-port operators, try each output value as an image.
         var imageSource = result is Dictionary<string, object?> dict
             ? dict.Values.FirstOrDefault(v => v is OpenCvSharp.Mat)
             : result;
         var bytes = ImageHelper.TryGetPngBytes(imageSource);
-        SelectedImage = bytes is not null ? BytesToBitmapSource(bytes) : null;
+        State = new InspectorState(Image: bytes is not null ? BytesToBitmapSource(bytes) : null);
+        UpdateOverlayLayers();
     }
 
     private static T? Unwrap<T>(object? result) where T : class
@@ -364,6 +335,104 @@ public class MainViewModel : ViewModelBase
                 .Select(g => new Dependency($"D_{g.Key}_{node.Id}", g.Key))
                 .ToList()
         }));
+
+    // Rebuilds OverlayLayers from the selected node's layers cache.
+    // Called at every exit point of UpdateSelectedImage because that method returns
+    // early from separate branches and has no single shared exit path.
+    private void UpdateOverlayLayers()
+    {
+        _overlayLayers.Clear();
+        if (_selectedNode is null || _executor is null) return;
+
+        if (!_layersCache.TryGetValue(_selectedNode.Id, out var layers))
+            _layersCache[_selectedNode.Id] = layers = BuildLayersForNode(_selectedNode);
+
+        foreach (var layer in layers)
+            _overlayLayers.Add(layer);
+    }
+
+    // Builds the layer list for a node once per run: ancestor images in topological order,
+    // then the node's own image output (or its wired input image for annotation operators).
+    // The returned LayerViewModel objects are cached so user toggle/opacity choices survive
+    // node switching without a separate save/restore mechanism.
+    private List<LayerViewModel> BuildLayersForNode(OperatorNodeViewModel node)
+    {
+        var layers = new List<LayerViewModel>();
+        if (_executor is null) return layers;
+
+        var edges = Flow.Connections
+            .Select(c => (
+                Source: Flow.Nodes.FirstOrDefault(n => n.HasConnector(c.Source))?.Id,
+                Target: Flow.Nodes.FirstOrDefault(n => n.HasConnector(c.Target))?.Id))
+            .Where(e => e.Source is not null && e.Target is not null)
+            .Select(e => (e.Source!, e.Target!));
+
+        var ancestorIds = FlowGraph.GetAncestors(node.Id, edges);
+        var orderedAncestors = _executor.IntermediateResults.Keys
+            .Where(id => ancestorIds.Contains(id))
+            .Select(id => Flow.Nodes.FirstOrDefault(n => n.Id == id))
+            .OfType<OperatorNodeViewModel>();
+
+        foreach (var ancestor in orderedAncestors)
+        {
+            _executor.IntermediateResults.TryGetValue(ancestor.Id, out var result);
+            foreach (var (port, bitmap) in ExtractImageLayers(result, ancestor.Operator.Type.OutputPorts))
+            {
+                var label = ancestor.Operator.Type.OutputPorts.Count > 1
+                    ? $"{ancestor.DisplayName} / {port}"
+                    : ancestor.DisplayName;
+                layers.Add(new LayerViewModel(ancestor.Id, port, label) { Image = bitmap });
+            }
+        }
+
+        _executor.IntermediateResults.TryGetValue(node.Id, out var ownResult);
+        var ownImageLayers = ExtractImageLayers(ownResult, node.Operator.Type.OutputPorts).ToList();
+        if (ownImageLayers.Count > 0)
+        {
+            foreach (var (port, bitmap) in ownImageLayers)
+            {
+                var label = ownImageLayers.Count > 1
+                    ? $"{node.DisplayName} / {port}"
+                    : node.DisplayName;
+                layers.Add(new LayerViewModel(node.Id, port, label, isOwnLayer: true) { Image = bitmap });
+            }
+        }
+        else
+        {
+            // Annotation operator (no image output, e.g. DetectCircles): mark the wired
+            // input image's ancestor layer as enabled so it appears active in the panel.
+            var imageParam = node.Parameters
+                .FirstOrDefault(p => p.Name == "Image" && p.IsWired && p.SelectedSource is not null);
+            if (imageParam is not null)
+            {
+                var inputLayer = layers.FirstOrDefault(l => l.OperatorId == imageParam.SelectedSource!.OperatorId);
+                if (inputLayer is not null)
+                    inputLayer.IsEnabled = true;
+            }
+        }
+        return layers;
+    }
+
+    private IEnumerable<(string Port, BitmapSource Bitmap)> ExtractImageLayers(
+        object? result, IReadOnlyList<string> outputPorts)
+    {
+        if (result is OpenCvSharp.Mat mat)
+        {
+            var bytes = ImageHelper.TryGetPngBytes(mat);
+            if (bytes is not null)
+                yield return (outputPorts.Count > 0 ? outputPorts[0] : "Image", BytesToBitmapSource(bytes));
+            yield break;
+        }
+        if (result is Dictionary<string, object?> dict)
+        {
+            foreach (var (key, val) in dict)
+            {
+                var bytes = ImageHelper.TryGetPngBytes(val);
+                if (bytes is not null)
+                    yield return (key, BytesToBitmapSource(bytes));
+            }
+        }
+    }
 
     private static BitmapSource BytesToBitmapSource(byte[] bytes)
     {

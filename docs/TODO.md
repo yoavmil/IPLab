@@ -9,6 +9,8 @@
 
 ## IPLab (UI project)
 
+- **Move existing UserControls into `Controls/` folder** — `InspectorControl`, `RibbonControl`, and `ToolboxControl` currently live in the root of `IPLab.UI`. Move them into `IPLab.UI/Controls/` alongside `LayerItemControl` and `OverlayImageViewer`, excluding `MainWindow`, updating namespaces and XAML references accordingly.
+
 - **Settings panel drawer animation** — the parameter settings panel (currently a static overlay at the bottom of the graph) should animate open and closed like a drawer: slide up when opening, slide down when closing. When the user clicks ⚙ on a second operator while the panel is already open, it should quickly slide closed and then slide open again showing the new operator's parameters, rather than snapping instantly. The animation timing should feel snappy (open ~150 ms, close ~100 ms) so it doesn't slow down the workflow.
 
 - **Delete operator with confirmation** — right-clicking a node (or pressing Delete when it is selected) should prompt "Remove operator X?" before removing it from the graph. Deleting a node must also remove all connections to/from it and prune stale wired sources from any downstream nodes, mirroring the cleanup already done in `OnDeleteConnection`.
@@ -29,9 +31,12 @@
 
 - **Multi-image input in the image source operator** — extend the `LoadImageOperator` (or add a dedicated `ImageSourceOperator`) to hold a list of image file paths rather than a single path. The operator's result panel should display thumbnails of all listed images beneath the main preview; clicking a thumbnail loads that image as the operator's active output, triggering a full re-run of the flow so all downstream operators update. The parameter editor should allow adding/removing files from the list (e.g. via a file-picker or drag-and-drop). This lets the user quickly toggle between images and visually compare how the same pipeline handles different inputs.
 
+- **Center image in inspector when smaller than viewport** — when the `ImageViewer` is resized, if the image is smaller than the available viewport (e.g. after zooming out or opening a small image), keep the image centered rather than leaving it pinned to the top-left. The centering should update live as the panel is dragged to resize, so the image tracks the viewport's midpoint smoothly. [Nice to have]
+
+- **Pixel inspector on click** — when the user clicks a pixel in the `ImageViewer`, display its coordinates (x, y) and color value adapted to the image type: RGB triplet for colour images, single intensity for grayscale, and 0/1 (or 0/255) for binary masks. Show this info in a small overlay near the cursor or in a persistent status bar below the viewer. Clear the display when the user clicks outside the image. [Nice to have]
+
 - **Output display settings per operator** — let the user configure how detection results are visualised in the inspector. For annotation color, offer three modes: a single fixed color (color-picker), a random-per-entity color (stable hash of entity index so colors don't shuffle on re-run), and a heatmap (map a scalar — e.g. circle radius or blob response — to a gradient). Store the chosen mode and parameters inside the operator's display metadata so settings persist with the saved flow. Start with circle/blob annotations; apply the same system to any future operator that produces non-image output.
 
-- **Image overlay in `RControls.ImageViewer`** — the `ImageViewer` control supports a single `SourceImage`. Add multi-image overlay support so several processed results (or the original + result) can be blended and displayed together. Options: pre-composite via `DrawingVisual`/`RenderTargetBitmap` in the VM, or add a second image layer inside `ImageCanvas` in the RControls library itself.
 
 ## Project
 
