@@ -11,10 +11,6 @@
 
 ## IPLab (UI project)
 
-- **Move existing UserControls into `Controls/` folder** — `InspectorControl`, `RibbonControl`, and `ToolboxControl` currently live in the root of `IPLab.UI`. Move them into `IPLab.UI/Controls/` alongside `LayerItemControl` and `OverlayImageViewer`, excluding `MainWindow`, updating namespaces and XAML references accordingly.
-
-- **Settings panel drawer animation** — the parameter settings panel (currently a static overlay at the bottom of the graph) should animate open and closed like a drawer: slide up when opening, slide down when closing. When the user clicks ⚙ on a second operator while the panel is already open, it should quickly slide closed and then slide open again showing the new operator's parameters, rather than snapping instantly. The animation timing should feel snappy (open ~150 ms, close ~100 ms) so it doesn't slow down the workflow.
-
 - **Extract pipeline graph panel into a UserControl** — `MainWindow.xaml` and its code-behind have grown large: the node graph, settings panel overlay, and all animation/panel-switching logic live directly in `MainWindow`. Extract the graph column (NodifyEditor + settings panel overlay) into a `PipelineEditorControl` UserControl so `MainWindow` becomes a thin shell responsible only for the top-level layout split.
 
 - **Delete operator with confirmation** — right-clicking a node (or pressing Delete when it is selected) should prompt "Remove operator X?" before removing it from the graph. Deleting a node must also remove all connections to/from it and prune stale wired sources from any downstream nodes, mirroring the cleanup already done in `OnDeleteConnection`.
