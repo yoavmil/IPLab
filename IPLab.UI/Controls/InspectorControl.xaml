@@ -58,12 +58,16 @@
                         Background="#1A1A1A"
                         BorderBrush="#3F3F46"
                         BorderThickness="0 1 0 0">
-                    <TextBlock x:Name="PixelInfoText"
-                               Text="Click on image to inspect pixel"
-                               Foreground="#666666"
-                               FontFamily="Consolas"
-                               FontSize="11"
-                               Padding="8 3" />
+                    <TextBox x:Name="PixelInfoText"
+                             Text="Click on image to inspect pixel"
+                             Foreground="#666666"
+                             FontFamily="Consolas"
+                             FontSize="11"
+                             Padding="8 3"
+                             IsReadOnly="True"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             FocusVisualStyle="{x:Null}" />
                 </Border>
             </Grid>
         </TabItem>

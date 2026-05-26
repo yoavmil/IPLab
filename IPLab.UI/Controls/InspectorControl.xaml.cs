@@ -124,22 +124,23 @@ public partial class InspectorControl : UserControl
 
     private static string FormatPixelInfo(int x, int y, PixelFormat fmt, byte[] px)
     {
+        var pos = $"({x}, {y})";
+
         if (fmt == PixelFormats.Gray8)
-            return $"x={x}  y={y}  │  Gray: {px[0]}";
+            return $"{pos}  │  {px[0],3}";
 
         if (fmt == PixelFormats.Gray16)
-            return $"x={x}  y={y}  │  Gray: {BitConverter.ToUInt16(px, 0)}";
+            return $"{pos}  │  {BitConverter.ToUInt16(px, 0),5}";
 
         if (fmt == PixelFormats.Bgr24 || fmt == PixelFormats.Bgr32)
-            return $"x={x}  y={y}  │  R:{px[2]}  G:{px[1]}  B:{px[0]}";
+            return $"{pos}  │  {px[2],3} {px[1],3} {px[0],3}";
 
         if (fmt == PixelFormats.Bgra32)
-            return $"x={x}  y={y}  │  R:{px[2]}  G:{px[1]}  B:{px[0]}  A:{px[3]}";
+            return $"{pos}  │  {px[2],3} {px[1],3} {px[0],3} {px[3],3}";
 
         if (fmt == PixelFormats.Rgb24)
-            return $"x={x}  y={y}  │  R:{px[0]}  G:{px[1]}  B:{px[2]}";
+            return $"{pos}  │  {px[0],3} {px[1],3} {px[2],3}";
 
-        // Fallback for any other format.
-        return $"x={x}  y={y}  │  raw: {string.Join(" ", px.Select(b => b.ToString("X2")))}";
+        return $"{pos}  │  {string.Join(" ", px.Select(b => b.ToString("X2")))}";
     }
 }
