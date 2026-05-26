@@ -4,8 +4,6 @@
 
 ## Docs
 
-- **Fix NU5019: missing `icon.png` in Nodify project** — `3rd/Nodify/Nodify.csproj` references `..\icon.png` (i.e. `3rd/icon.png`) for NuGet packaging, but the file is absent, causing build error NU5019. Either add the missing file or remove the `<None Include="..\icon.png">` item from the `.csproj` if packaging is not needed in this repo.
-
 - **README.md** — root-level project introduction: what IPLab is, who it's for,
   quick-start (how to build and run), and links to OPERATORS.md
 
