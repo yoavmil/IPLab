@@ -9,24 +9,9 @@
 - [SplitChannels](#splitchannels) — split BGR image into separate R, G, B channel images
 - [InvertImage](#invertimage) — invert all pixel values (bitwise NOT)
 
----
-
-## InvertImage
-
-Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Works on any channel count (grayscale or color). Useful as a pre-processing step when blobs are dark on a bright background and the downstream detector expects light on dark.
-
-| Parameter | Type   | Connectable | Description   |
-|-----------|--------|-------------|---------------|
-| Image     | Object | Yes         | Input Mat     |
-
-| Output Port | Type |
-|-------------|------|
-| Image       | Mat  |
-
----
-
 ## Filters
 - [Threshold](#threshold) — apply binary threshold to a single-channel image
+- [Morphology](#morphology) — morphological operations (erode, dilate, open, close, gradient, top-hat, black-hat)
 
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
@@ -92,15 +77,47 @@ Splits a BGR color image into three separate single-channel images.
 
 ---
 
+## InvertImage
+
+Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Works on any channel count (grayscale or color). Useful as a pre-processing step when blobs are dark on a bright background and the downstream detector expects light on dark.
+
+| Parameter | Type   | Connectable | Description   |
+|-----------|--------|-------------|---------------|
+| Image     | Object | Yes         | Input Mat     |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
+
 ## Threshold
 
 Applies a binary threshold to a single-channel image. Pixels above `Thresh` are set to `MaxVal`; all others are set to 0.
 
-| Parameter | Type   | Connectable | Description                        |
-|-----------|--------|-------------|------------------------------------|
-| Image     | Object | Yes         | Single-channel input Mat           |
-| Thresh    | Double | No          | Threshold value (default 128)      |
+| Parameter | Type   | Connectable | Description                                    |
+|-----------|--------|-------------|------------------------------------------------|
+| Image     | Object | Yes         | Single-channel input Mat                       |
+| Thresh    | Double | No          | Threshold value (default 128)                  |
 | MaxVal    | Double | No          | Value assigned to passing pixels (default 255) |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
+
+## Morphology
+
+Applies a morphological operation to an image using `Cv2.MorphologyEx`. Works on any single- or multi-channel image. Common uses: erode/dilate to shrink or expand bright regions; open to remove small bright specks; close to fill small dark holes; gradient for edge outlines.
+
+| Parameter    | Type   | Connectable | Description                                                                                        |
+|--------------|--------|-------------|----------------------------------------------------------------------------------------------------|
+| Image        | Object | Yes         | Input Mat (any channel count)                                                                      |
+| Operation    | Enum   | No          | `Erode` (default), `Dilate`, `Open`, `Close`, `Gradient`, `TopHat`, `BlackHat`                    |
+| Kernel Shape | Enum   | No          | `Rect` (default) — filled rectangle; `Ellipse` — filled ellipse; `Cross` — plus-sign shape        |
+| Kernel Size  | Int    | No          | Side length of the structuring element in pixels (default 3, must be odd for symmetric anchor)     |
+| Iterations   | Int    | No          | Number of times the operation is applied (default 1); each pass adds one more ring of erosion/dilation |
 
 | Output Port | Type |
 |-------------|------|
@@ -131,18 +148,18 @@ Detects circles in a single-channel image using the Hough Gradient transform (`C
 
 Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 
-| Parameter          | Type   | Connectable | Description                                      |
-|--------------------|--------|-------------|--------------------------------------------------|
-| Image              | Object | Yes         | Single-channel input Mat                         |
-| Polarity           | Enum   | No          | `Light on Dark` (default) or `Dark on Light`     |
-| MinCircularity     | Double | No          | Minimum circularity score (0–1); higher = rounder |
-| MinArea            | Double | No          | Minimum blob area in pixels²                     |
-| MaxArea            | Double | No          | Maximum blob area in pixels²                     |
-| MinDistBetweenBlobs| Double | No          | Minimum distance between blob centers in pixels  |
-| MinThreshold       | Double | No          | Lower bound of the internal threshold sweep      |
-| MaxThreshold       | Double | No          | Upper bound of the internal threshold sweep      |
-| ThresholdStep      | Double | No          | Step size between threshold levels (default 10)  |
-| MinRepeatability   | Int    | No          | How many threshold levels a blob must appear in to be kept (default 2) |
+| Parameter           | Type   | Connectable | Description                                                       |
+|---------------------|--------|-------------|-------------------------------------------------------------------|
+| Image               | Object | Yes         | Single-channel input Mat                                          |
+| Polarity            | Enum   | No          | `Light on Dark` (default) or `Dark on Light`                      |
+| MinCircularity      | Double | No          | Minimum circularity score (0–1); higher = rounder                 |
+| MinArea             | Double | No          | Minimum blob area in pixels²                                      |
+| MaxArea             | Double | No          | Maximum blob area in pixels²                                      |
+| MinDistBetweenBlobs | Double | No          | Minimum distance between blob centers in pixels                   |
+| MinThreshold        | Double | No          | Lower bound of the internal threshold sweep                       |
+| MaxThreshold        | Double | No          | Upper bound of the internal threshold sweep                       |
+| ThresholdStep       | Double | No          | Step size between threshold levels (default 10)                   |
+| MinRepeatability    | Int    | No          | How many threshold levels a blob must appear in to be kept (default 2) |
 
 | Output Port | Type       |
 |-------------|------------|
@@ -160,10 +177,10 @@ Labels connected regions in a binary (thresholded) single-channel image using `C
 | Connectivity     | Enum   | No          | `8` (default) — 8-connected; `4` — 4-connected                 |
 | OutputLabelImage | Bool   | No          | When `true` (default), produce the colored label image. Set to `false` for offline/batch use to skip the image build. |
 
-| Output Port | Type                      | Description |
-|-------------|---------------------------|-------------|
-| Components  | ConnectedComponentInfo[]  | Per-component stats (label, area, bounding box, centroid) |
-| LabelImage  | Mat                       | BGR image with each component painted a distinct color; background is black |
+| Output Port | Type                     | Description                                                              |
+|-------------|--------------------------|--------------------------------------------------------------------------|
+| Components  | ConnectedComponentInfo[] | Per-component stats (label, area, bounding box, centroid)                |
+| LabelImage  | Mat                      | BGR image with each component painted a distinct color; background is black |
 
 `ConnectedComponentInfo` fields: `Label` (int), `Area` (int, pixels), `BoundingBox` (OpenCvSharp.Rect), `Centroid` (Point2f).
 
