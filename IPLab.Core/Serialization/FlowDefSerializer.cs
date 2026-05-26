@@ -19,14 +19,14 @@ public static class FlowDefSerializer
 
     // ── DTOs ────────────────────────────────────────────────────────────────
 
-    private record FlowDto(List<OperatorDto> Operators);
+    private record FlowDto(List<OperatorDto>? Operators);
 
     private record OperatorDto(
         string Id,
         string DisplayName,
         string Type,
-        List<ParameterDto>  Parameters,
-        List<DependencyDto> Dependencies,
+        List<ParameterDto>?  Parameters,
+        List<DependencyDto>? Dependencies,
         double? X = null,
         double? Y = null);
 
@@ -80,12 +80,12 @@ public static class FlowDefSerializer
         var dto = JsonSerializer.Deserialize<FlowDto>(json, Options)
             ?? throw new JsonException("Failed to deserialize flow.");
 
-        var operators = dto.Operators.Select(opDto =>
+        var operators = (dto.Operators ?? []).Select(opDto =>
         {
             var type   = registry.Resolve(opDto.Type);
             var schema = type.ParameterSchema.ToDictionary(p => p.Name);
 
-            var parameters = opDto.Parameters.Select(p =>
+            var parameters = (opDto.Parameters ?? []).Select(p =>
                 p.Source is { } src
                     ? new ParameterValue { Name = p.Name, Source = new SourceRef(src.OperatorId, src.Port) }
                     : new ParameterValue { Name = p.Name, Value  = CoerceValue(p.Value, schema, p.Name) }
@@ -97,17 +97,17 @@ public static class FlowDefSerializer
                 DisplayName  = opDto.DisplayName,
                 Type         = type,
                 Parameters   = parameters,
-                Dependencies = opDto.Dependencies
+                Dependencies = (opDto.Dependencies ?? [])
                     .Select(d => new Dependency(d.DependencyId, d.OperatorId)).ToList()
             };
         }).ToList();
 
-        var opLayouts = dto.Operators
+        var opLayouts = (dto.Operators ?? [])
             .Where(o => o.X.HasValue && o.Y.HasValue)
             .Select(o => new OperatorLayout(o.Id, new LayoutPoint(o.X!.Value, o.Y!.Value)));
 
-        var depLayouts = dto.Operators
-            .SelectMany(o => o.Dependencies)
+        var depLayouts = (dto.Operators ?? [])
+            .SelectMany(o => o.Dependencies ?? [])
             .Where(d => d.SourceSide.HasValue && d.TargetSide.HasValue)
             .Select(d => new DependencyLayout(d.DependencyId, d.SourceSide!.Value, d.TargetSide!.Value));
 
