@@ -85,7 +85,7 @@
                 <TabItem Header="Graph">
 
                     <!-- Grid lets us overlay the settings panel on top of the editor -->
-                    <Grid>
+                    <Grid ClipToBounds="True">
                         <nodify:NodifyEditor ItemsSource="{Binding Flow.Nodes}"
                                              Connections="{Binding Flow.Connections}"
                                              ConnectionCompletedCommand="{Binding Flow.ConnectCommand}"
@@ -226,12 +226,13 @@
                         </nodify:NodifyEditor>
 
                         <!-- ── Settings panel overlay ────────────────── -->
-                        <Border VerticalAlignment="Bottom"
+                        <Border x:Name="SettingsPanel"
+                                VerticalAlignment="Bottom"
                                 Background="#252526"
                                 BorderBrush="#3F3F46"
                                 BorderThickness="0 1 0 0"
-                                MaxHeight="240"
-                                Visibility="{Binding IsSettingsPanelOpen, Converter={StaticResource BoolToVis}}">
+                                MaxHeight="0"
+                                ClipToBounds="True">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
