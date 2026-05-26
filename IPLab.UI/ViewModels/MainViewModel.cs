@@ -132,10 +132,11 @@ public class MainViewModel : ViewModelBase
         try
         {
             var flow = BuildExecutionFlow();
-            _layersCache.Clear();
             _executor = new FlowEx(flow);
             _executor.StatusChanged += OnOperatorStatusChanged;
             await _executor.RunAllAsync(_cts.Token);
+
+            RefreshCachedLayerImages();
 
             var failed = Flow.Nodes.Count(n => n.Status == OperatorStatus.Failed);
             Status = failed > 0
@@ -361,6 +362,36 @@ public class MainViewModel : ViewModelBase
 
         foreach (var layer in layers)
             _overlayLayers.Add(layer);
+    }
+
+    // After a re-run, refreshes Image on every cached LayerViewModel so toggle/opacity settings
+    // survive across runs. Drops cache entries for nodes that were removed from the flow.
+    private void RefreshCachedLayerImages()
+    {
+        if (_executor is null) return;
+
+        var existingIds = Flow.Nodes.Select(n => n.Id).ToHashSet();
+        foreach (var id in _layersCache.Keys.Where(id => !existingIds.Contains(id)).ToList())
+            _layersCache.Remove(id);
+
+        foreach (var layers in _layersCache.Values)
+            foreach (var layer in layers)
+            {
+                _executor.IntermediateResults.TryGetValue(layer.OperatorId, out var result);
+                layer.Image = ExtractLayerImage(result, layer.Port);
+            }
+    }
+
+    private static BitmapSource? ExtractLayerImage(object? result, string port)
+    {
+        var bytes = result switch
+        {
+            Mat mat => ImageHelper.TryGetPngBytes(mat),
+            Dictionary<string, object?> dict when dict.TryGetValue(port, out var v)
+                => ImageHelper.TryGetPngBytes(v),
+            _ => null
+        };
+        return bytes is not null ? BytesToBitmapSource(bytes) : null;
     }
 
     // Builds the layer list for a node once per run: ancestor images in topological order,
