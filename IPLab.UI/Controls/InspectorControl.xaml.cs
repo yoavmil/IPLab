@@ -8,7 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace IPLab.UI;
+namespace IPLab.UI.Controls;
 
 public partial class InspectorControl : UserControl
 {
