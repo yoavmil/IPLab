@@ -106,8 +106,8 @@ public class FlowViewModel
         foreach (var node in GetSelfAndDescendants(targetNode))
             RebuildAvailableSources(node);
 
-        // Default the first connectable param to the new source's first port.
-        var param = targetNode.Parameters.FirstOrDefault(p => p.CanBeWired);
+        // Default the first unconnected connectable param to the new source's first port.
+        var param = targetNode.Parameters.FirstOrDefault(p => p.CanBeWired && !p.IsWired);
         if (param is not null)
         {
             var firstPort = sourceNode.Operator.Type.OutputPorts.FirstOrDefault() ?? string.Empty;
