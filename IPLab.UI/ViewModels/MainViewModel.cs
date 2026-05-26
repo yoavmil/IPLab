@@ -380,8 +380,7 @@ public class MainViewModel : ViewModelBase
             .Select(e => (e.Source!, e.Target!));
 
         var ancestorIds = FlowGraph.GetAncestors(node.Id, edges);
-        var orderedAncestors = _executor.IntermediateResults.Keys
-            .Where(id => ancestorIds.Contains(id))
+        var orderedAncestors = FlowGraph.TopologicalSort(ancestorIds, edges)
             .Select(id => Flow.Nodes.FirstOrDefault(n => n.Id == id))
             .OfType<OperatorNodeViewModel>();
 
