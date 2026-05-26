@@ -55,18 +55,23 @@
   is compatible with the target `ParameterDescriptor` type — the same way input
   parameters are already typed via `ParameterDescriptor`.
 
-- **Loop / per-item expansion (fan-out execution)**
-  When an operator emits a collection output (e.g. `CircleSegment[]`, `Point[][]`,
-  `Mat[]`), a downstream operator connected to that port should be able to run once
-  per element rather than receiving the whole array. Model this as a "fan-out" edge
-  in `FlowDef`: the edge carries a flag (e.g. `expandItems: true`) that tells
-  `FlowEx` to iterate over the collection and invoke the downstream operator for
-  each item, collecting individual results back into a new array. The graph UI
-  should mark such edges visually (e.g. a dashed or double-line style) and let the
-  user toggle the mode on a connection. Design questions to resolve: how fan-out
-  composes when multiple inputs are expanded simultaneously (zip vs. cross-product);
-  how the collected result array is typed and passed further downstream; and whether
-  partial failures (one item throws) abort the whole fan-out or accumulate errors.
+## Loop Groups
+
+A **loop group** is a visual `GroupingNode` (Nodify's built-in resizable container) that wraps a sub-graph and executes it once per element of an input collection — like a `foreach` block in a visual programming environment. The group declares what collection it iterates; operators inside the group see the current element and loop index as typed inputs, and can also reach parameters from outside the group. After all iterations, the group collects individual results into a new output array that downstream operators receive.
+
+- **Visual representation** — use Nodify's `GroupingNode` as the container. The group has a header label (e.g. "For each CircleSegment") and a dedicated input port on its border wired to the upstream collection output. The border style should distinguish it from plain grouping boxes (e.g. a coloured accent border).
+
+- **Adding operators into a loop group** — two ways to populate a group: (a) drag existing nodes into the `GroupingNode` bounds so they snap inside, or (b) select nodes first and then apply "Wrap in loop" from a context menu, which creates a new `GroupingNode` sized to fit the selection. Removing a node from the group (dragging it out) restores it to the outer flow.
+
+- **Loop-scoped input variables** — each iteration, the group exposes two implicit typed ports available to every internal operator: `loop_item` (typed to the element type of the input collection, e.g. `CircleSegment`) and `loop_index` (`int`, zero-based). Internal operators wire to these ports the same way they wire to any output port.
+
+- **Access to outer parameters** — operators inside the group can still wire to any output port from the outer flow (operators outside the group). The execution model passes outer results by reference into each iteration; they are read-only inside the loop.
+
+- **Result collection (fan-in)** — one operator inside the group is designated as the loop's output (e.g. via a "Mark as loop output" toggle on the node). After all iterations, `FlowEx` collects that operator's per-iteration results into a typed array (e.g. `Mat[]`) and exposes it as the group's single output port, available to downstream operators in the outer flow.
+
+- **Execution model in `FlowEx`** — `FlowEx` detects loop group nodes in the flow graph, resolves the input collection, then runs the internal sub-graph sequentially once per element (parallel execution deferred post-MVP). Partial failures (one iteration throws) should be configurable: abort-all or accumulate-errors modes.
+
+- **Serialization** — `FlowDef` represents a loop group as a node of type `LoopGroup` containing a nested `FlowDef` for the inner sub-graph, the collection source port reference, and the designated output operator ID. Round-trip JSON serialization must preserve the nested structure.
 
 - **C# script operator**
   Add a `CSharpScriptOperator` that accepts a user-written C# snippet (via
