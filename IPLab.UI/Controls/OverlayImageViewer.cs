@@ -40,6 +40,40 @@ public class OverlayImageViewer : ImageViewer
         RefreshOverlays();
     }
 
+    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+    {
+        base.OnRenderSizeChanged(sizeInfo);
+        CenterIfSmaller();
+    }
+
+    // When the viewport is resized and the scaled image fits inside it, keep the image centered
+    // so it doesn't drift to the top-left corner after the user zooms out or the panel is resized.
+    private void CenterIfSmaller()
+    {
+        if (_canvas is null || SourceImage is null || scaleRatio <= 0) return;
+
+        var transform = _canvas.RenderTransform as MatrixTransform;
+        if (transform is null) return;
+
+        var matrix    = transform.Matrix;
+        double scaledW = SourceImage.Width  * scaleRatio;
+        double scaledH = SourceImage.Height * scaleRatio;
+        bool changed   = false;
+
+        if (scaledW < ActualWidth)
+        {
+            matrix.OffsetX = (ActualWidth  - scaledW) / 2.0;
+            changed = true;
+        }
+        if (scaledH < ActualHeight)
+        {
+            matrix.OffsetY = (ActualHeight - scaledH) / 2.0;
+            changed = true;
+        }
+        if (changed)
+            _canvas.RenderTransform = new MatrixTransform(matrix);
+    }
+
     private static void OnLayersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var viewer = (OverlayImageViewer)d;
