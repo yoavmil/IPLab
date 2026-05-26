@@ -231,23 +231,24 @@
                                 Background="#252526"
                                 BorderBrush="#3F3F46"
                                 BorderThickness="0 1 0 0"
-                                MaxHeight="0"
-                                ClipToBounds="True">
+                                MaxHeight="240"
+                                Visibility="Collapsed">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="PanelTranslate" />
+                            </Border.RenderTransform>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
 
-                                <!-- Panel header -->
+                                <!-- Panel header: operator name + close button -->
                                 <Grid Grid.Row="0" Background="#2D2D30">
-                                    <TextBlock Padding="10 5"
+                                    <TextBlock Text="{Binding DisplayingNode.DisplayName, Mode=OneWay}"
+                                               Padding="10 5"
                                                FontWeight="SemiBold"
                                                Foreground="White"
-                                               VerticalAlignment="Center">
-                                        <Run Text="Parameters — " />
-                                        <Run Text="{Binding EditingNode.DisplayName, Mode=OneWay}" />
-                                    </TextBlock>
+                                               VerticalAlignment="Center" />
                                     <Button HorizontalAlignment="Right"
                                             Content="✕"
                                             Command="{Binding CloseSettingsCommand}"
@@ -261,7 +262,7 @@
 
                                 <!-- Parameter rows -->
                                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                    <ItemsControl ItemsSource="{Binding EditingNode.Parameters}"
+                                    <ItemsControl ItemsSource="{Binding DisplayingNode.Parameters}"
                                                   Margin="4 4">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type vm:ParameterEditViewModel}">

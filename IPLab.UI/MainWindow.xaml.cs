@@ -1,8 +1,8 @@
 using IPLab.UI.ViewModels;
 using Nodify;
 using Nodify.Interactivity;
-using System.ComponentModel;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace IPLab.UI;
@@ -10,11 +10,11 @@ namespace IPLab.UI;
 public partial class MainWindow : Window
 {
     private MainViewModel? _vm;
-    private bool _panelCurrentlyOpen = false;
+    private int _closeSeq;
 
-    private const double PanelOpenHeight   = 240;
-    private const double OpenDurationMs    = 150;
-    private const double CloseDurationMs   = 100;
+    private const double OpenDurationMs  = 250;
+    private const double CloseDurationMs = 250;
+    private const double SlideDistance   = 15; // px the panel drifts vertically while fading
 
     static MainWindow()
     {
@@ -33,71 +33,99 @@ public partial class MainWindow : Window
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        WireViewModel(e.NewValue as MainViewModel);
-    }
+        => WireViewModel(e.NewValue as MainViewModel);
 
     private void WireViewModel(MainViewModel? vm)
     {
         if (_vm is not null)
-            _vm.PropertyChanged -= OnVmPropertyChanged;
+            _vm.EditingNodeChanged -= OnEditingNodeChanged;
         _vm = vm;
         if (_vm is not null)
-            _vm.PropertyChanged += OnVmPropertyChanged;
+            _vm.EditingNodeChanged += OnEditingNodeChanged;
     }
 
-    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnEditingNodeChanged(OperatorNodeViewModel? newNode)
     {
-        if (e.PropertyName == nameof(MainViewModel.EditingNode))
+        if (newNode is null)
         {
-            // Node switched while panel is open → close then reopen with new content.
-            if (_vm!.IsSettingsPanelOpen && _panelCurrentlyOpen)
-                AnimateCloseAndReopen();
+            // Close: keep DisplayingNode unchanged until panel is fully hidden.
+            if (SettingsPanel.Visibility == Visibility.Visible)
+                AnimateClose(onComplete: () => _vm!.DisplayingNode = null);
         }
-        else if (e.PropertyName == nameof(MainViewModel.IsSettingsPanelOpen))
+        else if (SettingsPanel.Visibility != Visibility.Visible)
         {
-            if (_vm!.IsSettingsPanelOpen && !_panelCurrentlyOpen)
+            // Open fresh: set content first, then fade in.
+            _vm!.DisplayingNode = newNode;
+            AnimateOpen();
+        }
+        else
+        {
+            // Switch: fade out the old content, swap, then fade in the new content.
+            AnimateClose(onComplete: () =>
+            {
+                _vm!.DisplayingNode = newNode;
                 AnimateOpen();
-            else if (!_vm!.IsSettingsPanelOpen && _panelCurrentlyOpen)
-                AnimateClose();
+            });
         }
     }
 
     private void AnimateOpen()
     {
-        _panelCurrentlyOpen = true;
-        var anim = new DoubleAnimation
+        // Clear any animation that may be holding the properties so local writes take effect.
+        SettingsPanel.BeginAnimation(OpacityProperty, null);
+        PanelTranslate.BeginAnimation(TranslateTransform.YProperty, null);
+
+        SettingsPanel.Opacity    = 0;
+        PanelTranslate.Y         = SlideDistance;
+        SettingsPanel.Visibility = Visibility.Visible;
+
+        SettingsPanel.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,
+            new Duration(TimeSpan.FromMilliseconds(OpenDurationMs)))
         {
-            To               = PanelOpenHeight,
-            Duration         = TimeSpan.FromMilliseconds(OpenDurationMs),
-            EasingFunction   = new CubicEase { EasingMode = EasingMode.EaseOut },
-            FillBehavior     = FillBehavior.HoldEnd
-        };
-        SettingsPanel.BeginAnimation(MaxHeightProperty, anim);
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior   = FillBehavior.HoldEnd
+        });
+        PanelTranslate.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(SlideDistance, 0,
+            new Duration(TimeSpan.FromMilliseconds(OpenDurationMs)))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior   = FillBehavior.HoldEnd
+        });
     }
 
     private void AnimateClose(Action? onComplete = null)
     {
-        _panelCurrentlyOpen = false;
-        var anim = new DoubleAnimation
-        {
-            To               = 0,
-            Duration         = TimeSpan.FromMilliseconds(CloseDurationMs),
-            EasingFunction   = new CubicEase { EasingMode = EasingMode.EaseIn },
-            FillBehavior     = FillBehavior.HoldEnd
-        };
-        if (onComplete is not null)
-            anim.Completed += (_, _) => onComplete();
-        SettingsPanel.BeginAnimation(MaxHeightProperty, anim);
-    }
+        // Sequence number guards against a stale Completed callback firing after
+        // a newer AnimateClose call has already superseded this animation.
+        var seq = ++_closeSeq;
 
-    private void AnimateCloseAndReopen()
-    {
-        _panelCurrentlyOpen = false;
-        AnimateClose(onComplete: () =>
+        // Read current animated values so mid-flight reversals start from the right position.
+        var fromOpacity = SettingsPanel.Opacity;
+        var fromY       = PanelTranslate.Y;
+
+        var opacityAnim = new DoubleAnimation(fromOpacity, 0,
+            new Duration(TimeSpan.FromMilliseconds(CloseDurationMs)))
         {
-            _panelCurrentlyOpen = true;
-            AnimateOpen();
-        });
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn },
+            FillBehavior   = FillBehavior.HoldEnd
+        };
+        opacityAnim.Completed += (_, _) =>
+        {
+            if (_closeSeq != seq) return;
+            // Release the animation holds so AnimateOpen can write local values directly.
+            SettingsPanel.BeginAnimation(OpacityProperty, null);
+            PanelTranslate.BeginAnimation(TranslateTransform.YProperty, null);
+            SettingsPanel.Visibility = Visibility.Collapsed;
+            onComplete?.Invoke();
+        };
+
+        SettingsPanel.BeginAnimation(OpacityProperty, opacityAnim);
+        PanelTranslate.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(fromY, SlideDistance,
+                new Duration(TimeSpan.FromMilliseconds(CloseDurationMs)))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn },
+                FillBehavior   = FillBehavior.HoldEnd
+            });
     }
 }

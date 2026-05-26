@@ -54,6 +54,8 @@ public class MainViewModel : ViewModelBase
         private set { _state = value; RaisePropertyChanged(); }
     }
 
+    public event Action<OperatorNodeViewModel?>? EditingNodeChanged;
+
     private OperatorNodeViewModel? _editingNode;
     public OperatorNodeViewModel? EditingNode
     {
@@ -63,10 +65,20 @@ public class MainViewModel : ViewModelBase
             _editingNode = value;
             RaisePropertyChanged();
             RaisePropertyChanged(nameof(IsSettingsPanelOpen));
+            EditingNodeChanged?.Invoke(value);
         }
     }
 
     public bool IsSettingsPanelOpen => _editingNode is not null;
+
+    // Lags behind EditingNode: updated by MainWindow only after the close animation
+    // finishes, so the panel content doesn't vanish before it is hidden.
+    private OperatorNodeViewModel? _displayingNode;
+    public OperatorNodeViewModel? DisplayingNode
+    {
+        get => _displayingNode;
+        set { _displayingNode = value; RaisePropertyChanged(); }
+    }
 
     private readonly ObservableCollection<LayerViewModel> _overlayLayers = [];
     public  ObservableCollection<LayerViewModel> OverlayLayers => _overlayLayers;
@@ -88,7 +100,7 @@ public class MainViewModel : ViewModelBase
     {
         Toolbox = new ToolboxViewModel(OperatorRegistry.CreateDefault(), type => Flow.AddNode(type));
         Flow = new FlowViewModel(BuildSampleFlow(),
-            onOpenSettings: node => EditingNode = node,
+            onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
             onSelected:     node => SelectedNode = node);
         RunAllCommand        = new RelayCommand(RunAll);
         StopCommand          = new RelayCommand(Stop);
@@ -240,7 +252,7 @@ public class MainViewModel : ViewModelBase
             State       = new InspectorState();
             _layersCache.Clear();
             Flow = new FlowViewModel(flow,
-                onOpenSettings: node => EditingNode = node,
+                onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
                 onSelected:     node => SelectedNode = node);
             Status = $"Loaded: {Path.GetFileName(dialog.FileName)}";
         }
