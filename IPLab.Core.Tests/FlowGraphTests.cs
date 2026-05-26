@@ -62,6 +62,50 @@ public class FlowGraphTests
         Assert.Empty(result);
     }
 
+    // ── TopologicalSort ──────────────────────────────────────────────────
+
+    [Fact]
+    public void TopologicalSort_LinearChain_IsInOrder()
+    {
+        var result = FlowGraph.TopologicalSort(["A", "B", "C", "D"], Linear);
+        Assert.Equal(["A", "B", "C", "D"], result);
+    }
+
+    [Fact]
+    public void TopologicalSort_Diamond_CBeforeD_ABBeforeC()
+    {
+        var result = FlowGraph.TopologicalSort(["A", "B", "C", "D"], Diamond).ToList();
+        Assert.True(result.IndexOf("A") < result.IndexOf("C"));
+        Assert.True(result.IndexOf("B") < result.IndexOf("C"));
+        Assert.True(result.IndexOf("C") < result.IndexOf("D"));
+    }
+
+    [Fact]
+    public void TopologicalSort_SubsetOfNodes_IgnoresOutsideEdges()
+    {
+        // Only sort B, C, D — edges referencing A are ignored.
+        var result = FlowGraph.TopologicalSort(["B", "C", "D"], Linear).ToList();
+        Assert.True(result.IndexOf("B") < result.IndexOf("C"));
+        Assert.True(result.IndexOf("C") < result.IndexOf("D"));
+        Assert.DoesNotContain("A", result);
+    }
+
+    [Fact]
+    public void TopologicalSort_DisconnectedNodes_AllPresent()
+    {
+        var result = FlowGraph.TopologicalSort(["X", "Y"], Linear);
+        Assert.Equal(2, result.Count);
+        Assert.Contains("X", result);
+        Assert.Contains("Y", result);
+    }
+
+    [Fact]
+    public void TopologicalSort_SingleNode_ReturnsThatNode()
+    {
+        var result = FlowGraph.TopologicalSort(["A"], Linear);
+        Assert.Equal(["A"], result);
+    }
+
     // ── GetSelfAndDescendants ─────────────────────────────────────────────
 
     [Fact]
