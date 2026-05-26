@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace IPLab.UI.Controls;
 
@@ -15,10 +16,13 @@ public partial class InspectorControl : UserControl
     private MainViewModel? _vm;
     private bool _showComponentOverlays = false;
 
+    private const string DefaultPixelInfo = "Click on image to inspect pixel";
+
     public InspectorControl()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        ImageViewer.ImageClicked += OnImageClicked;
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -30,12 +34,17 @@ public partial class InspectorControl : UserControl
 
         if (_vm is not null)
             _vm.PropertyChanged += OnVmPropertyChanged;
+
+        PixelInfoText.Text = DefaultPixelInfo;
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.State))
+        {
             RedrawAnnotations(_vm!.State);
+            PixelInfoText.Text = DefaultPixelInfo;
+        }
     }
 
     private void RedrawAnnotations(MainViewModel.InspectorState state)
@@ -86,5 +95,51 @@ public partial class InspectorControl : UserControl
             .ToList();
         if (polygons.Count == 0) return;
         ImageViewer.DrawPolygons(polygons, string.Empty, Brushes.Yellow);
+    }
+
+    private void OnImageClicked(System.Windows.Point imagePoint)
+    {
+        if (_vm?.State.Image is not BitmapSource bmp)
+        {
+            PixelInfoText.Text = DefaultPixelInfo;
+            return;
+        }
+
+        int x = (int)imagePoint.X;
+        int y = (int)imagePoint.Y;
+
+        if (x < 0 || y < 0 || x >= bmp.PixelWidth || y >= bmp.PixelHeight)
+        {
+            PixelInfoText.Text = DefaultPixelInfo;
+            return;
+        }
+
+        int bytesPerPixel = Math.Max(1, (bmp.Format.BitsPerPixel + 7) / 8);
+        var pixels = new byte[bytesPerPixel];
+        bmp.CopyPixels(new Int32Rect(x, y, 1, 1), pixels, bytesPerPixel, 0);
+
+        PixelInfoText.Foreground = new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC));
+        PixelInfoText.Text = FormatPixelInfo(x, y, bmp.Format, pixels);
+    }
+
+    private static string FormatPixelInfo(int x, int y, PixelFormat fmt, byte[] px)
+    {
+        if (fmt == PixelFormats.Gray8)
+            return $"x={x}  y={y}  │  Gray: {px[0]}";
+
+        if (fmt == PixelFormats.Gray16)
+            return $"x={x}  y={y}  │  Gray: {BitConverter.ToUInt16(px, 0)}";
+
+        if (fmt == PixelFormats.Bgr24 || fmt == PixelFormats.Bgr32)
+            return $"x={x}  y={y}  │  R:{px[2]}  G:{px[1]}  B:{px[0]}";
+
+        if (fmt == PixelFormats.Bgra32)
+            return $"x={x}  y={y}  │  R:{px[2]}  G:{px[1]}  B:{px[0]}  A:{px[3]}";
+
+        if (fmt == PixelFormats.Rgb24)
+            return $"x={x}  y={y}  │  R:{px[0]}  G:{px[1]}  B:{px[2]}";
+
+        // Fallback for any other format.
+        return $"x={x}  y={y}  │  raw: {string.Join(" ", px.Select(b => b.ToString("X2")))}";
     }
 }

@@ -7,13 +7,21 @@
                 TabStripPlacement="Bottom">
         <TabItem Header="Image Preview">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Row 0: viewer + overlaid controls -->
                 <controls:OverlayImageViewer x:Name="ImageViewer"
+                                             Grid.Row="0"
                                              SourceImage="{Binding State.Image}"
                                              OverlayLayers="{Binding OverlayLayers}"
                                              OperationMode="Move"
                                              Background="#1E1E1E" />
 
                 <ToggleButton x:Name="LayerToggle"
+                              Grid.Row="0"
                               Content="&#x229E;"
                               Width="28" Height="24"
                               HorizontalAlignment="Right" VerticalAlignment="Top"
@@ -44,6 +52,19 @@
                         </StackPanel>
                     </Border>
                 </Popup>
+
+                <!-- Row 1: pixel info strip -->
+                <Border Grid.Row="1"
+                        Background="#1A1A1A"
+                        BorderBrush="#3F3F46"
+                        BorderThickness="0 1 0 0">
+                    <TextBlock x:Name="PixelInfoText"
+                               Text="Click on image to inspect pixel"
+                               Foreground="#666666"
+                               FontFamily="Consolas"
+                               FontSize="11"
+                               Padding="8 3" />
+                </Border>
             </Grid>
         </TabItem>
         <TabItem Header="Data">
