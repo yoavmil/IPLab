@@ -11,8 +11,6 @@
 
 ## IPLab (UI project)
 
-- **Extract pipeline graph panel into a UserControl** — `MainWindow.xaml` and its code-behind have grown large: the node graph, settings panel overlay, and all animation/panel-switching logic live directly in `MainWindow`. Extract the graph column (NodifyEditor + settings panel overlay) into a `PipelineEditorControl` UserControl so `MainWindow` becomes a thin shell responsible only for the top-level layout split.
-
 - **Delete operator with confirmation** — right-clicking a node (or pressing Delete when it is selected) should prompt "Remove operator X?" before removing it from the graph. Deleting a node must also remove all connections to/from it and prune stale wired sources from any downstream nodes, mirroring the cleanup already done in `OnDeleteConnection`.
 
 - **Delete connection with confirmation** — before `OnDeleteConnection` removes a connection, show a brief confirmation (e.g. "Remove this connection? Downstream nodes may lose their inputs.") so the user doesn't accidentally break the flow.
