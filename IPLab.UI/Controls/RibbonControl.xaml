@@ -7,10 +7,13 @@
             <Button Content="Save Flow" Padding="8 2" Command="{Binding SaveFlowCommand}" />
         </ToolBar>
         <ToolBar Band="0" BandIndex="1" Header="Run">
-            <Button Content="Run All"       Padding="8 2" Command="{Binding RunAllCommand}" />
-            <Button Content="Run Selected"  Padding="8 2" />
+            <Button       Content="Run Once"       Padding="8 2" Command="{Binding RunOnceCommand}" />
+            <ToggleButton Content="Run Continuous" Padding="8 2" Command="{Binding RunContinuousCommand}"
+                          IsChecked="{Binding IsRunningContinuous, Mode=OneWay}" />
             <Separator />
-            <Button Content="Clear Results" Padding="8 2" Command="{Binding ClearResultsCommand}" />
+            <Button       Content="Stop"           Padding="8 2" Command="{Binding StopCommand}" />
+            <Separator />
+            <Button       Content="Clear Results"  Padding="8 2" Command="{Binding ClearResultsCommand}" />
         </ToolBar>
     </ToolBarTray>
 </UserControl>

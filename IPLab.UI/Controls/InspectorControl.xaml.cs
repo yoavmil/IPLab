@@ -41,10 +41,7 @@ public partial class InspectorControl : UserControl
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.State))
-        {
             RedrawAnnotations(_vm!.State);
-            PixelInfoText.Text = DefaultPixelInfo;
-        }
     }
 
     private void RedrawAnnotations(MainViewModel.InspectorState state)

@@ -2,7 +2,6 @@ using IPLab.UI.ViewModels;
 using RControls;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;

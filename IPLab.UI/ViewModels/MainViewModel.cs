@@ -13,6 +13,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using CoreFlow = IPLab.Core.Runtime.Flow;
 
 namespace IPLab.UI.ViewModels;
@@ -87,14 +88,28 @@ public class MainViewModel : ViewModelBase
 
     private FlowEx? _executor;
     private CancellationTokenSource? _cts;
+    private Dictionary<(string Id, string Port), BitmapSource> _precomputedImages = new();
 
-    public ToolboxViewModel Toolbox      { get; }
-    public ICommand RunAllCommand        { get; }
-    public ICommand StopCommand          { get; }
-    public ICommand ClearResultsCommand  { get; }
-    public ICommand CloseSettingsCommand { get; }
-    public ICommand SaveFlowCommand      { get; }
-    public ICommand LoadFlowCommand      { get; }
+    private bool _isRunningContinuous;
+    public bool IsRunningContinuous
+    {
+        get => _isRunningContinuous;
+        private set
+        {
+            _isRunningContinuous = value;
+            RaisePropertyChanged();
+            ((RelayCommand)RunOnceCommand).RaiseCanExecuteChanged();
+        }
+    }
+
+    public ToolboxViewModel Toolbox           { get; }
+    public ICommand         RunOnceCommand       { get; }
+    public ICommand         RunContinuousCommand { get; }
+    public ICommand         StopCommand          { get; }
+    public ICommand         ClearResultsCommand  { get; }
+    public ICommand         CloseSettingsCommand { get; }
+    public ICommand         SaveFlowCommand      { get; }
+    public ICommand         LoadFlowCommand      { get; }
 
     public MainViewModel()
     {
@@ -102,7 +117,8 @@ public class MainViewModel : ViewModelBase
         Flow = new FlowViewModel(BuildSampleFlow(),
             onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
             onSelected:     node => SelectedNode = node);
-        RunAllCommand        = new RelayCommand(RunAll);
+        RunOnceCommand       = new RelayCommand(RunOnce, () => !IsRunningContinuous);
+        RunContinuousCommand = new RelayCommand(ToggleContinuousRun);
         StopCommand          = new RelayCommand(Stop);
         ClearResultsCommand  = new RelayCommand(ClearResults);
         CloseSettingsCommand = new RelayCommand(() => EditingNode = null);
@@ -110,7 +126,22 @@ public class MainViewModel : ViewModelBase
         LoadFlowCommand      = new RelayCommand(LoadFlow);
     }
 
-    private async void RunAll()
+    private async void RunOnce() => await ExecuteRunAsync();
+
+    private void ToggleContinuousRun()
+    {
+        if (IsRunningContinuous)
+        {
+            Stop();
+        }
+        else
+        {
+            IsRunningContinuous = true;
+            RunOnce();
+        }
+    }
+
+    private async Task<bool> ExecuteRunAsync()
     {
         var filePathParam = Flow.Nodes
             .SelectMany(n => n.Parameters)
@@ -123,7 +154,7 @@ public class MainViewModel : ViewModelBase
                 Title  = "Select an image to process",
                 Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff|All files|*.*"
             };
-            if (dialog.ShowDialog() != true) return;
+            if (dialog.ShowDialog() != true) { IsRunningContinuous = false; return false; }
             filePathParam.ValueText = dialog.FileName;
         }
 
@@ -135,7 +166,7 @@ public class MainViewModel : ViewModelBase
             _executor = new FlowEx(flow);
             _executor.StatusChanged += OnOperatorStatusChanged;
             await _executor.RunAllAsync(_cts.Token);
-
+            await PrecomputeImagesAsync();
             RefreshCachedLayerImages();
 
             var failed = Flow.Nodes.Count(n => n.Status == OperatorStatus.Failed);
@@ -143,14 +174,21 @@ public class MainViewModel : ViewModelBase
                 ? $"{failed} operator(s) failed"
                 : $"Done  |  {Path.GetFileName(filePathParam?.ValueText ?? string.Empty)}";
             UpdateSelectedImage();
+
+            if (IsRunningContinuous)
+                Application.Current?.Dispatcher.InvokeAsync(RunOnce, DispatcherPriority.Background);
+            return true;
         }
         catch (OperationCanceledException)
         {
             Status = "Stopped";
+            return false;
         }
         catch (Exception ex)
         {
             Status = $"Error: {ex.Message}";
+            IsRunningContinuous = false;
+            return false;
         }
         finally
         {
@@ -159,17 +197,21 @@ public class MainViewModel : ViewModelBase
         }
     }
 
-    private void Stop() => _cts?.Cancel();
+    private void Stop()
+    {
+        IsRunningContinuous = false;
+        _cts?.Cancel();
+    }
 
     private void OnOperatorStatusChanged(string id, OperatorStatus status, Exception? ex)
     {
-        Application.Current.Dispatcher.InvokeAsync(() =>
+        Application.Current?.Dispatcher.InvokeAsync(() =>
         {
             var node = Flow.Nodes.FirstOrDefault(n => n.Id == id);
             if (node is null) return;
             node.Status       = status;
             node.ErrorMessage = ex?.Message;
-        });
+        }, DispatcherPriority.Background);
     }
 
     private void ClearResults()
@@ -183,6 +225,7 @@ public class MainViewModel : ViewModelBase
 
         _overlayLayers.Clear();
         _layersCache.Clear();
+        _precomputedImages = new();
 
         foreach (var node in Flow.Nodes)
         {
@@ -248,10 +291,11 @@ public class MainViewModel : ViewModelBase
             var flow = FlowDefSerializer.Deserialize(
                 File.ReadAllText(dialog.FileName), OperatorRegistry.CreateDefault());
 
-            EditingNode = null;
-            _executor   = null;
-            State       = new InspectorState();
+            EditingNode        = null;
+            _executor          = null;
+            State              = new InspectorState();
             _layersCache.Clear();
+            _precomputedImages = new();
             Flow = new FlowViewModel(flow,
                 onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
                 onSelected:     node => SelectedNode = node);
@@ -293,10 +337,9 @@ public class MainViewModel : ViewModelBase
         var components = Unwrap<ConnectedComponentInfo[]>(result);
         if (components is not null)
         {
-            var labelMat   = (result as Dictionary<string, object?>)?.GetValueOrDefault("LabelImage") as OpenCvSharp.Mat;
-            var labelBytes = labelMat is not null ? ImageHelper.TryGetPngBytes(labelMat) : null;
-            var image      = labelBytes is not null ? BytesToBitmapSource(labelBytes) : GetSourceImage();
-            State = new InspectorState(Image: image, Components: components);
+            var labelImage = _precomputedImages.GetValueOrDefault((_selectedNode.Id, "LabelImage"))
+                          ?? GetSourceImage();
+            State = new InspectorState(Image: labelImage, Components: components);
             UpdateOverlayLayers();
             return;
         }
@@ -309,12 +352,11 @@ public class MainViewModel : ViewModelBase
             return;
         }
 
-        // For multi-port operators, try each output value as an image.
-        var imageSource = result is Dictionary<string, object?> dict
-            ? dict.Values.FirstOrDefault(v => v is OpenCvSharp.Mat)
-            : result;
-        var bytes = ImageHelper.TryGetPngBytes(imageSource);
-        State = new InspectorState(Image: bytes is not null ? BytesToBitmapSource(bytes) : null);
+        var image = _precomputedImages.Keys
+            .Where(k => k.Id == _selectedNode.Id)
+            .Select(k => _precomputedImages[k])
+            .FirstOrDefault();
+        State = new InspectorState(Image: image);
         UpdateOverlayLayers();
     }
 
@@ -327,10 +369,8 @@ public class MainViewModel : ViewModelBase
         var imageParam = _selectedNode!.Parameters
             .FirstOrDefault(p => p.Name == "Image" && p.IsWired && p.SelectedSource is not null);
         if (imageParam is null) return null;
-
-        _executor!.IntermediateResults.TryGetValue(imageParam.SelectedSource!.OperatorId, out var sourceResult);
-        var bytes = ImageHelper.TryGetPngBytes(sourceResult);
-        return bytes is not null ? BytesToBitmapSource(bytes) : null;
+        return _precomputedImages.GetValueOrDefault(
+            (imageParam.SelectedSource!.OperatorId, imageParam.SelectedSource.Port));
     }
 
     private FlowDef BuildExecutionFlow() => new(
@@ -354,44 +394,73 @@ public class MainViewModel : ViewModelBase
     // early from separate branches and has no single shared exit path.
     private void UpdateOverlayLayers()
     {
-        _overlayLayers.Clear();
-        if (_selectedNode is null || _executor is null) return;
+        if (_selectedNode is null || _executor is null)
+        {
+            _overlayLayers.Clear();
+            return;
+        }
 
         if (!_layersCache.TryGetValue(_selectedNode.Id, out var layers))
             _layersCache[_selectedNode.Id] = layers = BuildLayersForNode(_selectedNode);
 
+        // On repeated runs with the same node selected the LayerViewModel objects are
+        // identical (cached and image-refreshed in place), so skip the clear+re-add.
+        // The clear causes a visible flash because RefreshOverlays removes canvas Image
+        // elements synchronously, even though rendering is deferred.
+        if (_overlayLayers.SequenceEqual(layers))
+            return;
+
+        _overlayLayers.Clear();
         foreach (var layer in layers)
             _overlayLayers.Add(layer);
     }
 
-    // After a re-run, refreshes Image on every cached LayerViewModel so toggle/opacity settings
-    // survive across runs. Drops cache entries for nodes that were removed from the flow.
+    // Encodes all executor results to frozen BitmapSources on a background thread.
+    // Called once per run so all downstream consumers do cheap dict lookups on the UI thread.
+    private async Task PrecomputeImagesAsync()
+    {
+        if (_executor is null) { _precomputedImages = new(); return; }
+
+        var executor     = _executor;
+        var portsByNode  = Flow.Nodes.ToDictionary(n => n.Id, n => n.Operator.Type.OutputPorts);
+
+        _precomputedImages = await Task.Run(() =>
+        {
+            var images = new Dictionary<(string, string), BitmapSource>();
+            foreach (var (id, result) in executor.IntermediateResults)
+            {
+                var ports = portsByNode.TryGetValue(id, out var p) ? p : (IReadOnlyList<string>)["Image"];
+                if (result is Mat mat)
+                {
+                    var bytes = ImageHelper.TryGetPngBytes(mat);
+                    if (bytes is not null)
+                        images[(id, ports.Count > 0 ? ports[0] : "Image")] = BytesToBitmapSource(bytes);
+                }
+                else if (result is Dictionary<string, object?> dict)
+                {
+                    foreach (var (port, val) in dict)
+                    {
+                        var bytes = ImageHelper.TryGetPngBytes(val);
+                        if (bytes is not null)
+                            images[(id, port)] = BytesToBitmapSource(bytes);
+                    }
+                }
+            }
+            return images;
+        });
+    }
+
+    // After a re-run, refreshes Image on every cached LayerViewModel using the precomputed dict.
+    // Drops cache entries for nodes that were removed from the flow.
     private void RefreshCachedLayerImages()
     {
-        if (_executor is null) return;
-
         var existingIds = Flow.Nodes.Select(n => n.Id).ToHashSet();
         foreach (var id in _layersCache.Keys.Where(id => !existingIds.Contains(id)).ToList())
             _layersCache.Remove(id);
 
         foreach (var layers in _layersCache.Values)
             foreach (var layer in layers)
-            {
-                _executor.IntermediateResults.TryGetValue(layer.OperatorId, out var result);
-                layer.Image = ExtractLayerImage(result, layer.Port);
-            }
-    }
-
-    private static BitmapSource? ExtractLayerImage(object? result, string port)
-    {
-        var bytes = result switch
-        {
-            Mat mat => ImageHelper.TryGetPngBytes(mat),
-            Dictionary<string, object?> dict when dict.TryGetValue(port, out var v)
-                => ImageHelper.TryGetPngBytes(v),
-            _ => null
-        };
-        return bytes is not null ? BytesToBitmapSource(bytes) : null;
+                layer.Image = _precomputedImages.GetValueOrDefault((layer.OperatorId, layer.Port));
     }
 
     // Builds the layer list for a node once per run: ancestor images in topological order,
@@ -417,8 +486,7 @@ public class MainViewModel : ViewModelBase
 
         foreach (var ancestor in orderedAncestors)
         {
-            _executor.IntermediateResults.TryGetValue(ancestor.Id, out var result);
-            foreach (var (port, bitmap) in ExtractImageLayers(result, ancestor.Operator.Type.OutputPorts))
+            foreach (var (port, bitmap) in ExtractImageLayers(ancestor.Id, ancestor.Operator.Type.OutputPorts))
             {
                 var label = ancestor.Operator.Type.OutputPorts.Count > 1
                     ? $"{ancestor.DisplayName} / {port}"
@@ -427,8 +495,7 @@ public class MainViewModel : ViewModelBase
             }
         }
 
-        _executor.IntermediateResults.TryGetValue(node.Id, out var ownResult);
-        var ownImageLayers = ExtractImageLayers(ownResult, node.Operator.Type.OutputPorts).ToList();
+        var ownImageLayers = ExtractImageLayers(node.Id, node.Operator.Type.OutputPorts).ToList();
         if (ownImageLayers.Count > 0)
         {
             foreach (var (port, bitmap) in ownImageLayers)
@@ -456,24 +523,11 @@ public class MainViewModel : ViewModelBase
     }
 
     private IEnumerable<(string Port, BitmapSource Bitmap)> ExtractImageLayers(
-        object? result, IReadOnlyList<string> outputPorts)
+        string operatorId, IReadOnlyList<string> outputPorts)
     {
-        if (result is OpenCvSharp.Mat mat)
-        {
-            var bytes = ImageHelper.TryGetPngBytes(mat);
-            if (bytes is not null)
-                yield return (outputPorts.Count > 0 ? outputPorts[0] : "Image", BytesToBitmapSource(bytes));
-            yield break;
-        }
-        if (result is Dictionary<string, object?> dict)
-        {
-            foreach (var (key, val) in dict)
-            {
-                var bytes = ImageHelper.TryGetPngBytes(val);
-                if (bytes is not null)
-                    yield return (key, BytesToBitmapSource(bytes));
-            }
-        }
+        foreach (var port in outputPorts)
+            if (_precomputedImages.TryGetValue((operatorId, port), out var bitmap))
+                yield return (port, bitmap);
     }
 
     private static BitmapSource BytesToBitmapSource(byte[] bytes)

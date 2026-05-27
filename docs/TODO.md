@@ -9,6 +9,10 @@
 
 ## IPLab (UI project)
 
+- **FPS counter in status bar during continuous run** — while `IsRunningContinuous` is active, replace or augment the status bar text at the bottom right with a live FPS readout (e.g. "12 fps"). Measure wall-clock time between consecutive `UpdateSelectedImage` calls and display a rolling average. Hide the counter when continuous run stops.
+
+- **Per-operator execution timing** — record how long each operator's `Execute` call takes (wall-clock, excluding queue wait). Display the duration in the bottom-right corner of the operator node (e.g. "14 ms") so the user can spot bottlenecks at a glance. Also surface the timing in the Data tab of the inspector when that operator is selected. Store timings inside `FlowEx` alongside `IntermediateResults`; reset on `ClearResults`.
+
 - **Delete operator with confirmation** — right-clicking a node (or pressing Delete when it is selected) should prompt "Remove operator X?" before removing it from the graph. Deleting a node must also remove all connections to/from it and prune stale wired sources from any downstream nodes, mirroring the cleanup already done in `OnDeleteConnection`.
 
 - **Cursor change on connection hover** — when the mouse hovers over a connector line (edge) between two operators, change the cursor to indicate it is interactive (e.g. `Hand` or a custom pointer). Currently the cursor stays as the default arrow, giving no affordance that the connection can be clicked or deleted.
