@@ -34,7 +34,6 @@ public class MorphologyOperator : IOperatorType
         var shape     = parameters.GetValueOrDefault("KernelShape") as string ?? "Rect";
         var size      = Convert.ToInt32(parameters.GetValueOrDefault("KernelSize") ?? 3);
         var iters     = Convert.ToInt32(parameters.GetValueOrDefault("Iterations") ?? 1);
-        var roi       = RoiParameters.Extract(parameters);
 
         var morphOp = operation switch
         {
@@ -56,35 +55,8 @@ public class MorphologyOperator : IOperatorType
 
         using var kernel = Cv2.GetStructuringElement(morphShape, new Size(size, size));
 
-        Mat resultImage;
-        if (roi is null)
-        {
-            resultImage = new Mat();
-            Cv2.MorphologyEx(image, resultImage, morphOp, kernel, iterations: iters);
-        }
-        else
-        {
-            int x = Math.Max(0, (int)roi.X);
-            int y = Math.Max(0, (int)roi.Y);
-            int w = Math.Min((int)roi.Width,  image.Width  - x);
-            int h = Math.Min((int)roi.Height, image.Height - y);
-            if (w <= 0 || h <= 0)
-            {
-                resultImage = image.Clone();
-            }
-            else
-            {
-                var rect = new Rect(x, y, w, h);
-                using var roiSrc    = new Mat(image, rect);
-                var       roiResult = new Mat();
-                Cv2.MorphologyEx(roiSrc, roiResult, morphOp, kernel, iterations: iters);
-
-                resultImage = image.Clone();
-                using var dstRoi = new Mat(resultImage, rect);
-                roiResult.CopyTo(dstRoi);
-                roiResult.Dispose();
-            }
-        }
+        var resultImage = RoiParameters.ApplyImageFilter(image, parameters,
+            src => { var r = new Mat(); Cv2.MorphologyEx(src, r, morphOp, kernel, iterations: iters); return r; });
 
         var outputs = new Dictionary<string, object?> { ["Image"] = resultImage };
         RoiParameters.AddToOutputs(outputs, parameters);

@@ -131,6 +131,8 @@ Supports [ROI](#roi).
 
 Detects circles in a single-channel image using the Hough Gradient transform (`Cv2.HoughCircles`).
 
+Supports [ROI](#roi). When an ROI is set, detection runs only within that region; returned circle coordinates are automatically translated to full-image space.
+
 | Parameter | Type   | Connectable | Description                                        |
 |-----------|--------|-------------|----------------------------------------------------|
 | Image     | Object | Yes         | Single-channel input Mat                           |
@@ -171,7 +173,9 @@ Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 
 ## ConnectedComponents
 
-Labels connected regions in a binary (thresholded) single-channel image using `Cv2.ConnectedComponentsWithStats`. Returns one `ConnectedComponentInfo` per region (background label 0 is excluded). Visualised as orange bounding-box rectangles with centroid cross-marks in the Inspector.
+Labels connected regions in a binary (thresholded) single-channel image using `Cv2.ConnectedComponentsWithStats`.
+
+Supports [ROI](#roi). When an ROI is set, labeling runs only within that region; all returned coordinates (bounding boxes, centroids) are in full-image space, and the label image shows component colors inside the ROI on a black background. Returns one `ConnectedComponentInfo` per region (background label 0 is excluded). Visualised as orange bounding-box rectangles with centroid cross-marks in the Inspector.
 
 | Parameter        | Type   | Connectable | Description                                                    |
 |------------------|--------|-------------|----------------------------------------------------------------|
@@ -210,6 +214,12 @@ Raw output commonly contains degenerate contours (zero area, self-intersecting r
 
 ## ROI
 
-Operators that support ROI expose four extra connectable Int parameters: **ROI X**, **ROI Y**, **ROI Width**, **ROI Height**. When Width and Height are both 0 (the default) the operator runs on the full image. When a non-zero rectangle is set, the operator's effect is confined to that region; pixels outside it are copied unchanged from the input. If the rectangle lies entirely outside the image bounds after clamping, the input is returned unchanged.
+Operators that support ROI expose four extra connectable Int parameters: **ROI X**, **ROI Y**, **ROI Width**, **ROI Height**. When Width and Height are both 0 (the default) the operator runs on the full image.
 
-All four parameters are connectable, so they can be wired to outputs of upstream operators (e.g. a detected bounding box driving the ROI of a downstream filter).
+**Image-output operators** (Morphology, Threshold, InvertImage): the effect is confined to the ROI rectangle; pixels outside it are copied unchanged from the input.
+
+**Detection operators** (DetectCircles, ConnectedComponents, FindContours, DetectSimpleBlobs): detection runs only within the ROI region, and all returned coordinates are expressed in full-image space.
+
+In both cases, if the rectangle lies entirely outside the image bounds after clamping, image-output operators return the input unchanged and detection operators return an empty result.
+
+All four parameters are connectable, so they can be wired to outputs of upstream operators (e.g. a detected bounding box driving the ROI of a downstream filter). Operators that support ROI also expose **RoiX**, **RoiY**, **RoiW**, **RoiH** as output ports, so their ROI values can be forwarded to downstream operators.

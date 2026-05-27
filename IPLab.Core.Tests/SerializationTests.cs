@@ -164,7 +164,7 @@ public class SerializationTests
         var executor = new FlowEx(restored.Def);
         await executor.RunAllAsync();
 
-        var circles = (CircleSegment[])executor.IntermediateResults["O4"]!;
+        var circles = (CircleSegment[])((Dictionary<string, object?>)executor.IntermediateResults["O4"]!)["Circles"]!;
         Assert.Equal(8, circles.Length); // 2 red + 3 green + 3 blue
 
         // ── Layout round-trip check ──────────────────────────────────────────

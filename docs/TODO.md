@@ -56,10 +56,12 @@
 
 - **Type-safe output ports on `IOperatorType`**
   Currently `OutputPorts` is `IReadOnlyList<string>` (names only). Each port should
-  also declare its data type (e.g. `Mat`, `CircleSegment[]`, `int`) so that
-  `FlowDef.Validate()` can verify that a wired `ParameterValue.Source` port type
+  also declare its data type (e.g. `Mat`, `CircleSegment[]`, `int`) so that:
+  (a) `FlowDef.Validate()` can verify that a wired `ParameterValue.Source` port type
   is compatible with the target `ParameterDescriptor` type — the same way input
-  parameters are already typed via `ParameterDescriptor`.
+  parameters are already typed via `ParameterDescriptor`; and
+  (b) the UI's `AvailableSources` list (in `FlowViewModel.RebuildAvailableSources`) filters
+  out incompatible ports so the user cannot wire e.g. a `Mat` output to an `int` input.
 
 ## Loop Groups
 

@@ -16,9 +16,10 @@ public class ConnectedComponentsOperator : IOperatorType
         new() { Name = "Connectivity",     Label = "Connectivity",      Type = ParameterType.Enum,   IsConnectable = false,
                 DefaultValue = "8", Options = ["4", "8"] },
         new() { Name = "OutputLabelImage", Label = "Output Label Image", Type = ParameterType.Bool,   IsConnectable = false,
-                DefaultValue = true }
+                DefaultValue = true },
+        ..RoiParameters.Schema,
     ];
-    public IReadOnlyList<string> OutputPorts => ["Components", "LabelImage"];
+    public IReadOnlyList<string> OutputPorts => ["Components", "LabelImage", ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
@@ -26,25 +27,44 @@ public class ConnectedComponentsOperator : IOperatorType
         var connectivity     = (string?)parameters.GetValueOrDefault("Connectivity") ?? "8";
         var outputLabelImage = parameters.GetValueOrDefault("OutputLabelImage") is not false;
 
-        var conn = connectivity == "4" ? PixelConnectivity.Connectivity4 : PixelConnectivity.Connectivity8;
+        var conn    = connectivity == "4" ? PixelConnectivity.Connectivity4 : PixelConnectivity.Connectivity8;
+        var roiRect = RoiParameters.Clamp(parameters, image.Width, image.Height);
+
+        if (roiRect is { Width: <= 0 } or { Height: <= 0 })
+        {
+            var empty = new Dictionary<string, object?>
+            {
+                ["Components"] = Array.Empty<ConnectedComponentInfo>(),
+                ["LabelImage"] = outputLabelImage ? new Mat(image.Rows, image.Cols, MatType.CV_8UC3, Scalar.Black) : null,
+            };
+            RoiParameters.AddToOutputs(empty, parameters);
+            return empty;
+        }
+
+        var rect    = roiRect ?? default;
+        int offsetX = rect.X;
+        int offsetY = rect.Y;
+
+        using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
+        var       src  = crop ?? image;
 
         using var labels    = new Mat();
         using var stats     = new Mat();
         using var centroids = new Mat();
 
-        int count = Cv2.ConnectedComponentsWithStats(image, labels, stats, centroids, conn);
+        int count = Cv2.ConnectedComponentsWithStats(src, labels, stats, centroids, conn);
 
         // Label 0 is the background; start from 1.
         var result = new ConnectedComponentInfo[count - 1];
         for (int i = 1; i < count; i++)
         {
-            int left   = stats.At<int>(i, 0);
-            int top    = stats.At<int>(i, 1);
+            int left   = stats.At<int>(i, 0) + offsetX;
+            int top    = stats.At<int>(i, 1) + offsetY;
             int width  = stats.At<int>(i, 2);
             int height = stats.At<int>(i, 3);
             int area   = stats.At<int>(i, 4);
-            float cx   = (float)centroids.At<double>(i, 0);
-            float cy   = (float)centroids.At<double>(i, 1);
+            float cx   = (float)centroids.At<double>(i, 0) + offsetX;
+            float cy   = (float)centroids.At<double>(i, 1) + offsetY;
 
             result[i - 1] = new ConnectedComponentInfo(
                 Label:       i,
@@ -53,11 +73,31 @@ public class ConnectedComponentsOperator : IOperatorType
                 Centroid:    new Point2f(cx, cy));
         }
 
-        return new Dictionary<string, object?>
+        Mat? labelImg = null;
+        if (outputLabelImage)
+        {
+            var cropLabel = BuildLabelImage(labels, result, randomColors: true);
+            if (crop is not null)
+            {
+                // Embed the crop-sized label image into a full-size black mat.
+                labelImg = new Mat(image.Rows, image.Cols, MatType.CV_8UC3, Scalar.Black);
+                using var dst = new Mat(labelImg, rect);
+                cropLabel.CopyTo(dst);
+                cropLabel.Dispose();
+            }
+            else
+            {
+                labelImg = cropLabel;
+            }
+        }
+
+        var outputs = new Dictionary<string, object?>
         {
             ["Components"] = result,
-            ["LabelImage"] = outputLabelImage ? BuildLabelImage(labels, result, randomColors: true) : null
+            ["LabelImage"] = labelImg,
         };
+        RoiParameters.AddToOutputs(outputs, parameters);
+        return outputs;
     }
 
     private static Mat BuildLabelImage(Mat labels, ConnectedComponentInfo[] components, bool randomColors)
