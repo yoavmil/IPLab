@@ -91,9 +91,12 @@ public class ChannelBlobTests
         var executor = new FlowEx(flow);
         await executor.RunAllAsync();
 
-        var redBlobs   = (KeyPoint[])executor.IntermediateResults["O3"]!;
-        var greenBlobs = (KeyPoint[])executor.IntermediateResults["O4"]!;
-        var blueBlobs  = (KeyPoint[])executor.IntermediateResults["O5"]!;
+        KeyPoint[] GetBlobs(string id) =>
+            (KeyPoint[])((Dictionary<string, object?>)executor.IntermediateResults[id]!)["Blobs"]!;
+
+        var redBlobs   = GetBlobs("O3");
+        var greenBlobs = GetBlobs("O4");
+        var blueBlobs  = GetBlobs("O5");
 
         Assert.Equal(2, redBlobs.Length);
         Assert.Equal(3, greenBlobs.Length);

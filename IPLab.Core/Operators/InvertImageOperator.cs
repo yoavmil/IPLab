@@ -11,15 +11,20 @@ public class InvertImageOperator : IOperatorType
     public string Icon      => "invert";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image", Label = "Image", Type = ParameterType.Object, IsConnectable = true }
+        new() { Name = "Image", Label = "Image", Type = ParameterType.Object, IsConnectable = true },
+        ..RoiParameters.Schema,
     ];
-    public IReadOnlyList<string> OutputPorts => ["Image"];
+    public IReadOnlyList<string> OutputPorts => ["Image", ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image = (Mat)parameters["Image"]!;
-        var result = new Mat();
-        Cv2.BitwiseNot(image, result);
-        return result;
+
+        var result = RoiParameters.ApplyImageFilter(image, parameters,
+            src => { var r = new Mat(); Cv2.BitwiseNot(src, r); return r; });
+
+        var outputs = new Dictionary<string, object?> { ["Image"] = result };
+        RoiParameters.AddToOutputs(outputs, parameters);
+        return outputs;
     }
 }

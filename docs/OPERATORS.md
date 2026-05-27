@@ -79,7 +79,7 @@ Splits a BGR color image into three separate single-channel images.
 
 ## InvertImage
 
-Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Works on any channel count (grayscale or color). Useful as a pre-processing step when blobs are dark on a bright background and the downstream detector expects light on dark.
+Supports [ROI](#roi). Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Works on any channel count (grayscale or color). Useful as a pre-processing step when blobs are dark on a bright background and the downstream detector expects light on dark.
 
 | Parameter | Type   | Connectable | Description   |
 |-----------|--------|-------------|---------------|
@@ -93,7 +93,7 @@ Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Wo
 
 ## Threshold
 
-Applies a binary threshold to a single-channel image. Pixels above `Thresh` are set to `MaxVal`; all others are set to 0.
+Applies a binary threshold to a single-channel image. Supports [ROI](#roi). Pixels above `Thresh` are set to `MaxVal`; all others are set to 0.
 
 | Parameter | Type   | Connectable | Description                                    |
 |-----------|--------|-------------|------------------------------------------------|
@@ -152,6 +152,8 @@ Supports [ROI](#roi). When an ROI is set, detection runs only within that region
 
 Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 
+Supports [ROI](#roi). When an ROI is set, detection runs only within that region; returned blob coordinates are automatically translated to full-image space.
+
 | Parameter           | Type   | Connectable | Description                                                       |
 |---------------------|--------|-------------|-------------------------------------------------------------------|
 | Image               | Object | Yes         | Single-channel input Mat                                          |
@@ -194,7 +196,9 @@ Supports [ROI](#roi). When an ROI is set, labeling runs only within that region;
 
 ## FindContours
 
-Finds contours in a binary (thresholded) single-channel image using `Cv2.FindContours`. Each contour is a polygon — an ordered array of points tracing one connected boundary. Includes built-in filtering/repair to remove degenerate contours before they reach downstream operators. Visualised as yellow polygon overlays in the Inspector.
+Finds contours in a binary (thresholded) single-channel image using `Cv2.FindContours`.
+
+Supports [ROI](#roi). When an ROI is set, contour detection runs only within that region; all returned point coordinates are automatically translated to full-image space. Each contour is a polygon — an ordered array of points tracing one connected boundary. Includes built-in filtering/repair to remove degenerate contours before they reach downstream operators. Visualised as yellow polygon overlays in the Inspector.
 
 Raw output commonly contains degenerate contours (zero area, self-intersecting rings) that render as visual artifacts in the Inspector — use `Filter` or `Fix` to clean them up.
 
