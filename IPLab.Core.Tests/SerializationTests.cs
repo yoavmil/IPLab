@@ -12,6 +12,60 @@ public class SerializationTests
         Path.Combine(AppContext.BaseDirectory, "TestImages", "RGBCircles.png");
 
     [Fact]
+    public void RoiParams_WithValues_SurviveRoundTrip()
+    {
+        var flowDef = new FlowDef(
+        [
+            new Operator
+            {
+                Id           = "O1",
+                DisplayName  = "Morph",
+                Type         = new MorphologyOperator(),
+                Parameters   =
+                [
+                    new ParameterValue { Name = "RoiX", Value = 10 },
+                    new ParameterValue { Name = "RoiY", Value = 20 },
+                    new ParameterValue { Name = "RoiW", Value = 50 },
+                    new ParameterValue { Name = "RoiH", Value = 40 },
+                ],
+                Dependencies = []
+            }
+        ]);
+
+        var json     = FlowDefSerializer.Serialize(new Flow(flowDef, new FlowLayout([], [])));
+        var restored = FlowDefSerializer.Deserialize(json, OperatorRegistry.CreateDefault());
+
+        var p = restored.Def.Operators.Single().Parameters.ToDictionary(v => v.Name);
+        Assert.Equal(10, Convert.ToInt32(p["RoiX"].Value));
+        Assert.Equal(20, Convert.ToInt32(p["RoiY"].Value));
+        Assert.Equal(50, Convert.ToInt32(p["RoiW"].Value));
+        Assert.Equal(40, Convert.ToInt32(p["RoiH"].Value));
+    }
+
+    [Fact]
+    public void RoiParams_Absent_ExtractReturnsNull()
+    {
+        var flowDef = new FlowDef(
+        [
+            new Operator
+            {
+                Id           = "O1",
+                DisplayName  = "Morph",
+                Type         = new MorphologyOperator(),
+                Parameters   = [], // no ROI params
+                Dependencies = []
+            }
+        ]);
+
+        var json     = FlowDefSerializer.Serialize(new Flow(flowDef, new FlowLayout([], [])));
+        var restored = FlowDefSerializer.Deserialize(json, OperatorRegistry.CreateDefault());
+
+        var paramDict = restored.Def.Operators.Single().Parameters
+            .ToDictionary(v => v.Name, v => v.Value);
+        Assert.Null(RoiParameters.Extract(paramDict!));
+    }
+
+    [Fact]
     public void Deserialize_EmptyString_Throws()
     {
         Assert.Throws<System.Text.Json.JsonException>(

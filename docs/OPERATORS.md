@@ -111,6 +111,8 @@ Applies a binary threshold to a single-channel image. Pixels above `Thresh` are 
 
 Applies a morphological operation to an image using `Cv2.MorphologyEx`. Works on any single- or multi-channel image. Common uses: erode/dilate to shrink or expand bright regions; open to remove small bright specks; close to fill small dark holes; gradient for edge outlines.
 
+Supports [ROI](#roi).
+
 | Parameter    | Type   | Connectable | Description                                                                                        |
 |--------------|--------|-------------|----------------------------------------------------------------------------------------------------|
 | Image        | Object | Yes         | Input Mat (any channel count)                                                                      |
@@ -203,3 +205,11 @@ Raw output commonly contains degenerate contours (zero area, self-intersecting r
 | Output Port | Type      | Description                                        |
 |-------------|-----------|----------------------------------------------------|
 | Contours    | Point[][] | Array of contours, each an ordered array of points |
+
+---
+
+## ROI
+
+Operators that support ROI expose four extra connectable Int parameters: **ROI X**, **ROI Y**, **ROI Width**, **ROI Height**. When Width and Height are both 0 (the default) the operator runs on the full image. When a non-zero rectangle is set, the operator's effect is confined to that region; pixels outside it are copied unchanged from the input. If the rectangle lies entirely outside the image bounds after clamping, the input is returned unchanged.
+
+All four parameters are connectable, so they can be wired to outputs of upstream operators (e.g. a detected bounding box driving the ROI of a downstream filter).

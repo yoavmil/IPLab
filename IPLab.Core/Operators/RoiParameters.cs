@@ -1,0 +1,24 @@
+using IPLab.Core.Models;
+
+namespace IPLab.Core.Operators;
+
+public static class RoiParameters
+{
+    public static IReadOnlyList<ParameterDescriptor> Schema =>
+    [
+        new() { Name = "RoiX", Label = "ROI X",      Type = ParameterType.Int, IsConnectable = true, DefaultValue = 0 },
+        new() { Name = "RoiY", Label = "ROI Y",      Type = ParameterType.Int, IsConnectable = true, DefaultValue = 0 },
+        new() { Name = "RoiW", Label = "ROI Width",  Type = ParameterType.Int, IsConnectable = true, DefaultValue = 0 },
+        new() { Name = "RoiH", Label = "ROI Height", Type = ParameterType.Int, IsConnectable = true, DefaultValue = 0 },
+    ];
+
+    // Returns null when W=0 or H=0 — operator should run on the full image.
+    public static RoiDef? Extract(IReadOnlyDictionary<string, object?> parameters)
+    {
+        var x = Convert.ToInt32(parameters.GetValueOrDefault("RoiX") ?? 0);
+        var y = Convert.ToInt32(parameters.GetValueOrDefault("RoiY") ?? 0);
+        var w = Convert.ToInt32(parameters.GetValueOrDefault("RoiW") ?? 0);
+        var h = Convert.ToInt32(parameters.GetValueOrDefault("RoiH") ?? 0);
+        return (w > 0 && h > 0) ? new RoiDef(x, y, w, h) : null;
+    }
+}

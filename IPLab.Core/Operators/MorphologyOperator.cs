@@ -22,6 +22,7 @@ public class MorphologyOperator : IOperatorType
                 DefaultValue = 3, Min = 1, Max = 99 },
         new() { Name = "Iterations",  Label = "Iterations",   Type = ParameterType.Int,    IsConnectable = false,
                 DefaultValue = 1, Min = 1, Max = 20 },
+        ..RoiParameters.Schema,
     ];
 
     public IReadOnlyList<string> OutputPorts => ["Image"];
@@ -33,6 +34,7 @@ public class MorphologyOperator : IOperatorType
         var shape     = parameters.GetValueOrDefault("KernelShape") as string ?? "Rect";
         var size      = Convert.ToInt32(parameters.GetValueOrDefault("KernelSize") ?? 3);
         var iters     = Convert.ToInt32(parameters.GetValueOrDefault("Iterations") ?? 1);
+        var roi       = RoiParameters.Extract(parameters);
 
         var morphOp = operation switch
         {
@@ -53,8 +55,31 @@ public class MorphologyOperator : IOperatorType
         };
 
         using var kernel = Cv2.GetStructuringElement(morphShape, new Size(size, size));
-        var output = new Mat();
-        Cv2.MorphologyEx(image, output, morphOp, kernel, iterations: iters);
-        return output;
+
+        if (roi is null)
+        {
+            var output = new Mat();
+            Cv2.MorphologyEx(image, output, morphOp, kernel, iterations: iters);
+            return output;
+        }
+        else 
+        {
+            int x = Math.Max(0, (int)roi.X);
+            int y = Math.Max(0, (int)roi.Y);
+            int w = Math.Min((int)roi.Width,  image.Width  - x);
+            int h = Math.Min((int)roi.Height, image.Height - y);
+            if (w <= 0 || h <= 0) return image.Clone();
+
+            var rect = new Rect(x, y, w, h);
+            using var roiSrc    = new Mat(image, rect);
+            var       roiResult = new Mat();
+            Cv2.MorphologyEx(roiSrc, roiResult, morphOp, kernel, iterations: iters);
+
+            var fullOutput = image.Clone();
+            using var dstRoi = new Mat(fullOutput, rect);
+            roiResult.CopyTo(dstRoi);
+            roiResult.Dispose();
+            return fullOutput;
+        }
     }
 }
