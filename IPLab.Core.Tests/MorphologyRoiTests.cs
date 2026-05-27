@@ -9,7 +9,8 @@ public class MorphologyRoiTests
 
     private static Mat Execute(Mat image, int roiX = 0, int roiY = 0, int roiW = 0, int roiH = 0,
         string operation = "Erode", int kernelSize = 3)
-        => (Mat)Op.Execute(new Dictionary<string, object?>
+    {
+        var outputs = (Dictionary<string, object?>)Op.Execute(new Dictionary<string, object?>
         {
             ["Image"]       = image,
             ["Operation"]   = operation,
@@ -21,6 +22,8 @@ public class MorphologyRoiTests
             ["RoiW"]        = roiW,
             ["RoiH"]        = roiH,
         })!;
+        return (Mat)outputs["Image"]!;
+    }
 
     // ── RoiParameters.Extract ────────────────────────────────────────────────
 

@@ -25,7 +25,7 @@ public class MorphologyOperator : IOperatorType
         ..RoiParameters.Schema,
     ];
 
-    public IReadOnlyList<string> OutputPorts => ["Image"];
+    public IReadOnlyList<string> OutputPorts => ["Image", ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
@@ -56,30 +56,38 @@ public class MorphologyOperator : IOperatorType
 
         using var kernel = Cv2.GetStructuringElement(morphShape, new Size(size, size));
 
+        Mat resultImage;
         if (roi is null)
         {
-            var output = new Mat();
-            Cv2.MorphologyEx(image, output, morphOp, kernel, iterations: iters);
-            return output;
+            resultImage = new Mat();
+            Cv2.MorphologyEx(image, resultImage, morphOp, kernel, iterations: iters);
         }
-        else 
+        else
         {
             int x = Math.Max(0, (int)roi.X);
             int y = Math.Max(0, (int)roi.Y);
             int w = Math.Min((int)roi.Width,  image.Width  - x);
             int h = Math.Min((int)roi.Height, image.Height - y);
-            if (w <= 0 || h <= 0) return image.Clone();
+            if (w <= 0 || h <= 0)
+            {
+                resultImage = image.Clone();
+            }
+            else
+            {
+                var rect = new Rect(x, y, w, h);
+                using var roiSrc    = new Mat(image, rect);
+                var       roiResult = new Mat();
+                Cv2.MorphologyEx(roiSrc, roiResult, morphOp, kernel, iterations: iters);
 
-            var rect = new Rect(x, y, w, h);
-            using var roiSrc    = new Mat(image, rect);
-            var       roiResult = new Mat();
-            Cv2.MorphologyEx(roiSrc, roiResult, morphOp, kernel, iterations: iters);
-
-            var fullOutput = image.Clone();
-            using var dstRoi = new Mat(fullOutput, rect);
-            roiResult.CopyTo(dstRoi);
-            roiResult.Dispose();
-            return fullOutput;
+                resultImage = image.Clone();
+                using var dstRoi = new Mat(resultImage, rect);
+                roiResult.CopyTo(dstRoi);
+                roiResult.Dispose();
+            }
         }
+
+        var outputs = new Dictionary<string, object?> { ["Image"] = resultImage };
+        RoiParameters.AddToOutputs(outputs, parameters);
+        return outputs;
     }
 }
