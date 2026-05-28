@@ -11,6 +11,7 @@
 
 ## Filters
 - [Threshold](#threshold) — apply binary threshold to a single-channel image
+- [GaussianBlur](#gaussianblur) — smooth an image with a Gaussian kernel
 - [Morphology](#morphology) — morphological operations (erode, dilate, open, close, gradient, top-hat, black-hat)
 - [Thinning](#thinning) — skeletonize a binary image via iterative thinning (Zhang-Suen or Guo-Hall)
 
@@ -111,13 +112,32 @@ Supports [ROI](#roi). Inverts all pixel values in the image using a bitwise NOT 
 
 ## Threshold
 
-Applies a binary threshold to a single-channel image. Supports [ROI](#roi). Pixels above `Thresh` are set to `MaxVal`; all others are set to 0.
+Applies a threshold to a single-channel image using `Cv2.Threshold`. Supports [ROI](#roi).
 
-| Parameter | Type   | Connectable | Description                                    |
-|-----------|--------|-------------|------------------------------------------------|
-| Image     | Object | Yes         | Single-channel input Mat                       |
-| Thresh    | Double | No          | Threshold value (default 128)                  |
-| MaxVal    | Double | No          | Value assigned to passing pixels (default 255) |
+| Parameter | Type   | Connectable | Description                                                                                                                                      |
+|-----------|--------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| Image     | Object | Yes         | Single-channel input Mat                                                                                                                         |
+| Method    | Enum   | No          | `Fixed` (default) — use `Thresh` value; `Otsu` — auto-compute optimal threshold from histogram (best for bimodal images, ignores `Thresh`); `Triangle` — triangle algorithm (best for unimodal histograms, ignores `Thresh`) |
+| Output Type | Enum   | No        | `Binary` (default) — above→255, below→0; `BinaryInv` — inverted binary; `Trunc` — above→Thresh, below unchanged; `ToZero` — above unchanged, below→0; `ToZeroInv` — above→0, below unchanged |
+| Thresh      | Double | No        | Threshold value (default 128); ignored when Method is `Otsu` or `Triangle`                                                                     |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
+
+## GaussianBlur
+
+Smooths an image using a Gaussian kernel (`Cv2.GaussianBlur`). Works on any channel count. Use before thresholding to reduce noise and suppress spurious regions that cause extra skeleton branches during thinning.
+
+Supports [ROI](#roi).
+
+| Parameter   | Type   | Connectable | Description                                                                                     |
+|-------------|--------|-------------|-------------------------------------------------------------------------------------------------|
+| Image       | Object | Yes         | Input Mat (any channel count)                                                                   |
+| Kernel Size | Int    | No          | Side length of the Gaussian kernel in pixels (default 5, always rounded up to nearest odd)      |
+| Sigma       | Double | No          | Standard deviation in X and Y (default 0 — auto-computed from kernel size)                      |
 
 | Output Port | Type |
 |-------------|------|

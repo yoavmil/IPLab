@@ -102,8 +102,8 @@ public class MainViewModel : ViewModelBase
         if (p.IsWired && p.SelectedSource is { } src && _executor is not null &&
             _executor.IntermediateResults.TryGetValue(src.OperatorId, out var result) &&
             result is Dictionary<string, object?> dict &&
-            dict.TryGetValue(src.Port, out var raw) && raw is not null)
-            return Convert.ToInt32(raw);
+            dict.TryGetValue(src.Port, out var raw) && raw is IConvertible conv)
+            return conv.ToInt32(null);
         return int.TryParse(p.ValueText, out var v) ? v : 0;
     }
 
