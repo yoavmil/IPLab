@@ -3,6 +3,9 @@
     <Project Path="3rd/Nodify/Nodify.csproj" />
     <Project Path="3rd/RControls/RControls.csproj" Id="16d7e75b-02fa-4b97-9ccd-dd0db936f481" />
   </Folder>
+  <Folder Name="/Scripts/">
+    <Project Path="scripts/Waviness/Waviness.csproj" Id="e2e7ff32-aeca-41d1-8e84-c950486f7da5" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path="CLAUDE.md" />
   </Folder>

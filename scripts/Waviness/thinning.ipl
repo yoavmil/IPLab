@@ -1,0 +1,246 @@
+{
+  "operators": [
+    {
+      "id": "O1",
+      "displayName": "LoadImage",
+      "type": "LoadImage",
+      "parameters": [
+        {
+          "name": "FilePath",
+          "value": "TestImages/trenches.jpg"
+        }
+      ],
+      "dependencies": [],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "O2",
+      "displayName": "ConvertToGrayscale",
+      "type": "ConvertToGrayscale",
+      "parameters": [
+        {
+          "name": "Image",
+          "source": {
+            "operatorId": "O1",
+            "port": "Image"
+          }
+        },
+        {
+          "name": "Method",
+          "value": "Luminance"
+        }
+      ],
+      "dependencies": [
+        {
+          "dependencyId": "D_O1_O2",
+          "operatorId": "O1",
+          "sourceSide": "right",
+          "targetSide": "right"
+        }
+      ],
+      "x": 47,
+      "y": 115
+    },
+    {
+      "id": "O3",
+      "displayName": "Morphology",
+      "type": "Morphology",
+      "parameters": [
+        {
+          "name": "Image",
+          "source": {
+            "operatorId": "O4",
+            "port": "Image"
+          }
+        },
+        {
+          "name": "Operation",
+          "value": "Open"
+        },
+        {
+          "name": "KernelShape",
+          "value": "Rect"
+        },
+        {
+          "name": "KernelSize",
+          "value": 20
+        },
+        {
+          "name": "Iterations",
+          "value": 1
+        },
+        {
+          "name": "RoiX",
+          "value": 0
+        },
+        {
+          "name": "RoiY",
+          "value": 0
+        },
+        {
+          "name": "RoiW",
+          "value": 0
+        },
+        {
+          "name": "RoiH",
+          "value": 0
+        }
+      ],
+      "dependencies": [
+        {
+          "dependencyId": "D_O4_O3",
+          "operatorId": "O4",
+          "sourceSide": "bottom",
+          "targetSide": "left"
+        }
+      ],
+      "x": 308,
+      "y": 382
+    },
+    {
+      "id": "O4",
+      "displayName": "Threshold",
+      "type": "Threshold",
+      "parameters": [
+        {
+          "name": "Image",
+          "source": {
+            "operatorId": "O6",
+            "port": "Image"
+          }
+        },
+        {
+          "name": "Method",
+          "value": "Fixed"
+        },
+        {
+          "name": "Type",
+          "value": "Binary"
+        },
+        {
+          "name": "Thresh",
+          "value": 40
+        },
+        {
+          "name": "RoiX",
+          "value": 0
+        },
+        {
+          "name": "RoiY",
+          "value": 0
+        },
+        {
+          "name": "RoiW",
+          "value": 0
+        },
+        {
+          "name": "RoiH",
+          "value": 0
+        }
+      ],
+      "dependencies": [
+        {
+          "dependencyId": "D_O6_O4",
+          "operatorId": "O6",
+          "sourceSide": "bottom",
+          "targetSide": "right"
+        }
+      ],
+      "x": 59,
+      "y": 299
+    },
+    {
+      "id": "O5",
+      "displayName": "Thinning",
+      "type": "Thinning",
+      "parameters": [
+        {
+          "name": "Image",
+          "source": {
+            "operatorId": "O3",
+            "port": "Image"
+          }
+        },
+        {
+          "name": "ThinningType",
+          "value": "GuoHall"
+        },
+        {
+          "name": "RoiX",
+          "value": 0
+        },
+        {
+          "name": "RoiY",
+          "value": 0
+        },
+        {
+          "name": "RoiW",
+          "value": 0
+        },
+        {
+          "name": "RoiH",
+          "value": 0
+        }
+      ],
+      "dependencies": [
+        {
+          "dependencyId": "D_O3_O5",
+          "operatorId": "O3",
+          "sourceSide": "bottom",
+          "targetSide": "right"
+        }
+      ],
+      "x": 66,
+      "y": 467
+    },
+    {
+      "id": "O6",
+      "displayName": "GaussianBlur",
+      "type": "GaussianBlur",
+      "parameters": [
+        {
+          "name": "Image",
+          "source": {
+            "operatorId": "O2",
+            "port": "Image"
+          }
+        },
+        {
+          "name": "KernelSize",
+          "value": 15
+        },
+        {
+          "name": "Sigma",
+          "value": 5
+        },
+        {
+          "name": "RoiX",
+          "value": 0
+        },
+        {
+          "name": "RoiY",
+          "value": 0
+        },
+        {
+          "name": "RoiW",
+          "value": 0
+        },
+        {
+          "name": "RoiH",
+          "value": 0
+        }
+      ],
+      "dependencies": [
+        {
+          "dependencyId": "D_O2_O6",
+          "operatorId": "O2",
+          "sourceSide": "right",
+          "targetSide": "top"
+        }
+      ],
+      "x": 305,
+      "y": 238
+    }
+  ]
+}
