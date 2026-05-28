@@ -12,6 +12,24 @@
 ## Filters
 - [Threshold](#threshold) — apply binary threshold to a single-channel image
 - [Morphology](#morphology) — morphological operations (erode, dilate, open, close, gradient, top-hat, black-hat)
+- [Thinning](#thinning) — skeletonize a binary image via iterative thinning (Zhang-Suen or Guo-Hall)
+
+## Thinning
+
+Skeletonizes a binary single-channel image using iterative thinning (`CvXImgProc.Thinning`). Reduces foreground blobs to single-pixel-wide skeletons while preserving connectivity. Input must be an 8-bit single-channel image with pixel values 0 or 255.
+
+Supports [ROI](#roi).
+
+| Parameter    | Type   | Connectable | Description                                                                                   |
+|--------------|--------|-------------|-----------------------------------------------------------------------------------------------|
+| Image        | Object | Yes         | Binary single-channel input Mat (8-bit, values 0/255)                                         |
+| ThinningType | Enum   | No          | `ZhangSuen` (default) — Zhang-Suen algorithm; `GuoHall` — Guo-Hall algorithm (slightly faster) |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
 
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
