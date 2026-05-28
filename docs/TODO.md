@@ -31,6 +31,8 @@
 
 - **Introduce a DI container and service layer for inter-ViewModel communication** — currently, callbacks like `onOpenSettings` and `onSelected` are threaded through `MainViewModel → FlowViewModel → BuildNodes → OperatorNodeViewModel` constructors. Replace with an `INodeInteractionService` (or similar) that ViewModels take as a constructor dependency, removing the callback parameters from the chain. This also makes it easier to add new cross-ViewModel interactions without touching intermediate classes.
 
+- **Abstract the executor result store behind an interface** — `MainViewModel.ResolveRoiParam` directly accesses `_executor.IntermediateResults` and casts values out of a raw `Dictionary<string, object?>`, coupling the ViewModel to the executor's internal storage layout. Introduce an `IExecutionResults` interface on `FlowEx` (e.g. `bool TryGetPortValue(string operatorId, string port, out object? value)`) so the ViewModel only depends on the interface, not on the concrete dict structure. This makes the ROI overlay (and any similar feature that needs to read runtime values from the ViewModel) testable without a real executor instance. Pairs naturally with the DI/service-layer item above.
+
 - **Multi-image input in the image source operator** — extend the `LoadImageOperator` (or add a dedicated `ImageSourceOperator`) to hold a list of image file paths rather than a single path. The operator's result panel should display thumbnails of all listed images beneath the main preview; clicking a thumbnail loads that image as the operator's active output, triggering a full re-run of the flow so all downstream operators update. The parameter editor should allow adding/removing files from the list (e.g. via a file-picker or drag-and-drop). This lets the user quickly toggle between images and visually compare how the same pipeline handles different inputs.
 
 - **Output display settings per operator** — let the user configure how detection results are visualised in the inspector. For annotation color, offer three modes: a single fixed color (color-picker), a random-per-entity color (stable hash of entity index so colors don't shuffle on re-run), and a heatmap (map a scalar — e.g. circle radius or blob response — to a gradient). Store the chosen mode and parameters inside the operator's display metadata so settings persist with the saved flow. Start with circle/blob annotations; apply the same system to any future operator that produces non-image output.
@@ -56,10 +58,12 @@
 
 - **Type-safe output ports on `IOperatorType`**
   Currently `OutputPorts` is `IReadOnlyList<string>` (names only). Each port should
-  also declare its data type (e.g. `Mat`, `CircleSegment[]`, `int`) so that
-  `FlowDef.Validate()` can verify that a wired `ParameterValue.Source` port type
+  also declare its data type (e.g. `Mat`, `CircleSegment[]`, `int`) so that:
+  (a) `FlowDef.Validate()` can verify that a wired `ParameterValue.Source` port type
   is compatible with the target `ParameterDescriptor` type — the same way input
-  parameters are already typed via `ParameterDescriptor`.
+  parameters are already typed via `ParameterDescriptor`; and
+  (b) the UI's `AvailableSources` list (in `FlowViewModel.RebuildAvailableSources`) filters
+  out incompatible ports so the user cannot wire e.g. a `Mat` output to an `int` input.
 
 ## Loop Groups
 

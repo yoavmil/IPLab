@@ -26,9 +26,10 @@ public class FindContoursOperator : IOperatorType
                 Options = ["None", "Filter", "Fix"] },
         new() { Name = "MinArea", Label = "Min Area", Type = ParameterType.Double, IsConnectable = false,
                 DefaultValue = 1.0 },
+        ..RoiParameters.Schema,
     ];
 
-    public IReadOnlyList<string> OutputPorts => ["Contours"];
+    public IReadOnlyList<string> OutputPorts => ["Contours", ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
@@ -54,8 +55,19 @@ public class FindContoursOperator : IOperatorType
             _          => ContourApproximationModes.ApproxSimple
         };
 
-        Cv2.FindContours(image, out Point[][] contours, out _,
-                         retrievalMode, approxMethod);
+        var roiRect = RoiParameters.Clamp(parameters, image.Width, image.Height);
+        if (roiRect is { Width: <= 0 } or { Height: <= 0 })
+        {
+            var empty = new Dictionary<string, object?> { ["Contours"] = Array.Empty<Point[]>() };
+            RoiParameters.AddToOutputs(empty, parameters);
+            return empty;
+        }
+
+        var rect      = roiRect ?? default;
+        using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
+        var       src  = crop ?? image;
+
+        Cv2.FindContours(src, out Point[][] contours, out _, retrievalMode, approxMethod);
 
         Point[][] output = filter switch
         {
@@ -68,6 +80,12 @@ public class FindContoursOperator : IOperatorType
             _        => contours
         };
 
-        return new Dictionary<string, object?> { ["Contours"] = output };
+        // Translate crop-local coordinates back to full-image coordinates.
+        if (roiRect.HasValue)
+            output = [.. output.Select(c => c.Select(p => new Point(p.X + rect.X, p.Y + rect.Y)).ToArray())];
+
+        var outputs = new Dictionary<string, object?> { ["Contours"] = output };
+        RoiParameters.AddToOutputs(outputs, parameters);
+        return outputs;
     }
 }

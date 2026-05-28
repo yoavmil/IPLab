@@ -21,9 +21,10 @@ public class DetectSimpleBlobsOperator : IOperatorType
         new() { Name = "MinThreshold",       Label = "Min Threshold",         Type = ParameterType.Double, IsConnectable = false, DefaultValue = 100.0 },
         new() { Name = "MaxThreshold",       Label = "Max Threshold",         Type = ParameterType.Double, IsConnectable = false, DefaultValue = 200.0 },
         new() { Name = "ThresholdStep",      Label = "Threshold Step",        Type = ParameterType.Double, IsConnectable = false, DefaultValue = 10.0  },
-        new() { Name = "MinRepeatability",   Label = "Min Repeatability",     Type = ParameterType.Int,    IsConnectable = false, DefaultValue = 2     }
+        new() { Name = "MinRepeatability",   Label = "Min Repeatability",     Type = ParameterType.Int,    IsConnectable = false, DefaultValue = 2     },
+        ..RoiParameters.Schema,
     ];
-    public IReadOnlyList<string> OutputPorts => ["Blobs"];
+    public IReadOnlyList<string> OutputPorts => ["Blobs", ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
@@ -56,7 +57,28 @@ public class DetectSimpleBlobsOperator : IOperatorType
             MinRepeatability     = minRepeatability
         };
 
+        var roiRect = RoiParameters.Clamp(parameters, image.Width, image.Height);
+        if (roiRect is { Width: <= 0 } or { Height: <= 0 })
+        {
+            var empty = new Dictionary<string, object?> { ["Blobs"] = Array.Empty<KeyPoint>() };
+            RoiParameters.AddToOutputs(empty, parameters);
+            return empty;
+        }
+
+        var rect      = roiRect ?? default;
+        using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
+        var       src  = crop ?? image;
+
         using var detector = SimpleBlobDetector.Create(p);
-        return detector.Detect(image);
+        var blobs = detector.Detect(src);
+
+        // Translate crop-local coordinates back to full-image coordinates.
+        if (roiRect.HasValue)
+            blobs = [.. blobs.Select(k => new KeyPoint(k.Pt.X + rect.X, k.Pt.Y + rect.Y,
+                                                        k.Size, k.Angle, k.Response, k.Octave, k.ClassId))];
+
+        var outputs = new Dictionary<string, object?> { ["Blobs"] = blobs };
+        RoiParameters.AddToOutputs(outputs, parameters);
+        return outputs;
     }
 }

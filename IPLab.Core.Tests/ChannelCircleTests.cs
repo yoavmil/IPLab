@@ -129,9 +129,12 @@ public class ChannelCircleTests
         var executor = new FlowEx(flow);
         await executor.RunAllAsync();
 
-        var redCircles   = (CircleSegment[])executor.IntermediateResults["O6"]!;
-        var greenCircles = (CircleSegment[])executor.IntermediateResults["O7"]!;
-        var blueCircles  = (CircleSegment[])executor.IntermediateResults["O8"]!;
+        CircleSegment[] GetCircles(string id) =>
+            (CircleSegment[])((Dictionary<string, object?>)executor.IntermediateResults[id]!)["Circles"]!;
+
+        var redCircles   = GetCircles("O6");
+        var greenCircles = GetCircles("O7");
+        var blueCircles  = GetCircles("O8");
 
         Assert.Equal(2, redCircles.Length);
         Assert.Equal(3, greenCircles.Length);

@@ -38,6 +38,8 @@ See [IPLab.UI/CLAUDE.md](IPLab.UI/CLAUDE.md) for UI-specific rules and Nodify im
 
 **Rule: whenever a new operator is added to `IPLab.Core.Operators`, add a corresponding entry to [docs/OPERATORS.md](docs/OPERATORS.md).**
 
+**Rule: whenever a new operator is added, decide explicitly whether it supports ROI and discuss with the user before implementing. If it does, follow the pattern in `RoiParameters` — filter operators use `ApplyImageFilter`, detection operators use `Clamp` + coordinate translation. See [docs/OPERATORS.md#roi](docs/OPERATORS.md) for the full list of ROI-supporting operators.**
+
 **Rule: after any meaningful change to `IPLab.Core` or its tests, run the full test suite (`dotnet test`) and confirm it passes before considering the task done.**
 
 ## Design Decisions

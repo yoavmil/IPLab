@@ -79,7 +79,7 @@ Splits a BGR color image into three separate single-channel images.
 
 ## InvertImage
 
-Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Works on any channel count (grayscale or color). Useful as a pre-processing step when blobs are dark on a bright background and the downstream detector expects light on dark.
+Supports [ROI](#roi). Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Works on any channel count (grayscale or color). Useful as a pre-processing step when blobs are dark on a bright background and the downstream detector expects light on dark.
 
 | Parameter | Type   | Connectable | Description   |
 |-----------|--------|-------------|---------------|
@@ -93,7 +93,7 @@ Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Wo
 
 ## Threshold
 
-Applies a binary threshold to a single-channel image. Pixels above `Thresh` are set to `MaxVal`; all others are set to 0.
+Applies a binary threshold to a single-channel image. Supports [ROI](#roi). Pixels above `Thresh` are set to `MaxVal`; all others are set to 0.
 
 | Parameter | Type   | Connectable | Description                                    |
 |-----------|--------|-------------|------------------------------------------------|
@@ -110,6 +110,8 @@ Applies a binary threshold to a single-channel image. Pixels above `Thresh` are 
 ## Morphology
 
 Applies a morphological operation to an image using `Cv2.MorphologyEx`. Works on any single- or multi-channel image. Common uses: erode/dilate to shrink or expand bright regions; open to remove small bright specks; close to fill small dark holes; gradient for edge outlines.
+
+Supports [ROI](#roi).
 
 | Parameter    | Type   | Connectable | Description                                                                                        |
 |--------------|--------|-------------|----------------------------------------------------------------------------------------------------|
@@ -129,6 +131,8 @@ Applies a morphological operation to an image using `Cv2.MorphologyEx`. Works on
 
 Detects circles in a single-channel image using the Hough Gradient transform (`Cv2.HoughCircles`).
 
+Supports [ROI](#roi). When an ROI is set, detection runs only within that region; returned circle coordinates are automatically translated to full-image space.
+
 | Parameter | Type   | Connectable | Description                                        |
 |-----------|--------|-------------|----------------------------------------------------|
 | Image     | Object | Yes         | Single-channel input Mat                           |
@@ -147,6 +151,8 @@ Detects circles in a single-channel image using the Hough Gradient transform (`C
 ## DetectSimpleBlobs
 
 Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
+
+Supports [ROI](#roi). When an ROI is set, detection runs only within that region; returned blob coordinates are automatically translated to full-image space.
 
 | Parameter           | Type   | Connectable | Description                                                       |
 |---------------------|--------|-------------|-------------------------------------------------------------------|
@@ -169,7 +175,9 @@ Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 
 ## ConnectedComponents
 
-Labels connected regions in a binary (thresholded) single-channel image using `Cv2.ConnectedComponentsWithStats`. Returns one `ConnectedComponentInfo` per region (background label 0 is excluded). Visualised as orange bounding-box rectangles with centroid cross-marks in the Inspector.
+Labels connected regions in a binary (thresholded) single-channel image using `Cv2.ConnectedComponentsWithStats`.
+
+Supports [ROI](#roi). When an ROI is set, labeling runs only within that region; all returned coordinates (bounding boxes, centroids) are in full-image space, and the label image shows component colors inside the ROI on a black background. Returns one `ConnectedComponentInfo` per region (background label 0 is excluded). Visualised as orange bounding-box rectangles with centroid cross-marks in the Inspector.
 
 | Parameter        | Type   | Connectable | Description                                                    |
 |------------------|--------|-------------|----------------------------------------------------------------|
@@ -188,7 +196,9 @@ Labels connected regions in a binary (thresholded) single-channel image using `C
 
 ## FindContours
 
-Finds contours in a binary (thresholded) single-channel image using `Cv2.FindContours`. Each contour is a polygon — an ordered array of points tracing one connected boundary. Includes built-in filtering/repair to remove degenerate contours before they reach downstream operators. Visualised as yellow polygon overlays in the Inspector.
+Finds contours in a binary (thresholded) single-channel image using `Cv2.FindContours`.
+
+Supports [ROI](#roi). When an ROI is set, contour detection runs only within that region; all returned point coordinates are automatically translated to full-image space. Each contour is a polygon — an ordered array of points tracing one connected boundary. Includes built-in filtering/repair to remove degenerate contours before they reach downstream operators. Visualised as yellow polygon overlays in the Inspector.
 
 Raw output commonly contains degenerate contours (zero area, self-intersecting rings) that render as visual artifacts in the Inspector — use `Filter` or `Fix` to clean them up.
 
@@ -203,3 +213,17 @@ Raw output commonly contains degenerate contours (zero area, self-intersecting r
 | Output Port | Type      | Description                                        |
 |-------------|-----------|----------------------------------------------------|
 | Contours    | Point[][] | Array of contours, each an ordered array of points |
+
+---
+
+## ROI
+
+Operators that support ROI expose four extra connectable Int parameters: **ROI X**, **ROI Y**, **ROI Width**, **ROI Height**. When Width and Height are both 0 (the default) the operator runs on the full image.
+
+**Image-output operators** (Morphology, Threshold, InvertImage): the effect is confined to the ROI rectangle; pixels outside it are copied unchanged from the input.
+
+**Detection operators** (DetectCircles, ConnectedComponents, FindContours, DetectSimpleBlobs): detection runs only within the ROI region, and all returned coordinates are expressed in full-image space.
+
+In both cases, if the rectangle lies entirely outside the image bounds after clamping, image-output operators return the input unchanged and detection operators return an empty result.
+
+All four parameters are connectable, so they can be wired to outputs of upstream operators (e.g. a detected bounding box driving the ROI of a downstream filter). Operators that support ROI also expose **RoiX**, **RoiY**, **RoiW**, **RoiH** as output ports, so their ROI values can be forwarded to downstream operators.

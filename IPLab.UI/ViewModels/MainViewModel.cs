@@ -1,5 +1,6 @@
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using System.ComponentModel;
 using System.Collections.ObjectModel;
 using ConnectedComponentInfo = IPLab.Core.Models.ConnectedComponentInfo;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
@@ -46,7 +47,8 @@ public class MainViewModel : ViewModelBase
         CircleSegment[]?          Circles    = null,
         KeyPoint[]?               Blobs      = null,
         ConnectedComponentInfo[]? Components = null,
-        OpenCvSharp.Point[][]?    Contours   = null);
+        OpenCvSharp.Point[][]?    Contours   = null,
+        RoiDef?                   Roi        = null);
 
     private InspectorState _state = new();
     public  InspectorState State
@@ -57,16 +59,69 @@ public class MainViewModel : ViewModelBase
 
     public event Action<OperatorNodeViewModel?>? EditingNodeChanged;
 
+    private List<ParameterEditViewModel> _roiParamSubscriptions = [];
+
     private OperatorNodeViewModel? _editingNode;
     public OperatorNodeViewModel? EditingNode
     {
         get => _editingNode;
         private set
         {
+            foreach (var p in _roiParamSubscriptions)
+                p.PropertyChanged -= OnRoiParamChanged;
+            _roiParamSubscriptions.Clear();
+
             _editingNode = value;
+
+            if (_editingNode is not null)
+            {
+                _roiParamSubscriptions = _editingNode.Parameters
+                    .Where(p => p.Name is "RoiX" or "RoiY" or "RoiW" or "RoiH")
+                    .ToList();
+                foreach (var p in _roiParamSubscriptions)
+                    p.PropertyChanged += OnRoiParamChanged;
+            }
+
+            RefreshRoiOverlay();
             RaisePropertyChanged();
             RaisePropertyChanged(nameof(IsSettingsPanelOpen));
             EditingNodeChanged?.Invoke(value);
+        }
+    }
+
+    private void OnRoiParamChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ParameterEditViewModel.ValueText))
+            RefreshRoiOverlay();
+    }
+
+    private void RefreshRoiOverlay() => State = State with { Roi = CurrentRoi };
+
+    private int ResolveRoiParam(ParameterEditViewModel p)
+    {
+        if (p.IsWired && p.SelectedSource is { } src && _executor is not null &&
+            _executor.IntermediateResults.TryGetValue(src.OperatorId, out var result) &&
+            result is Dictionary<string, object?> dict &&
+            dict.TryGetValue(src.Port, out var raw) && raw is not null)
+            return Convert.ToInt32(raw);
+        return int.TryParse(p.ValueText, out var v) ? v : 0;
+    }
+
+    private RoiDef? CurrentRoi
+    {
+        get
+        {
+            if (_editingNode is null) return null;
+            int GetVal(string name)
+            {
+                var p = _editingNode.Parameters.FirstOrDefault(p => p.Name == name);
+                return p is null ? 0 : ResolveRoiParam(p);
+            }
+            var x = GetVal("RoiX");
+            var y = GetVal("RoiY");
+            var w = GetVal("RoiW");
+            var h = GetVal("RoiH");
+            return (w > 0 && h > 0) ? new RoiDef(x, y, w, h) : null;
         }
     }
 
@@ -311,7 +366,7 @@ public class MainViewModel : ViewModelBase
     {
         if (_selectedNode is null || _executor is null)
         {
-            State = new InspectorState();
+            State = new InspectorState() with { Roi = CurrentRoi };
             UpdateOverlayLayers();
             return;
         }
@@ -321,7 +376,7 @@ public class MainViewModel : ViewModelBase
         var circles = Unwrap<CircleSegment[]>(result);
         if (circles is not null)
         {
-            State = new InspectorState(Image: GetSourceImage(), Circles: circles);
+            State = new InspectorState(Image: GetSourceImage(), Circles: circles) with { Roi = CurrentRoi };
             UpdateOverlayLayers();
             return;
         }
@@ -329,7 +384,7 @@ public class MainViewModel : ViewModelBase
         var blobs = Unwrap<KeyPoint[]>(result);
         if (blobs is not null)
         {
-            State = new InspectorState(Image: GetSourceImage(), Blobs: blobs);
+            State = new InspectorState(Image: GetSourceImage(), Blobs: blobs) with { Roi = CurrentRoi };
             UpdateOverlayLayers();
             return;
         }
@@ -339,7 +394,7 @@ public class MainViewModel : ViewModelBase
         {
             var labelImage = _precomputedImages.GetValueOrDefault((_selectedNode.Id, "LabelImage"))
                           ?? GetSourceImage();
-            State = new InspectorState(Image: labelImage, Components: components);
+            State = new InspectorState(Image: labelImage, Components: components) with { Roi = CurrentRoi };
             UpdateOverlayLayers();
             return;
         }
@@ -347,7 +402,7 @@ public class MainViewModel : ViewModelBase
         var contours = Unwrap<OpenCvSharp.Point[][]>(result);
         if (contours is not null)
         {
-            State = new InspectorState(Image: GetSourceImage(), Contours: contours);
+            State = new InspectorState(Image: GetSourceImage(), Contours: contours) with { Roi = CurrentRoi };
             UpdateOverlayLayers();
             return;
         }
@@ -356,7 +411,7 @@ public class MainViewModel : ViewModelBase
             .Where(k => k.Id == _selectedNode.Id)
             .Select(k => _precomputedImages[k])
             .FirstOrDefault();
-        State = new InspectorState(Image: image);
+        State = new InspectorState(Image: image) with { Roi = CurrentRoi };
         UpdateOverlayLayers();
     }
 

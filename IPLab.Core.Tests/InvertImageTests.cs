@@ -52,7 +52,7 @@ public class InvertImageTests
         await executor.RunAllAsync();
 
         Assert.Equal(OperatorStatus.Success, executor.Statuses["O2"]);
-        using var result = (Mat)executor.IntermediateResults["O2"]!;
+        using var result = (Mat)((Dictionary<string, object?>)executor.IntermediateResults["O2"]!)["Image"]!;
         Assert.Equal(MatType.CV_8UC1, result.Type());
         Assert.Equal(205, result.At<byte>(0, 0)); // 255 - 50
     }
@@ -64,7 +64,7 @@ public class InvertImageTests
         await executor.RunAllAsync();
 
         Assert.Equal(OperatorStatus.Success, executor.Statuses["O2"]);
-        using var result = (Mat)executor.IntermediateResults["O2"]!;
+        using var result = (Mat)((Dictionary<string, object?>)executor.IntermediateResults["O2"]!)["Image"]!;
         Assert.Equal(MatType.CV_8UC3, result.Type());
         var pixel = result.At<Vec3b>(0, 0);
         Assert.Equal(205, pixel.Item0); // 255 - 50  (B)
@@ -87,11 +87,11 @@ public class InvertImageTests
     {
         var executor1 = new FlowEx(BuildFlow(new GraySourceOperator(123)));
         await executor1.RunAllAsync();
-        using var once = ((Mat)executor1.IntermediateResults["O2"]!).Clone();
+        using var once = ((Mat)((Dictionary<string, object?>)executor1.IntermediateResults["O2"]!)["Image"]!).Clone();
 
         var executor2 = new FlowEx(BuildFlow(new CloneSourceOp(once)));
         await executor2.RunAllAsync();
-        using var twice = (Mat)executor2.IntermediateResults["O2"]!;
+        using var twice = (Mat)((Dictionary<string, object?>)executor2.IntermediateResults["O2"]!)["Image"]!;
         Assert.Equal(123, twice.At<byte>(0, 0));
     }
 }

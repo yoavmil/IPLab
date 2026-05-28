@@ -55,6 +55,9 @@ public partial class InspectorControl : UserControl
         if (state.Blobs      is { } blobs)      DrawBlobs(blobs);
         if (state.Components is { } components) DrawComponents(components);
         if (state.Contours   is { } contours)   DrawContours(contours);
+        if (state.Roi is { Width: > 0, Height: > 0 } roi)
+            ImageViewer.DrawRectangle(roi.Y, roi.X, roi.Y + roi.Height, roi.X + roi.Width,
+                                      "ROI", Brushes.Yellow, bFilled: false);
     }
 
     private void DrawCircles(CircleSegment[] circles)

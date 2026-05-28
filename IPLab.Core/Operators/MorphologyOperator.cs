@@ -22,9 +22,10 @@ public class MorphologyOperator : IOperatorType
                 DefaultValue = 3, Min = 1, Max = 99 },
         new() { Name = "Iterations",  Label = "Iterations",   Type = ParameterType.Int,    IsConnectable = false,
                 DefaultValue = 1, Min = 1, Max = 20 },
+        ..RoiParameters.Schema,
     ];
 
-    public IReadOnlyList<string> OutputPorts => ["Image"];
+    public IReadOnlyList<string> OutputPorts => ["Image", ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
@@ -53,8 +54,12 @@ public class MorphologyOperator : IOperatorType
         };
 
         using var kernel = Cv2.GetStructuringElement(morphShape, new Size(size, size));
-        var output = new Mat();
-        Cv2.MorphologyEx(image, output, morphOp, kernel, iterations: iters);
-        return output;
+
+        var resultImage = RoiParameters.ApplyImageFilter(image, parameters,
+            src => { var r = new Mat(); Cv2.MorphologyEx(src, r, morphOp, kernel, iterations: iters); return r; });
+
+        var outputs = new Dictionary<string, object?> { ["Image"] = resultImage };
+        RoiParameters.AddToOutputs(outputs, parameters);
+        return outputs;
     }
 }
