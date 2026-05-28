@@ -4,7 +4,6 @@ using System.Windows.Input;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.Core.Runtime;
-using IPLab.Core.Serialization;
 using IPLab.Core.Utilities;
 
 namespace IPLab.UI.ViewModels;
@@ -13,7 +12,6 @@ public class FlowViewModel
 {
     public ObservableCollection<OperatorNodeViewModel> Nodes       { get; } = [];
     public ObservableCollection<ConnectionViewModel>   Connections { get; } = [];
-    public string                                      Json        { get; }
     public ICommand                                    ConnectCommand { get; }
     public ICommand                                    DeleteConnectionCommand { get; }
 
@@ -26,7 +24,6 @@ public class FlowViewModel
     {
         _onOpenSettings        = onOpenSettings;
         _onSelected            = onSelected;
-        Json                   = FlowDefSerializer.Serialize(flow);
         ConnectCommand         = new RelayCommand<(object, object?)>(OnConnect);
         DeleteConnectionCommand = new RelayCommand<ConnectionViewModel>(OnDeleteConnection);
 

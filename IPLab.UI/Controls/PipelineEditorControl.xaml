@@ -340,14 +340,6 @@
             </Grid>
         </TabItem>
 
-        <TabItem Header="JSON">
-            <TextBox Text="{Binding Flow.Json, Mode=OneTime}"
-                     IsReadOnly="True"
-                     FontFamily="Consolas" FontSize="12"
-                     Background="#1E1E1E" Foreground="#DCDCDC"
-                     HorizontalScrollBarVisibility="Auto"
-                     VerticalScrollBarVisibility="Auto" />
-        </TabItem>
     </TabControl>
 
 </UserControl>

@@ -11,7 +11,7 @@ See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 ├───────────────────────┬──────────────────────┤
 │ Left: Pipeline Editor │ Right: Inspector     │
 │  Tab: Graph           │  Tab: Image Preview  │
-│  Tab: JSON            │  Tab: Data           │
+│                       │  Tab: Data           │
 ├───────────────────────┴──────────────────────┤
 │ Status Bar (bottom)                          │
 └──────────────────────────────────────────────┘
@@ -19,7 +19,6 @@ See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 
 - Both `TabControl` elements use `TabStripPlacement="Bottom"`.
 - The pipeline editor Graph tab hosts the `NodifyEditor`.
-- The JSON tab shows the serialized flow (read-only for now).
 - The Inspector right panel is placeholder for now.
 
 ## Ribbon / Toolbar (planned)
