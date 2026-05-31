@@ -27,7 +27,8 @@ public class OperatorNodeViewModel : ViewModelBase
     public ConnectorViewModel LeftConnector   { get; } = new("Left",   ConnectionSide.Left);
     public ConnectorViewModel RightConnector  { get; } = new("Right",  ConnectionSide.Right);
 
-    public IReadOnlyList<ParameterEditViewModel> Parameters { get; }
+    public IReadOnlyList<ParameterEditViewModel> Parameters        { get; }
+    public IReadOnlyList<ParameterEditViewModel> VisibleParameters { get; }
     public ICommand                              OpenSettingsCommand { get; }
 
     private OperatorStatus _status = OperatorStatus.NotRun;
@@ -81,6 +82,8 @@ public class OperatorNodeViewModel : ViewModelBase
                 return new ParameterEditViewModel(schema, value, sources);
             })
             .ToList();
+        VisibleParameters = Parameters.Where(p => !op.Type.ParameterSchema
+            .First(s => s.Name == p.Name).IsHidden).ToList();
 
         OpenSettingsCommand = new RelayCommand(() => onOpenSettings?.Invoke(this));
     }

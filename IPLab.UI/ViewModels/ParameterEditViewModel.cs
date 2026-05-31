@@ -11,7 +11,11 @@ public class ParameterEditViewModel : ViewModelBase
     public ParameterType              Type        { get; }
     public IReadOnlyList<string>      Options     { get; }
     public bool                       CanBeWired  { get; }
-    public bool                       IsEnum      => Type == ParameterType.Enum;
+    public bool                       IsEnum       => Type == ParameterType.Enum;
+    public bool                       IsStringList => Type == ParameterType.StringList;
+
+    public ObservableCollection<string> FileList { get; } = [];
+    public string FileListSummary => $"{FileList.Count} file(s)";
 
     private readonly double? _min;
     private readonly double? _max;
@@ -70,11 +74,20 @@ public class ParameterEditViewModel : ViewModelBase
         }
         else
         {
-            var raw         = value?.Value ?? schema.DefaultValue;
-            _valueText      = ClampText(raw?.ToString() ?? string.Empty);
-            _selectedOption = Type == ParameterType.Enum
-                ? (raw?.ToString() ?? Options.FirstOrDefault() ?? string.Empty)
-                : string.Empty;
+            var raw = value?.Value ?? schema.DefaultValue;
+
+            if (Type == ParameterType.StringList)
+            {
+                if (raw is string[] arr)
+                    foreach (var path in arr) FileList.Add(path);
+            }
+            else
+            {
+                _valueText      = ClampText(raw?.ToString() ?? string.Empty);
+                _selectedOption = Type == ParameterType.Enum
+                    ? (raw?.ToString() ?? Options.FirstOrDefault() ?? string.Empty)
+                    : string.Empty;
+            }
         }
     }
 
@@ -82,6 +95,9 @@ public class ParameterEditViewModel : ViewModelBase
     {
         if (IsWired && SelectedSource is { } src)
             return new ParameterValue { Name = Name, Source = new SourceRef(src.OperatorId, src.Port) };
+
+        if (IsStringList)
+            return new ParameterValue { Name = Name, Value = FileList.ToArray() };
 
         return new ParameterValue { Name = Name, Value = CoercedValue() };
     }

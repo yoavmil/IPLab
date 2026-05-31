@@ -25,7 +25,12 @@ public class MainViewModel : ViewModelBase
     public FlowViewModel Flow
     {
         get => _flow;
-        private set { _flow = value; RaisePropertyChanged(); }
+        private set
+        {
+            _flow = value;
+            ThumbnailStrip.AttachToFlow(value);
+            RaisePropertyChanged();
+        }
     }
 
     private string _status = "Ready";
@@ -41,6 +46,8 @@ public class MainViewModel : ViewModelBase
         get => _selectedNode;
         set { _selectedNode = value; RaisePropertyChanged(); UpdateSelectedImage(); }
     }
+
+    public ThumbnailStripViewModel ThumbnailStrip { get; }
 
     public sealed record InspectorState(
         BitmapSource?             Image      = null,
@@ -168,6 +175,11 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        ThumbnailStrip = new ThumbnailStripViewModel(
+            clearResults: ClearExecutionResults,
+            runAsync:     async () => await ExecuteRunAsync(),
+            setStatus:    s => Status = s);
+
         Toolbox = new ToolboxViewModel(OperatorRegistry.CreateDefault(), type => Flow.AddNode(type));
         Flow = new FlowViewModel(BuildSampleFlow(),
             onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
@@ -198,19 +210,17 @@ public class MainViewModel : ViewModelBase
 
     private async Task<bool> ExecuteRunAsync()
     {
-        var filePathParam = Flow.Nodes
-            .SelectMany(n => n.Parameters)
-            .FirstOrDefault(p => p.Name == "FilePath");
-
-        if (filePathParam is not null && string.IsNullOrEmpty(filePathParam.ValueText))
+        // If the image source operator has no files, prompt the user to add some.
+        if (ThumbnailStrip.IsEmpty)
         {
             var dialog = new OpenFileDialog
             {
-                Title  = "Select an image to process",
-                Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff|All files|*.*"
+                Title       = "Select image(s) to process",
+                Filter      = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff|All files|*.*",
+                Multiselect = true
             };
             if (dialog.ShowDialog() != true) { IsRunningContinuous = false; return false; }
-            filePathParam.ValueText = dialog.FileName;
+            ThumbnailStrip.AddPaths(dialog.FileNames);
         }
 
         Status = "Running…";
@@ -225,9 +235,17 @@ public class MainViewModel : ViewModelBase
             RefreshCachedLayerImages();
 
             var failed = Flow.Nodes.Count(n => n.Status == OperatorStatus.Failed);
-            Status = failed > 0
-                ? $"{failed} operator(s) failed"
-                : $"Done  |  {Path.GetFileName(filePathParam?.ValueText ?? string.Empty)}";
+            if (failed > 0)
+            {
+                Status = $"{failed} operator(s) failed";
+            }
+            else
+            {
+                var activeFile = ThumbnailStrip.ActiveFilePath;
+                Status = activeFile is not null
+                    ? $"Done  |  {Path.GetFileName(activeFile)}"
+                    : "Done";
+            }
             UpdateSelectedImage();
 
             if (IsRunningContinuous)
@@ -269,7 +287,9 @@ public class MainViewModel : ViewModelBase
         }, DispatcherPriority.Background);
     }
 
-    private void ClearResults()
+    private void ClearResults() => ClearExecutionResults();
+
+    private void ClearExecutionResults()
     {
         _cts?.Cancel();
         _cts?.Dispose();
@@ -287,12 +307,6 @@ public class MainViewModel : ViewModelBase
             node.Status       = OperatorStatus.NotRun;
             node.ErrorMessage = null;
         }
-
-        var filePathParam = Flow.Nodes
-            .SelectMany(n => n.Parameters)
-            .FirstOrDefault(p => p.Name == "FilePath");
-        if (filePathParam is not null)
-            filePathParam.ValueText = string.Empty;
     }
 
     private void SaveFlow()
@@ -606,7 +620,10 @@ public class MainViewModel : ViewModelBase
                 Id           = "O1",
                 DisplayName  = "Load Image",
                 Type         = new LoadImageOperator(),
-                Parameters   = [new ParameterValue { Name = "FilePath", Value = string.Empty }],
+                Parameters   =
+                [
+                    new ParameterValue { Name = "FilePaths", Value = Array.Empty<string>() }
+                ],
                 Dependencies = []
             },
             new Operator

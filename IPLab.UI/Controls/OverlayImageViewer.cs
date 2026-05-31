@@ -2,6 +2,7 @@ using IPLab.UI.ViewModels;
 using RControls;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -17,6 +18,7 @@ namespace IPLab.UI.Controls;
 public class OverlayImageViewer : ImageViewer
 {
     private Canvas? _canvas;
+    private Image? _mainImage;
     private const string LayerTag = "__iplab_layer__";
 
     public static readonly DependencyProperty OverlayLayersProperty =
@@ -35,7 +37,17 @@ public class OverlayImageViewer : ImageViewer
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
-        _canvas = GetTemplateChild(ElementMainCanvas) as Canvas;
+        _canvas    = GetTemplateChild(ElementMainCanvas) as Canvas;
+        _mainImage = GetTemplateChild(ElementMainImage)  as Image;
+
+        if (_canvas != null)
+        {
+            // Fire UpdateScalingMode every time a zoom or pan replaces the canvas transform.
+            var desc = DependencyPropertyDescriptor.FromProperty(UIElement.RenderTransformProperty, typeof(Canvas));
+            desc.AddValueChanged(_canvas, OnTransformChanged);
+            Unloaded += (_, _) => desc.RemoveValueChanged(_canvas!, OnTransformChanged);
+        }
+
         RefreshOverlays();
     }
 
@@ -43,6 +55,20 @@ public class OverlayImageViewer : ImageViewer
     {
         base.OnRenderSizeChanged(sizeInfo);
         CenterIfSmaller();
+    }
+
+    private void OnTransformChanged(object? sender, EventArgs e) => UpdateScalingMode();
+
+    // NearestNeighbor when zoomed in (crisp individual pixels).
+    // HighQuality when zoomed out so thin features are never dropped by nearest-neighbor sampling.
+    private void UpdateScalingMode()
+    {
+        var mode = scaleRatio >= 1.0 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality;
+        if (_mainImage != null)
+            RenderOptions.SetBitmapScalingMode(_mainImage, mode);
+        if (_canvas != null)
+            foreach (var img in _canvas.Children.OfType<Image>().Where(i => i.Tag as string == LayerTag))
+                RenderOptions.SetBitmapScalingMode(img, mode);
     }
 
     // When the viewport is resized and the scaled image fits inside it, keep the image centered
@@ -100,6 +126,8 @@ public class OverlayImageViewer : ImageViewer
         var layers = OverlayLayers;
         if (layers is null) return;
 
+        var mode = scaleRatio >= 1.0 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality;
+
         // Insert after PART_MainImage (index 0), before any existing ImageItem shapes.
         int insertAt = 1;
         foreach (var layer in layers)
@@ -110,7 +138,7 @@ public class OverlayImageViewer : ImageViewer
                 Stretch          = Stretch.None,
                 IsHitTestVisible = false,
             };
-            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.NearestNeighbor);
+            RenderOptions.SetBitmapScalingMode(img, mode);
 
             img.SetBinding(Image.SourceProperty,
                 new Binding(nameof(LayerViewModel.Image)) { Source = layer });

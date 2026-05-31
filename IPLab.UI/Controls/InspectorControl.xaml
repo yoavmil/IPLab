@@ -10,6 +10,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <!-- Row 0: viewer + overlaid controls -->
@@ -69,6 +70,10 @@
                              BorderThickness="0"
                              FocusVisualStyle="{x:Null}" />
                 </Border>
+
+                <!-- Row 2: thumbnail strip -->
+                <controls:ThumbnailStripControl Grid.Row="2"
+                                                DataContext="{Binding ThumbnailStrip}" />
             </Grid>
         </TabItem>
         <TabItem Header="Data">

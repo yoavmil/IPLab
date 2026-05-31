@@ -122,10 +122,13 @@ public static class FlowDefSerializer
         var paramType = schema.TryGetValue(name, out var desc) ? desc.Type : ParameterType.String;
         return paramType switch
         {
-            ParameterType.Int    => Convert.ToInt32(el.GetDouble()),
-            ParameterType.Double => el.GetDouble(),
-            ParameterType.Bool   => el.GetBoolean(),
-            _                    => el.GetString()
+            ParameterType.Int        => Convert.ToInt32(el.GetDouble()),
+            ParameterType.Double     => el.GetDouble(),
+            ParameterType.Bool       => el.GetBoolean(),
+            ParameterType.StringList => el.ValueKind == JsonValueKind.Array
+                ? el.EnumerateArray().Select(e => e.GetString() ?? string.Empty).ToArray()
+                : new[] { el.GetString() ?? string.Empty },
+            _                        => el.GetString()
         };
     }
 }

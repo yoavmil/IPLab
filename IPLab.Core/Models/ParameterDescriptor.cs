@@ -8,6 +8,7 @@ public record ParameterDescriptor
     public required string Label { get; init; }
     public required ParameterType Type { get; init; }
     public bool IsConnectable { get; init; }
+    public bool IsHidden { get; init; }
     public object? DefaultValue { get; init; }
     public object? Min { get; init; }
     public object? Max { get; init; }

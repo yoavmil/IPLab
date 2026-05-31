@@ -12,6 +12,35 @@ public class SerializationTests
         Path.Combine(AppContext.BaseDirectory, "TestImages", "RGBCircles.png");
 
     [Fact]
+    public void StringListParam_SurvivesRoundTrip()
+    {
+        var paths = new string[] { @"C:\img1.png", @"C:\img2.png" };
+        var flowDef = new FlowDef(
+        [
+            new Operator
+            {
+                Id           = "O1",
+                DisplayName  = "Load",
+                Type         = new LoadImageOperator(),
+                Parameters   =
+                [
+                    new ParameterValue { Name = "FilePaths",   Value = paths },
+                    new ParameterValue { Name = "ActiveIndex", Value = 1 }
+                ],
+                Dependencies = []
+            }
+        ]);
+
+        var json     = FlowDefSerializer.Serialize(new Flow(flowDef, new FlowLayout([], [])));
+        var restored = FlowDefSerializer.Deserialize(json, OperatorRegistry.CreateDefault());
+
+        var p = restored.Def.Operators.Single().Parameters.ToDictionary(v => v.Name);
+        var restoredPaths = (string[])p["FilePaths"].Value!;
+        Assert.Equal(paths, restoredPaths);
+        Assert.Equal(1, Convert.ToInt32(p["ActiveIndex"].Value));
+    }
+
+    [Fact]
     public void RoiParams_WithValues_SurviveRoundTrip()
     {
         var flowDef = new FlowDef(
@@ -95,7 +124,7 @@ public class SerializationTests
                 Id           = "O1",
                 DisplayName  = "Load",
                 Type         = new LoadImageOperator(),
-                Parameters   = [new ParameterValue { Name = "FilePath", Value = ImagePath }],
+                Parameters   = [new ParameterValue { Name = "FilePaths", Value = new string[] { ImagePath } }],
                 Dependencies = []
             },
             new Operator

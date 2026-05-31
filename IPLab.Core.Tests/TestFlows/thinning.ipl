@@ -6,8 +6,8 @@
       "type": "LoadImage",
       "parameters": [
         {
-          "name": "FilePath",
-          "value": "TestImages/trenches.jpg"
+          "name": "FilePaths",
+          "value": ["TestImages/trenches.jpg"]
         }
       ],
       "dependencies": [],

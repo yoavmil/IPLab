@@ -11,13 +11,17 @@ public class LoadImageOperator : IOperatorType
     public string Icon      => "folder";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "FilePath", Label = "File Path", Type = ParameterType.String, IsConnectable = false }
+        new() { Name = "FilePaths",   Label = "File Paths",   Type = ParameterType.StringList, IsConnectable = false, IsHidden = true, DefaultValue = Array.Empty<string>() },
+        new() { Name = "ActiveIndex", Label = "Active Index", Type = ParameterType.Int,        IsConnectable = false, IsHidden = true, DefaultValue = 0, Min = 0 }
     ];
     public IReadOnlyList<string> OutputPorts => ["Image"];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
-        var filePath = (string)parameters["FilePath"]!;
-        return Cv2.ImRead(filePath, ImreadModes.Color);
+        var filePaths   = parameters["FilePaths"] as string[] ?? [];
+        var activeIndex = Convert.ToInt32(parameters.GetValueOrDefault("ActiveIndex") ?? 0);
+        if (filePaths.Length == 0) return null;
+        var idx = Math.Clamp(activeIndex, 0, filePaths.Length - 1);
+        return Cv2.ImRead(filePaths[idx], ImreadModes.Color);
     }
 }

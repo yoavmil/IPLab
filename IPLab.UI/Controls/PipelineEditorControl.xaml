@@ -227,7 +227,7 @@
 
                         <!-- Parameter rows -->
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding DisplayingNode.Parameters}"
+                            <ItemsControl ItemsSource="{Binding DisplayingNode.VisibleParameters}"
                                           Margin="4 4">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:ParameterEditViewModel}">
@@ -307,7 +307,7 @@
                                                     </ComboBox.Style>
                                                 </ComboBox>
 
-                                                <!-- Not wired + not enum: free text -->
+                                                <!-- Not wired + not enum + not stringlist: free text -->
                                                 <TextBox Text="{Binding ValueText, UpdateSourceTrigger=PropertyChanged}"
                                                          Background="#1E1E1E"
                                                          Foreground="#DCDCDC"
@@ -318,8 +318,9 @@
                                                             <Style.Triggers>
                                                                 <MultiDataTrigger>
                                                                     <MultiDataTrigger.Conditions>
-                                                                        <Condition Binding="{Binding IsWired}" Value="False" />
-                                                                        <Condition Binding="{Binding IsEnum}"  Value="False" />
+                                                                        <Condition Binding="{Binding IsWired}"       Value="False" />
+                                                                        <Condition Binding="{Binding IsEnum}"        Value="False" />
+                                                                        <Condition Binding="{Binding IsStringList}"  Value="False" />
                                                                     </MultiDataTrigger.Conditions>
                                                                     <Setter Property="Visibility" Value="Visible" />
                                                                 </MultiDataTrigger>
@@ -327,6 +328,25 @@
                                                         </Style>
                                                     </TextBox.Style>
                                                 </TextBox>
+
+                                                <!-- Not wired + stringlist: file count (managed via thumbnail strip) -->
+                                                <TextBlock Foreground="#888888" VerticalAlignment="Center"
+                                                           Text="{Binding FileListSummary}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding IsWired}"      Value="False" />
+                                                                        <Condition Binding="{Binding IsStringList}" Value="True" />
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </MultiDataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
 
                                             </Grid>
                                         </Grid>

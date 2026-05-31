@@ -25,7 +25,7 @@ public class BasicFlowTests
                     Id           = "O1",
                     DisplayName  = "Input",
                     Type         = new LoadImageOperator(),
-                    Parameters   = [new ParameterValue { Name = "FilePath", Value = inputPath }],
+                    Parameters   = [new ParameterValue { Name = "FilePaths", Value = new string[] { inputPath } }],
                     Dependencies = []
                 },
                 new Operator

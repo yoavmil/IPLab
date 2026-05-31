@@ -42,11 +42,12 @@ Supports [ROI](#roi).
 
 ## LoadImage
 
-Loads a color image from disk.
+Loads a color image from disk. Supports a list of images; the active one is determined by `ActiveIndex`. The inspector shows a horizontal thumbnail strip for all listed images — clicking a thumbnail switches the active image and re-runs the flow. Thumbnails are decoded at 120 px wide to limit memory use.
 
-| Parameter | Type   | Connectable | Description        |
-|-----------|--------|-------------|--------------------|
-| FilePath  | String | No          | Path to image file |
+| Parameter   | Type       | Connectable | Description                                    |
+|-------------|------------|-------------|------------------------------------------------|
+| FilePaths   | StringList | No          | Ordered list of image file paths               |
+| ActiveIndex | Int        | No          | Zero-based index of the currently active image |
 
 | Output Port | Type |
 |-------------|------|

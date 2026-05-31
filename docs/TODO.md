@@ -33,9 +33,10 @@
 
 - **Abstract the executor result store behind an interface** — `MainViewModel.ResolveRoiParam` directly accesses `_executor.IntermediateResults` and casts values out of a raw `Dictionary<string, object?>`, coupling the ViewModel to the executor's internal storage layout. Introduce an `IExecutionResults` interface on `FlowEx` (e.g. `bool TryGetPortValue(string operatorId, string port, out object? value)`) so the ViewModel only depends on the interface, not on the concrete dict structure. This makes the ROI overlay (and any similar feature that needs to read runtime values from the ViewModel) testable without a real executor instance. Pairs naturally with the DI/service-layer item above.
 
-- **Multi-image input in the image source operator** — extend the `LoadImageOperator` (or add a dedicated `ImageSourceOperator`) to hold a list of image file paths rather than a single path. The operator's result panel should display thumbnails of all listed images beneath the main preview; clicking a thumbnail loads that image as the operator's active output, triggering a full re-run of the flow so all downstream operators update. The parameter editor should allow adding/removing files from the list (e.g. via a file-picker or drag-and-drop). This lets the user quickly toggle between images and visually compare how the same pipeline handles different inputs.
 
 - **Output display settings per operator** — let the user configure how detection results are visualised in the inspector. For annotation color, offer three modes: a single fixed color (color-picker), a random-per-entity color (stable hash of entity index so colors don't shuffle on re-run), and a heatmap (map a scalar — e.g. circle radius or blob response — to a gradient). Store the chosen mode and parameters inside the operator's display metadata so settings persist with the saved flow. Start with circle/blob annotations; apply the same system to any future operator that produces non-image output.
+
+- **Open empty .ipl file doesn't show error message** - it doesn't crash the app, but the user doesn't know anything happened. a popup error message is needed here.
 
 
 ## Project

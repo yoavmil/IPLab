@@ -20,7 +20,7 @@ public class ConnectedComponentsTests
                 Id           = "O1",
                 DisplayName  = "Load",
                 Type         = new LoadImageOperator(),
-                Parameters   = [new ParameterValue { Name = "FilePath", Value = ImagePath }],
+                Parameters   = [new ParameterValue { Name = "FilePaths", Value = new string[] { ImagePath } }],
                 Dependencies = []
             },
             new Operator
@@ -126,7 +126,7 @@ public class ConnectedComponentsTests
                 Id           = "O1",
                 DisplayName  = "Load",
                 Type         = new LoadImageOperator(),
-                Parameters   = [new ParameterValue { Name = "FilePath", Value = ImagePath }],
+                Parameters   = [new ParameterValue { Name = "FilePaths", Value = new string[] { ImagePath } }],
                 Dependencies = []
             },
             new Operator
