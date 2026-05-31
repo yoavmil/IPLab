@@ -14,4 +14,7 @@ public record ParameterDescriptor
     public object? Max { get; init; }
     public string[]? Options { get; init; }
     public IReadOnlyList<ParameterDescriptor>? Children { get; init; }
+    // When set, this parameter is visible only when the named sibling has one of the listed values.
+    public string? ShowWhenParam { get; init; }
+    public string[]? ShowWhenValues { get; init; }
 }

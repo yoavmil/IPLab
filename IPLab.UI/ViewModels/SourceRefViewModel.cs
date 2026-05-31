@@ -5,5 +5,5 @@ public class SourceRefViewModel(string operatorId, string displayName, string po
     public string OperatorId   { get; } = operatorId;
     public string DisplayName  { get; } = displayName;
     public string Port         { get; } = port;
-    public string DisplayLabel => $"{DisplayName}  ›  {Port}";
+    public string DisplayLabel => $"{OperatorId}  {DisplayName}  ›  {Port}";
 }

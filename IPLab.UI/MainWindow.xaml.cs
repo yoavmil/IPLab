@@ -1,6 +1,7 @@
 using IPLab.UI.ViewModels;
 using Nodify;
 using Nodify.Interactivity;
+using System.ComponentModel;
 using System.Windows;
 
 namespace IPLab.UI;
@@ -18,5 +19,13 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainViewModel();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        var vm = (MainViewModel)DataContext;
+        if (!vm.ConfirmNavigateAway())
+            e.Cancel = true;
+        base.OnClosing(e);
     }
 }

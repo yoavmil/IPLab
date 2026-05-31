@@ -1,5 +1,6 @@
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using IPLab.UI.Dialogs;
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using ConnectedComponentInfo = IPLab.Core.Models.ConnectedComponentInfo;
@@ -31,6 +32,29 @@ public class MainViewModel : ViewModelBase
             ThumbnailStrip.AttachToFlow(value);
             RaisePropertyChanged();
         }
+    }
+
+    private string  _savedJson       = string.Empty;
+    private string? _currentFilePath = null;
+
+    // Returns true if it's safe to proceed (flow not dirty, or user handled it).
+    public bool ConfirmNavigateAway()
+    {
+        if (SerializeCurrentFlow() == _savedJson) return true;
+
+        var dlg = new UnsavedChangesDialog(hasSavedPath: _currentFilePath is not null)
+        {
+            Owner = Application.Current.MainWindow
+        };
+        dlg.ShowDialog();
+
+        return dlg.Result switch
+        {
+            UnsavedChangesResult.Save    => SaveFlow(),
+            UnsavedChangesResult.SaveAs  => SaveFlowAs(),
+            UnsavedChangesResult.Discard => true,
+            _                            => false
+        };
     }
 
     private string _status = "Ready";
@@ -184,12 +208,13 @@ public class MainViewModel : ViewModelBase
         Flow = new FlowViewModel(BuildSampleFlow(),
             onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
             onSelected:     node => SelectedNode = node);
+        _savedJson = SerializeCurrentFlow();
         RunOnceCommand       = new RelayCommand(RunOnce, () => !IsRunningContinuous);
         RunContinuousCommand = new RelayCommand(ToggleContinuousRun);
         StopCommand          = new RelayCommand(Stop);
         ClearResultsCommand  = new RelayCommand(ClearResults);
         CloseSettingsCommand = new RelayCommand(() => EditingNode = null);
-        SaveFlowCommand      = new RelayCommand(SaveFlow);
+        SaveFlowCommand      = new RelayCommand(() => SaveFlowAs());
         LoadFlowCommand      = new RelayCommand(LoadFlow);
     }
 
@@ -309,16 +334,8 @@ public class MainViewModel : ViewModelBase
         }
     }
 
-    private void SaveFlow()
+    private string SerializeCurrentFlow()
     {
-        var dialog = new SaveFileDialog
-        {
-            Title      = "Save Flow",
-            Filter     = "IPLab Flow|*.ipl|JSON|*.json|All files|*.*",
-            DefaultExt = ".ipl"
-        };
-        if (dialog.ShowDialog() != true) return;
-
         var execFlow = BuildExecutionFlow();
         var nodeById = Flow.Nodes.ToDictionary(n => n.Id);
 
@@ -341,13 +358,42 @@ public class MainViewModel : ViewModelBase
             })
             .OfType<DependencyLayout>();
 
-        IFlow flow = new CoreFlow(execFlow, new FlowLayout(opLayouts, depLayouts));
-        File.WriteAllText(dialog.FileName, FlowDefSerializer.Serialize(flow));
-        Status = $"Saved: {Path.GetFileName(dialog.FileName)}";
+        return FlowDefSerializer.Serialize(new CoreFlow(execFlow, new FlowLayout(opLayouts, depLayouts)));
+    }
+
+    private bool SaveFlow()
+    {
+        if (_currentFilePath is null) return SaveFlowAs();
+
+        var json = SerializeCurrentFlow();
+        File.WriteAllText(_currentFilePath, json);
+        _savedJson = json;
+        Status     = $"Saved: {Path.GetFileName(_currentFilePath)}";
+        return true;
+    }
+
+    private bool SaveFlowAs()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title      = "Save Flow As",
+            Filter     = "IPLab Flow|*.ipl|JSON|*.json|All files|*.*",
+            DefaultExt = ".ipl"
+        };
+        if (dialog.ShowDialog() != true) return false;
+
+        var json = SerializeCurrentFlow();
+        File.WriteAllText(dialog.FileName, json);
+        _currentFilePath = dialog.FileName;
+        _savedJson       = json;
+        Status           = $"Saved: {Path.GetFileName(dialog.FileName)}";
+        return true;
     }
 
     private void LoadFlow()
     {
+        if (!ConfirmNavigateAway()) return;
+
         var dialog = new OpenFileDialog
         {
             Title  = "Open Flow",
@@ -368,7 +414,9 @@ public class MainViewModel : ViewModelBase
             Flow = new FlowViewModel(flow,
                 onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
                 onSelected:     node => SelectedNode = node);
-            Status = $"Loaded: {Path.GetFileName(dialog.FileName)}";
+            _currentFilePath = dialog.FileName;
+            _savedJson       = SerializeCurrentFlow();
+            Status           = $"Loaded: {Path.GetFileName(dialog.FileName)}";
         }
         catch (Exception ex)
         {
@@ -446,7 +494,7 @@ public class MainViewModel : ViewModelBase
         Flow.Nodes.Select(node => new Operator
         {
             Id           = node.Operator.Id,
-            DisplayName  = node.Operator.DisplayName,
+            DisplayName  = node.DisplayName,
             Type         = node.Operator.Type,
             Parameters   = node.Parameters.Select(p => p.ToParameterValue()).ToList(),
             // One Dependency per unique upstream operator — execution ordering only.

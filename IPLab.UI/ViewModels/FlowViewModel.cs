@@ -66,7 +66,8 @@ public class FlowViewModel
                 .Select(port => new SourceRefViewModel(n.Id, n.DisplayName, port)))
             .ToList();
 
-        Nodes.Add(new OperatorNodeViewModel(op, availableSources, _onOpenSettings, _onSelected)
+        Nodes.Add(new OperatorNodeViewModel(op, availableSources,
+            _onOpenSettings, _onSelected, RebuildDescendantSources)
         {
             Location = pos
         });
@@ -180,6 +181,12 @@ public class FlowViewModel
                  .Select(id => Nodes.FirstOrDefault(n => n.Id == id))
                  .OfType<OperatorNodeViewModel>();
 
+    private void RebuildDescendantSources(OperatorNodeViewModel node)
+    {
+        foreach (var desc in GetSelfAndDescendants(node).Skip(1))
+            RebuildAvailableSources(desc);
+    }
+
     private IEnumerable<(string Source, string Target)> ConnectionEdges() =>
         Connections
             .Select(c => (
@@ -218,7 +225,8 @@ public class FlowViewModel
                 var autoPos = new Point(i * xStep + xPad, y);
                 var pos     = positionsLookup.TryGetValue(ops[i].Id, out var p) ? p : autoPos;
 
-                var node = new OperatorNodeViewModel(ops[i], availableSources, _onOpenSettings, _onSelected)
+                var node = new OperatorNodeViewModel(ops[i], availableSources,
+                    _onOpenSettings, _onSelected, RebuildDescendantSources)
                 {
                     Location = pos
                 };

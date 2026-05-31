@@ -22,6 +22,13 @@ public class ParameterEditViewModel : ViewModelBase
 
     public ObservableCollection<SourceRefViewModel> AvailableSources { get; }
 
+    private bool _isVisible;
+    public bool IsVisible
+    {
+        get => _isVisible;
+        set { _isVisible = value; RaisePropertyChanged(); }
+    }
+
     private bool _isWired;
     public bool IsWired
     {
@@ -62,6 +69,7 @@ public class ParameterEditViewModel : ViewModelBase
         Type             = schema.Type;
         Options          = schema.Options ?? [];
         CanBeWired       = schema.IsConnectable;
+        _isVisible       = !schema.IsHidden;
         AvailableSources = new ObservableCollection<SourceRefViewModel>(availableSources);
 
         if (schema.Min is not null && TryParseDouble(schema.Min.ToString(), out var mn)) _min = mn;

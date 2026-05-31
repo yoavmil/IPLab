@@ -25,7 +25,8 @@ public class FindContoursOperator : IOperatorType
                 DefaultValue = "Fix",
                 Options = ["None", "Filter", "Fix"] },
         new() { Name = "MinArea", Label = "Min Area", Type = ParameterType.Double, IsConnectable = false,
-                DefaultValue = 1.0 },
+                DefaultValue = 1.0,
+                ShowWhenParam = "Filter", ShowWhenValues = ["Filter", "Fix"] },
         ..RoiParameters.Schema,
     ];
 

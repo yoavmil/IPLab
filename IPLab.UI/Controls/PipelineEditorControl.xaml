@@ -126,7 +126,7 @@
                                             Background="#007ACC" Padding="8 4">
                                         <Grid>
                                             <StackPanel Margin="0 0 20 0">
-                                                <TextBlock Text="{Binding DisplayName}"
+                                                <TextBlock Text="{Binding HeaderLabel}"
                                                            FontWeight="SemiBold"
                                                            Foreground="White" />
                                                 <TextBlock Text="{Binding TypeName}"
@@ -204,16 +204,22 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <!-- Panel header: operator name + close button -->
+                        <!-- Panel header: id + type + close button -->
                         <Grid Grid.Row="0" Background="#2D2D30">
-                            <TextBlock Text="{Binding DisplayingNode.DisplayName, Mode=OneWay}"
-                                       Padding="10 5"
-                                       FontWeight="SemiBold"
-                                       Foreground="White"
-                                       VerticalAlignment="Center" />
+                            <StackPanel Margin="10 5" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DisplayingNode.HeaderLabel, Mode=OneWay}"
+                                           FontWeight="SemiBold"
+                                           Foreground="White" />
+                                <TextBlock Text="{Binding DisplayingNode.TypeName, Mode=OneWay}"
+                                           Foreground="#888"
+                                           FontSize="11"
+                                           Margin="10 0 0 0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
                             <Button HorizontalAlignment="Right"
                                     Content="✕"
                                     Command="{Binding CloseSettingsCommand}"
@@ -225,13 +231,29 @@
                                     Cursor="Hand" />
                         </Grid>
 
+                        <!-- Name edit row -->
+                        <Grid Grid.Row="1" Margin="8 5 8 3">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="26" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Name"
+                                       VerticalAlignment="Center" Foreground="#DCDCDC" />
+                            <TextBox Grid.Column="2"
+                                     Text="{Binding DisplayingNode.DisplayName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="#1E1E1E" Foreground="#DCDCDC"
+                                     BorderBrush="#3F3F46" />
+                        </Grid>
+
                         <!-- Parameter rows -->
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding DisplayingNode.VisibleParameters}"
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding DisplayingNode.Parameters}"
                                           Margin="4 4">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:ParameterEditViewModel}">
-                                        <Grid Margin="4 3">
+                                        <Grid Margin="4 3"
+                                              Visibility="{Binding IsVisible, Converter={StaticResource BoolToVis}}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="130" />
                                                 <ColumnDefinition Width="26" />

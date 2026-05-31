@@ -10,27 +10,14 @@
 - [InvertImage](#invertimage) — invert all pixel values (bitwise NOT)
 
 ## Filters
-- [Threshold](#threshold) — apply binary threshold to a single-channel image
+- [Threshold](#threshold) — apply binary threshold to a single-channel image (fixed, Otsu, Triangle, or Adaptive)
+- [HistogramEqualization](#histogramequalization) — equalize pixel intensity distribution (EqualizeHist or CLAHE)
 - [GaussianBlur](#gaussianblur) — smooth an image with a Gaussian kernel
 - [Morphology](#morphology) — morphological operations (erode, dilate, open, close, gradient, top-hat, black-hat)
 - [Thinning](#thinning) — skeletonize a binary image via iterative thinning (Zhang-Suen or Guo-Hall)
 
-## Thinning
-
-Skeletonizes a binary single-channel image using iterative thinning (`CvXImgProc.Thinning`). Reduces foreground blobs to single-pixel-wide skeletons while preserving connectivity. Input must be an 8-bit single-channel image with pixel values 0 or 255.
-
-Supports [ROI](#roi).
-
-| Parameter    | Type   | Connectable | Description                                                                                   |
-|--------------|--------|-------------|-----------------------------------------------------------------------------------------------|
-| Image        | Object | Yes         | Binary single-channel input Mat (8-bit, values 0/255)                                         |
-| ThinningType | Enum   | No          | `ZhangSuen` (default) — Zhang-Suen algorithm; `GuoHall` — Guo-Hall algorithm (slightly faster) |
-
-| Output Port | Type |
-|-------------|------|
-| Image       | Mat  |
-
----
+## Visualization
+- [DrawHistogram](#drawhistogram) — render a single-channel image's intensity histogram as an image
 
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
@@ -113,14 +100,37 @@ Supports [ROI](#roi). Inverts all pixel values in the image using a bitwise NOT 
 
 ## Threshold
 
-Applies a threshold to a single-channel image using `Cv2.Threshold`. Supports [ROI](#roi).
+Applies a threshold to a single-channel image. Supports [ROI](#roi).
 
-| Parameter | Type   | Connectable | Description                                                                                                                                      |
-|-----------|--------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| Image     | Object | Yes         | Single-channel input Mat                                                                                                                         |
-| Method    | Enum   | No          | `Fixed` (default) — use `Thresh` value; `Otsu` — auto-compute optimal threshold from histogram (best for bimodal images, ignores `Thresh`); `Triangle` — triangle algorithm (best for unimodal histograms, ignores `Thresh`) |
-| Output Type | Enum   | No        | `Binary` (default) — above→255, below→0; `BinaryInv` — inverted binary; `Trunc` — above→Thresh, below unchanged; `ToZero` — above unchanged, below→0; `ToZeroInv` — above→0, below unchanged |
-| Thresh      | Double | No        | Threshold value (default 128); ignored when Method is `Otsu` or `Triangle`                                                                     |
+| Parameter       | Type   | Connectable | Description                                                                                                                                      |
+|-----------------|--------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| Image           | Object | Yes         | Single-channel input Mat                                                                                                                         |
+| Method          | Enum   | No          | `Fixed` (default) — use `Thresh` value; `Otsu` — auto threshold (bimodal histograms); `Triangle` — triangle algorithm (unimodal histograms); `Adaptive` — per-pixel local threshold (`Cv2.AdaptiveThreshold`) |
+| Output Type     | Enum   | No          | `Binary` (default), `BinaryInv`, `Trunc`, `ToZero`, `ToZeroInv`. When Method is `Adaptive` only `Binary` and `BinaryInv` apply.                 |
+| Thresh          | Double | No          | Threshold value (default 128); used only when Method is `Fixed`                                                                                  |
+| Adaptive Method | Enum   | No          | `MeanC` (default) — local mean; `GaussianC` — Gaussian-weighted mean. Used only when Method is `Adaptive`.                                      |
+| Block Size      | Int    | No          | Neighborhood size for local threshold computation (default 11, must be odd ≥ 3). Used only when Method is `Adaptive`.                           |
+| C               | Double | No          | Constant subtracted from the local mean (default 2). Positive values raise the bar; negative lower it. Used only when Method is `Adaptive`.      |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
+
+## HistogramEqualization
+
+Redistributes pixel intensity values to improve contrast before thresholding. Operates on 8-bit single-channel images.
+
+- **Equalize** (`Cv2.EqualizeHist`) — global equalization; stretches the full histogram to cover 0–255. Best when illumination is globally poor.
+- **CLAHE** (`Cv2.CreateCLAHE`) — Contrast Limited Adaptive Histogram Equalization; equalizes small local tiles independently, then clips the redistribution at `ClipLimit` to avoid amplifying noise. Better for images with uneven illumination across the frame.
+
+| Parameter     | Type   | Connectable | Description                                                                                           |
+|---------------|--------|-------------|-------------------------------------------------------------------------------------------------------|
+| Image         | Object | Yes         | 8-bit single-channel input Mat                                                                        |
+| Method        | Enum   | No          | `Equalize` (default) — global equalization; `CLAHE` — tile-based adaptive equalization               |
+| Clip Limit    | Double | No          | CLAHE only. Maximum slope of the histogram redistribution (default 2.0). Higher = more contrast, more noise amplification. |
+| Tile Grid Size | Int   | No          | CLAHE only. Image is divided into N×N tiles for local equalization (default 8).                      |
 
 | Output Port | Type |
 |-------------|------|
@@ -159,6 +169,40 @@ Supports [ROI](#roi).
 | Kernel Shape | Enum   | No          | `Rect` (default) — filled rectangle; `Ellipse` — filled ellipse; `Cross` — plus-sign shape        |
 | Kernel Size  | Int    | No          | Side length of the structuring element in pixels (default 3, must be odd for symmetric anchor)     |
 | Iterations   | Int    | No          | Number of times the operation is applied (default 1); each pass adds one more ring of erosion/dilation |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
+
+## Thinning
+
+Skeletonizes a binary single-channel image using iterative thinning (`CvXImgProc.Thinning`). Reduces foreground blobs to single-pixel-wide skeletons while preserving connectivity. Input must be an 8-bit single-channel image with pixel values 0 or 255.
+
+Supports [ROI](#roi).
+
+| Parameter    | Type   | Connectable | Description                                                                                   |
+|--------------|--------|-------------|-----------------------------------------------------------------------------------------------|
+| Image        | Object | Yes         | Binary single-channel input Mat (8-bit, values 0/255)                                         |
+| ThinningType | Enum   | No          | `ZhangSuen` (default) — Zhang-Suen algorithm; `GuoHall` — Guo-Hall algorithm (slightly faster) |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
+
+## DrawHistogram
+
+Computes the intensity histogram of a single-channel image using `Cv2.CalcHist` and renders it as a BGR image. Each of the 256 bins is drawn as a filled vertical bar scaled to the output height. Useful for visually checking the intensity distribution before or after `HistogramEqualization` or `Threshold`.
+
+| Parameter | Type   | Connectable | Description                                                             |
+|-----------|--------|-------------|-------------------------------------------------------------------------|
+| Image     | Object | Yes         | Single-channel 8-bit input Mat                                          |
+| Height    | Int    | No          | Output image height in pixels (default 200)                             |
+| Width     | Int    | No          | Output image width in pixels — bins are scaled to fill it (default 512) |
+| Color     | Enum   | No          | Bar color: `Green` (default), `White`, `Cyan`, `Red`, `Yellow`         |
 
 | Output Port | Type |
 |-------------|------|
