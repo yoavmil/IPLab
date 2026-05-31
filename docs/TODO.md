@@ -5,7 +5,9 @@
 ## Docs
 
 - **README.md** — root-level project introduction: what IPLab is, who it's for,
-  quick-start (how to build and run), and links to OPERATORS.md
+  quick-start (how to build and run), and links to OPERATORS.md. Include a
+  *Usage example* section that links to [`scripts/Waviness/`](../scripts/Waviness/)
+  as a worked end-to-end example of building and running an IPLab flow from code.
 
 ## IPLab (UI project)
 
