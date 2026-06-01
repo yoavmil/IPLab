@@ -274,7 +274,12 @@ public class MainViewModel : ViewModelBase
             UpdateSelectedImage();
 
             if (IsRunningContinuous)
-                Application.Current?.Dispatcher.InvokeAsync(RunOnce, DispatcherPriority.Background);
+            {
+                if (failed > 0)
+                    IsRunningContinuous = false;
+                else
+                    Application.Current?.Dispatcher.InvokeAsync(RunOnce, DispatcherPriority.Background);
+            }
             return true;
         }
         catch (OperationCanceledException)

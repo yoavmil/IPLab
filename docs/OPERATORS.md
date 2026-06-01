@@ -25,6 +25,9 @@
 - [ConnectedComponents](#connectedcomponents) — label connected regions and return per-component stats
 - [FindContours](#findcontours) — find contours in a binary image with built-in filter/repair
 
+## Scripting
+- [CSharpScript](#csharpscipt) — run a user-written C# snippet loaded from a `.cs` file
+
 ---
 
 ## LoadImage
@@ -310,3 +313,56 @@ Operators that support ROI expose four extra connectable Int parameters: **ROI X
 In both cases, if the rectangle lies entirely outside the image bounds after clamping, image-output operators return the input unchanged and detection operators return an empty result.
 
 All four parameters are connectable, so they can be wired to outputs of upstream operators (e.g. a detected bounding box driving the ROI of a downstream filter). Operators that support ROI also expose **RoiX**, **RoiY**, **RoiW**, **RoiH** as output ports, so their ROI values can be forwarded to downstream operators.
+
+---
+
+## CSharpScript
+
+Executes a user-written C# snippet loaded from a `.cs` file on disk. The file is compiled with Roslyn (`Microsoft.CodeAnalysis.CSharp.Scripting`) at first use and cached; if the file's modification date changes the script is recompiled automatically on the next pipeline run.
+
+The script body is plain top-level C# (no namespace or class declaration). The following variables are pre-defined:
+
+- `In1`, `In2`, `In3`, `In4` — (`object?`) — values from wired upstream ports; `null` when not connected.
+- `Image` — (`Mat?`) — assign a Mat to send it to the primary image output port.
+- `Out1`, `Out2`, `Out3`, `Out4` — (`object?`) — assign any value to send it to the corresponding output port.
+
+Auto-imported namespaces: `System`, `System.Linq`, `System.Collections.Generic`, `OpenCvSharp`, `OpenCvSharp.Features2D`, `IPLab.Core.Models`.
+
+**Security note:** scripts run with full trust inside the IPLab process. There is no sandboxing. Only load scripts from sources you trust.
+
+**Example — image filter:**
+```csharp
+var src = (Mat)In1;
+var dst = new Mat();
+Cv2.GaussianBlur(src, dst, new Size(5, 5), 0);
+Image = dst;
+```
+
+**Example — filter array output and pass image through:**
+```csharp
+var circles = (CircleSegment[])In2;
+var big     = circles.Where(c => c.Radius > 20).ToArray();
+Image = (Mat)In1;   // pass image through unchanged
+Out1  = big;        // filtered circle array
+Out2  = big.Length; // scalar count
+```
+
+**Debugging in-script:** use `Console.WriteLine`, `Cv2.ImWrite`, or `Cv2.ImShow` / `Cv2.WaitKey` directly in the script. A standalone debug runner project can be scaffolded via the "Scaffold debug project" button in the operator settings.
+
+Does not support ROI.
+
+| Parameter   | Type   | Connectable | Description                               |
+|-------------|--------|-------------|-------------------------------------------|
+| Script Path | String | No          | Absolute path to the `.cs` script file   |
+| In1         | Object | Yes         | First wired input (wildcard type)         |
+| In2         | Object | Yes         | Second wired input (wildcard type)        |
+| In3         | Object | Yes         | Third wired input (wildcard type)         |
+| In4         | Object | Yes         | Fourth wired input (wildcard type)        |
+
+| Output Port | Type   |
+|-------------|--------|
+| Image       | Mat    |
+| Out1        | Object |
+| Out2        | Object |
+| Out3        | Object |
+| Out4        | Object |

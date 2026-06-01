@@ -206,6 +206,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <!-- Panel header: id + type + close button -->
@@ -378,6 +379,40 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+
+                        <!-- CSharpScript-specific actions (Row 3) -->
+                        <StackPanel Grid.Row="3"
+                                    Orientation="Horizontal"
+                                    Margin="8 4 8 6">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DisplayingNode.TypeName}" Value="CSharpScript">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <Button Content="Browse / Create Script…"
+                                    Command="{Binding DisplayingNode.BrowseScriptCommand}"
+                                    Margin="0 0 6 0"
+                                    Padding="8 4"
+                                    Background="#3F3F46"
+                                    Foreground="#DCDCDC"
+                                    BorderThickness="1"
+                                    BorderBrush="#555558"
+                                    Cursor="Hand" />
+                            <Button Content="Scaffold Debug Project"
+                                    Command="{Binding DisplayingNode.ScaffoldDebugProjectCommand}"
+                                    Padding="8 4"
+                                    Background="#3F3F46"
+                                    Foreground="#DCDCDC"
+                                    BorderThickness="1"
+                                    BorderBrush="#555558"
+                                    Cursor="Hand" />
+                        </StackPanel>
+
                     </Grid>
                 </Border>
 

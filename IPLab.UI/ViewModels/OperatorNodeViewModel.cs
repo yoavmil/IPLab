@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using IPLab.UI.Services;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 
 namespace IPLab.UI.ViewModels;
@@ -42,8 +43,11 @@ public class OperatorNodeViewModel : ViewModelBase
     public ConnectorViewModel LeftConnector   { get; } = new("Left",   ConnectionSide.Left);
     public ConnectorViewModel RightConnector  { get; } = new("Right",  ConnectionSide.Right);
 
-    public IReadOnlyList<ParameterEditViewModel> Parameters         { get; }
-    public ICommand                              OpenSettingsCommand { get; }
+    public IReadOnlyList<ParameterEditViewModel> Parameters                  { get; }
+    public ICommand                              OpenSettingsCommand         { get; }
+    public ICommand                              ScaffoldDebugProjectCommand { get; }
+    public ICommand                              BrowseScriptCommand         { get; }
+    public bool                                  IsCSharpScript             => TypeName == "CSharpScript";
 
     private OperatorStatus _status = OperatorStatus.NotRun;
     public OperatorStatus Status
@@ -118,6 +122,8 @@ public class OperatorNodeViewModel : ViewModelBase
             };
         }
 
-        OpenSettingsCommand = new RelayCommand(() => onOpenSettings?.Invoke(this));
+        OpenSettingsCommand         = new RelayCommand(() => onOpenSettings?.Invoke(this));
+        ScaffoldDebugProjectCommand = new RelayCommand(() => CSharpScriptService.ScaffoldDebugProject(Parameters));
+        BrowseScriptCommand         = new RelayCommand(() => CSharpScriptService.BrowseScript(Parameters));
     }
 }
