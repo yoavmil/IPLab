@@ -11,7 +11,7 @@ classDiagram
         +string TypeName
         +string Icon
         +IReadOnlyList~ParameterDescriptor~ ParameterSchema
-        +IReadOnlyList~string~ OutputPorts
+        +IReadOnlyList~OutputPortDescriptor~ OutputPorts
         +Execute(parameters: ParameterValue[]) object
     }
 
@@ -81,7 +81,7 @@ classDiagram
         +string Name
         +string Label
         +ParameterType Type
-        +bool IsConnectable
+        +Type? ConnectableType
         +object? DefaultValue
         +object? Min
         +object? Max
@@ -190,9 +190,9 @@ Visual connections and `Dependency` entries are always 1-to-1: one visual line =
 `IFlowDef.Validate()` must verify:
 1. All operator IDs are unique.
 2. Every `ParameterValue.Source` references a declared `Dependency` on the same operator.
-3. Every `ParameterValue.Source` port name exists in the referenced operator type's `OutputPorts`.
+3. Every `ParameterValue.Source` port name exists in the referenced operator type's `OutputPorts`. *(implemented)*
 4. No circular dependencies exist in the dependency graph.
-5. Connections types are concise, meaning bool connects to bool and so on.
+5. The port's `DataType` is compatible with the target parameter's `ConnectableType`, via `PortTypeCompat.IsCompatible`. Rules: `typeof(object)` port feeds any parameter; `null` or `typeof(object)` `ConnectableType` accepts any port; `double` parameter accepts `int` port (widening); otherwise `ConnectableType.IsAssignableFrom(portDataType)`. *(implemented)*
 
 ## Serialization
 

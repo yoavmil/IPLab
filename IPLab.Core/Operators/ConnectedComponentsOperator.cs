@@ -12,14 +12,19 @@ public class ConnectedComponentsOperator : IOperatorType
     public string Icon      => "component";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",            Label = "Image",             Type = ParameterType.Object, IsConnectable = true },
-        new() { Name = "Connectivity",     Label = "Connectivity",      Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Image",            Label = "Image",             ConnectableType = typeof(Mat) },
+        new() { Name = "Connectivity",     Label = "Connectivity",      Type = ParameterType.Enum,
                 DefaultValue = "8", Options = ["4", "8"] },
-        new() { Name = "OutputLabelImage", Label = "Output Label Image", Type = ParameterType.Bool,   IsConnectable = false,
+        new() { Name = "OutputLabelImage", Label = "Output Label Image", Type = ParameterType.Bool,
                 DefaultValue = true },
         ..RoiParameters.Schema,
     ];
-    public IReadOnlyList<string> OutputPorts => ["Components", "LabelImage", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
+    [
+        new() { Name = "Components", DataType = typeof(ConnectedComponentInfo[]) },
+        new() { Name = "LabelImage", DataType = typeof(Mat) },
+        ..RoiParameters.OutputPorts,
+    ];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

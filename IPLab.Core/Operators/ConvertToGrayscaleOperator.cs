@@ -11,11 +11,11 @@ public class ConvertToGrayscaleOperator : IOperatorType
     public string Icon      => "palette";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",  Label = "Image",  Type = ParameterType.Object, IsConnectable = true  },
-        new() { Name = "Method", Label = "Method", Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Image",  Label = "Image",  ConnectableType = typeof(Mat) },
+        new() { Name = "Method", Label = "Method", Type = ParameterType.Enum,
                 DefaultValue = "Luminance", Options = ["Luminance", "HsvValue"] }
     ];
-    public IReadOnlyList<string> OutputPorts => ["Image"];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

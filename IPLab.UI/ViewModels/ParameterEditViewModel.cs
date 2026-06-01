@@ -8,9 +8,10 @@ public class ParameterEditViewModel : ViewModelBase
 {
     public string                     Name        { get; }
     public string                     Label       { get; }
-    public ParameterType              Type        { get; }
-    public IReadOnlyList<string>      Options     { get; }
-    public bool                       CanBeWired  { get; }
+    public ParameterType              Type            { get; }
+    public Type?                      ConnectableType { get; }
+    public IReadOnlyList<string>      Options         { get; }
+    public bool                       CanBeWired      { get; }
     public bool                       IsEnum       => Type == ParameterType.Enum;
     public bool                       IsStringList => Type == ParameterType.StringList;
 
@@ -67,10 +68,12 @@ public class ParameterEditViewModel : ViewModelBase
         Name             = schema.Name;
         Label            = schema.Label;
         Type             = schema.Type;
+        ConnectableType  = schema.ConnectableType;
         Options          = schema.Options ?? [];
-        CanBeWired       = schema.IsConnectable;
+        CanBeWired       = schema.ConnectableType != null;
         _isVisible       = !schema.IsHidden;
-        AvailableSources = new ObservableCollection<SourceRefViewModel>(availableSources);
+        AvailableSources = new ObservableCollection<SourceRefViewModel>(
+            availableSources.Where(s => PortTypeCompat.IsCompatible(ConnectableType, s.DataType)));
 
         if (schema.Min is not null && TryParseDouble(schema.Min.ToString(), out var mn)) _min = mn;
         if (schema.Max is not null && TryParseDouble(schema.Max.ToString(), out var mx)) _max = mx;

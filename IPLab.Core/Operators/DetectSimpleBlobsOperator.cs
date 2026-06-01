@@ -11,20 +11,20 @@ public class DetectSimpleBlobsOperator : IOperatorType
     public string Icon      => "blob";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",              Label = "Image",                Type = ParameterType.Object, IsConnectable = true  },
-        new() { Name = "Polarity",           Label = "Polarity",             Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Image",              Label = "Image",                ConnectableType = typeof(Mat) },
+        new() { Name = "Polarity",           Label = "Polarity",             Type = ParameterType.Enum,
                 DefaultValue = "Light on Dark", Options = ["Light on Dark", "Dark on Light"] },
-        new() { Name = "MinCircularity",     Label = "Min Circularity",      Type = ParameterType.Double, IsConnectable = false, DefaultValue = 0.8,   Min = 0.0, Max = 1.0 },
-        new() { Name = "MinArea",            Label = "Min Area (px²)",       Type = ParameterType.Double, IsConnectable = false, DefaultValue = 50.0   },
-        new() { Name = "MaxArea",            Label = "Max Area (px²)",       Type = ParameterType.Double, IsConnectable = false, DefaultValue = 50000.0 },
-        new() { Name = "MinDistBetweenBlobs",Label = "Min Dist Between Blobs",Type = ParameterType.Double, IsConnectable = false, DefaultValue = 10.0  },
-        new() { Name = "MinThreshold",       Label = "Min Threshold",         Type = ParameterType.Double, IsConnectable = false, DefaultValue = 100.0 },
-        new() { Name = "MaxThreshold",       Label = "Max Threshold",         Type = ParameterType.Double, IsConnectable = false, DefaultValue = 200.0 },
-        new() { Name = "ThresholdStep",      Label = "Threshold Step",        Type = ParameterType.Double, IsConnectable = false, DefaultValue = 10.0  },
-        new() { Name = "MinRepeatability",   Label = "Min Repeatability",     Type = ParameterType.Int,    IsConnectable = false, DefaultValue = 2     },
+        new() { Name = "MinCircularity",     Label = "Min Circularity",      Type = ParameterType.Double, DefaultValue = 0.8,   Min = 0.0, Max = 1.0 },
+        new() { Name = "MinArea",            Label = "Min Area (px²)",       Type = ParameterType.Double, DefaultValue = 50.0   },
+        new() { Name = "MaxArea",            Label = "Max Area (px²)",       Type = ParameterType.Double, DefaultValue = 50000.0 },
+        new() { Name = "MinDistBetweenBlobs",Label = "Min Dist Between Blobs",Type = ParameterType.Double, DefaultValue = 10.0  },
+        new() { Name = "MinThreshold",       Label = "Min Threshold",         Type = ParameterType.Double, DefaultValue = 100.0 },
+        new() { Name = "MaxThreshold",       Label = "Max Threshold",         Type = ParameterType.Double, DefaultValue = 200.0 },
+        new() { Name = "ThresholdStep",      Label = "Threshold Step",        Type = ParameterType.Double, DefaultValue = 10.0  },
+        new() { Name = "MinRepeatability",   Label = "Min Repeatability",     Type = ParameterType.Int,DefaultValue = 2     },
         ..RoiParameters.Schema,
     ];
-    public IReadOnlyList<string> OutputPorts => ["Blobs", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Blobs", DataType = typeof(KeyPoint[]) }, ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

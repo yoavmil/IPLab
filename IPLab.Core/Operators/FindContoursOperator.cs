@@ -14,23 +14,23 @@ public class FindContoursOperator : IOperatorType
 
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",   Label = "Image",    Type = ParameterType.Object, IsConnectable = true },
-        new() { Name = "Mode",    Label = "Mode",     Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Image",   Label = "Image",    ConnectableType = typeof(Mat) },
+        new() { Name = "Mode",    Label = "Mode",     Type = ParameterType.Enum,
                 DefaultValue = "List",
                 Options = ["External", "List", "CComp", "Tree"] },
-        new() { Name = "Method",  Label = "Method",   Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Method",  Label = "Method",   Type = ParameterType.Enum,
                 DefaultValue = "Simple",
                 Options = ["None", "Simple", "TC89L1", "TC89KCOS"] },
-        new() { Name = "Filter",  Label = "Filter",   Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Filter",  Label = "Filter",   Type = ParameterType.Enum,
                 DefaultValue = "Fix",
                 Options = ["None", "Filter", "Fix"] },
-        new() { Name = "MinArea", Label = "Min Area", Type = ParameterType.Double, IsConnectable = false,
+        new() { Name = "MinArea", Label = "Min Area", Type = ParameterType.Double,
                 DefaultValue = 1.0,
                 ShowWhenParam = "Filter", ShowWhenValues = ["Filter", "Fix"] },
         ..RoiParameters.Schema,
     ];
 
-    public IReadOnlyList<string> OutputPorts => ["Contours", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Contours", DataType = typeof(Point[][]) }, ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

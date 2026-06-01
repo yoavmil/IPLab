@@ -6,8 +6,11 @@ public record ParameterDescriptor
     public required string Name { get; init; }
     // Human-readable string shown in the UI. Can be changed freely and localized.
     public required string Label { get; init; }
-    public required ParameterType Type { get; init; }
-    public bool IsConnectable { get; init; }
+    // Drives UI control rendering. Defaults to Object (= wire-only socket, no editable control).
+    public ParameterType Type { get; init; } = ParameterType.Object;
+    // C# type this parameter accepts when wired to an output port.
+    // Null = not connectable. typeof(object) = connectable, accepts any port.
+    public Type? ConnectableType { get; init; }
     public bool IsHidden { get; init; }
     public object? DefaultValue { get; init; }
     public object? Min { get; init; }

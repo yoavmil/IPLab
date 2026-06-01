@@ -1,0 +1,25 @@
+{
+  "version": "0.2",
+  "words": [
+    "grayscale", "Grayscale",
+    "thresholding", "Thresholding",
+    "binarization",
+    "CLAHE",
+    "Otsu",
+    "unimodal", "bimodal",
+    "Trunc",
+    "Skeletonize", "Skeletonizes", "skeletonize",
+    "Zhang", "Suen",
+    "thinning", "Thinning",
+    "morphological", "Morphological",
+    "structuring",
+    "OpenCvSharp", "OpenCV",
+    "contour", "contours", "Contours",
+    "centroid", "centroids",
+    "connectable",
+    "Nodify",
+    "heatmap",
+    "darkfield",
+    "waviness"
+  ]
+}

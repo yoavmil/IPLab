@@ -14,7 +14,7 @@ public class InvertImageTests
         public string Category  => "Test";
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
-        public IReadOnlyList<string> OutputPorts => ["Image"];
+        public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
         public object? Execute(IReadOnlyDictionary<string, object?> _)
             => new Mat(4, 4, MatType.CV_8UC1, new Scalar(value));
     }
@@ -25,7 +25,7 @@ public class InvertImageTests
         public string Category  => "Test";
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
-        public IReadOnlyList<string> OutputPorts => ["Image"];
+        public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
         public object? Execute(IReadOnlyDictionary<string, object?> _)
             => new Mat(4, 4, MatType.CV_8UC3, new Scalar(b, g, r));
     }
@@ -78,7 +78,7 @@ public class InvertImageTests
         public string Category  => "Test";
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
-        public IReadOnlyList<string> OutputPorts => ["Image"];
+        public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
         public object? Execute(IReadOnlyDictionary<string, object?> _) => mat.Clone();
     }
 

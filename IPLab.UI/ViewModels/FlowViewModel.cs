@@ -63,7 +63,7 @@ public class FlowViewModel
 
         var availableSources = Nodes
             .SelectMany(n => n.Operator.Type.OutputPorts
-                .Select(port => new SourceRefViewModel(n.Id, n.DisplayName, port)))
+                .Select(port => new SourceRefViewModel(n.Id, n.DisplayName, port.Name, port.DataType)))
             .ToList();
 
         Nodes.Add(new OperatorNodeViewModel(op, availableSources,
@@ -104,13 +104,11 @@ public class FlowViewModel
         foreach (var node in GetSelfAndDescendants(targetNode))
             RebuildAvailableSources(node);
 
-        // Default the first unconnected connectable param to the new source's first port.
+        // Default the first unconnected connectable param to the first compatible port from the new source.
         var param = targetNode.Parameters.FirstOrDefault(p => p.CanBeWired && !p.IsWired);
         if (param is not null)
         {
-            var firstPort = sourceNode.Operator.Type.OutputPorts.FirstOrDefault() ?? string.Empty;
-            var sourceRef = param.AvailableSources.FirstOrDefault(s =>
-                s.OperatorId == sourceNode.Id && s.Port == firstPort);
+            var sourceRef = param.AvailableSources.FirstOrDefault(s => s.OperatorId == sourceNode.Id);
             if (sourceRef is not null)
             {
                 param.SelectedSource = sourceRef;
@@ -150,14 +148,14 @@ public class FlowViewModel
                 var ancestor = Nodes.FirstOrDefault(n => n.Id == id);
                 if (ancestor is null) return Enumerable.Empty<SourceRefViewModel>();
                 return ancestor.Operator.Type.OutputPorts
-                    .Select(port => new SourceRefViewModel(id, ancestor.DisplayName, port));
+                    .Select(port => new SourceRefViewModel(id, ancestor.DisplayName, port.Name, port.DataType));
             })
             .ToList();
 
         foreach (var param in node.Parameters.Where(p => p.CanBeWired))
         {
             param.AvailableSources.Clear();
-            foreach (var src in ordered)
+            foreach (var src in ordered.Where(s => PortTypeCompat.IsCompatible(param.ConnectableType, s.DataType)))
                 param.AvailableSources.Add(src);
 
             // Re-point SelectedSource at the new instance, or clear stale wiring.
@@ -217,7 +215,7 @@ public class FlowViewModel
             var availableSources = nodeMap.Values
                 .OrderByDescending(n => levels[n.Id])
                 .SelectMany(n => n.Operator.Type.OutputPorts
-                    .Select(port => new SourceRefViewModel(n.Id, n.DisplayName, port)))
+                    .Select(port => new SourceRefViewModel(n.Id, n.DisplayName, port.Name, port.DataType)))
                 .ToList();
 
             for (int i = 0; i < ops.Count; i++)
@@ -258,6 +256,11 @@ public class FlowViewModel
                     dep.DependencyId));
             }
         }
+
+        // Now that all edges are in place, re-sync each node's AvailableSources so they
+        // reflect the actual ancestor set (not the level-order approximation from BuildNodes).
+        foreach (var node in nodeMap.Values)
+            RebuildAvailableSources(node);
     }
 
     private static ConnectorViewModel GetConnector(OperatorNodeViewModel node, ConnectionSide side) => side switch

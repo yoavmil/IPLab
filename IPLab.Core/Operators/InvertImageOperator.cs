@@ -11,10 +11,10 @@ public class InvertImageOperator : IOperatorType
     public string Icon      => "invert";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image", Label = "Image", Type = ParameterType.Object, IsConnectable = true },
+        new() { Name = "Image", Label = "Image", ConnectableType = typeof(Mat) },
         ..RoiParameters.Schema,
     ];
-    public IReadOnlyList<string> OutputPorts => ["Image", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }, ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

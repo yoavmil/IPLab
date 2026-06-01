@@ -11,10 +11,10 @@ public class SaveImageOperator : IOperatorType
     public string Icon      => "save";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",    Label = "Image",     Type = ParameterType.Object, IsConnectable = true  },
-        new() { Name = "FilePath", Label = "File Path", Type = ParameterType.String, IsConnectable = false }
+        new() { Name = "Image",    Label = "Image",     ConnectableType = typeof(Mat) },
+        new() { Name = "FilePath", Label = "File Path", Type = ParameterType.String }
     ];
-    public IReadOnlyList<string> OutputPorts => [];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

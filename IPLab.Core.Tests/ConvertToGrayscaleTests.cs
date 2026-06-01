@@ -15,7 +15,7 @@ public class ConvertToGrayscaleTests
         public string Category  => "Test";
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
-        public IReadOnlyList<string> OutputPorts => ["Image"];
+        public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
         public object? Execute(IReadOnlyDictionary<string, object?> _)
             => new Mat(100, 100, MatType.CV_8UC1, new Scalar(128));
     }

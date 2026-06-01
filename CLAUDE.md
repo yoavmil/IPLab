@@ -40,6 +40,8 @@ See [IPLab.UI/CLAUDE.md](IPLab.UI/CLAUDE.md) for UI-specific rules and Nodify im
 
 **Rule: whenever a new operator is added, decide explicitly whether it supports ROI and discuss with the user before implementing. If it does, follow the pattern in `RoiParameters` — filter operators use `ApplyImageFilter`, detection operators use `Clamp` + coordinate translation. See [docs/OPERATORS.md#roi](docs/OPERATORS.md) for the full list of ROI-supporting operators.**
 
+**Rule: whenever a new operator is added, its `OutputPorts` must use `IReadOnlyList<OutputPortDescriptor>` with an explicit `DataType` per port (e.g. `typeof(Mat)`, `typeof(CircleSegment[])`, `typeof(int)`). Script/dynamic operators use `typeof(object)` as a wildcard. Connectable input parameters declare `ConnectableType` — the C# type they accept; `null` (omitted) means not connectable; `typeof(object)` means connectable wildcard. Omit `Type` for wire-only sockets (defaults to `ParameterType.Object` = no UI control). There is no `IsConnectable` flag — connectability is implied by `ConnectableType != null`. See `PortTypeCompat.IsCompatible` for the full compatibility rules.**
+
 **Rule: after any meaningful change to `IPLab.Core` or its tests, run the full test suite (`dotnet test`) and confirm it passes before considering the task done.**
 
 ## Design Decisions
@@ -63,6 +65,7 @@ See [IPLab.UI/CLAUDE.md](IPLab.UI/CLAUDE.md) for UI-specific rules and Nodify im
 - **Flow data model:** `FlowDef` → list of `Operator` records, each with `Id`, `DisplayName`, `Type` (`IOperatorType`), `Parameters` (`ParameterValue[]`), `Dependencies` (`Dependency[]`). Serialized as pretty-printed camelCase JSON via `FlowDefSerializer` (no attributes — private DTO classes inside the serializer).
 - **Operator registry:** `OperatorRegistry.CreateDefault()` auto-discovers all concrete `IOperatorType` implementations via reflection — no manual registration needed.
 - **Export format:** JSON flow file + compatible runtime executor. No code generation in MVP.
+- **Typed output ports:** `IOperatorType.OutputPorts` is `IReadOnlyList<OutputPortDescriptor>` — each port carries `Name` and `DataType: System.Type`. `ParameterDescriptor` carries an optional `ConnectableType: Type?` — the CLR type the parameter accepts when wired; `null` = wildcard. Compatibility is checked by `PortTypeCompat.IsCompatible(ConnectableType, portDataType)`: `typeof(object)` port or `null`/`typeof(object)` param = wildcard; `double` param accepts `int` port (widening); otherwise `IsAssignableFrom`. Wire-only parameters (e.g. Image inputs) omit `Type` (defaults to `ParameterType.Object` = no UI control) and just declare `ConnectableType = typeof(Mat)`. Image ports all use `typeof(Mat)` — grayscale vs. colour is not distinguished at this level.
 
 ## Open Questions
 

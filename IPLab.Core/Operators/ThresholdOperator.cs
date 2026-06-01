@@ -11,23 +11,23 @@ public class ThresholdOperator : IOperatorType
     public string Icon      => "threshold";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",          Label = "Image",           Type = ParameterType.Object, IsConnectable = true  },
-        new() { Name = "Method",         Label = "Method",          Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Image",          Label = "Image",           ConnectableType = typeof(Mat) },
+        new() { Name = "Method",         Label = "Method",          Type = ParameterType.Enum,
                 DefaultValue = "Fixed", Options = ["Fixed", "Otsu", "Triangle", "Adaptive"] },
-        new() { Name = "Type",           Label = "Output Type",     Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Type",           Label = "Output Type",     Type = ParameterType.Enum,
                 DefaultValue = "Binary", Options = ["Binary", "BinaryInv", "Trunc", "ToZero", "ToZeroInv"] },
-        new() { Name = "Thresh",         Label = "Threshold",       Type = ParameterType.Double, IsConnectable = false, DefaultValue = 128.0, Min = 0.0, Max = 255.0,
+        new() { Name = "Thresh",         Label = "Threshold",       Type = ParameterType.Double, DefaultValue = 128.0, Min = 0.0, Max = 255.0,
                 ShowWhenParam = "Method", ShowWhenValues = ["Fixed"] },
-        new() { Name = "AdaptiveMethod", Label = "Adaptive Method", Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "AdaptiveMethod", Label = "Adaptive Method", Type = ParameterType.Enum,
                 DefaultValue = "MeanC", Options = ["MeanC", "GaussianC"],
                 ShowWhenParam = "Method", ShowWhenValues = ["Adaptive"] },
-        new() { Name = "BlockSize",      Label = "Block Size",      Type = ParameterType.Int,    IsConnectable = false, DefaultValue = 11, Min = 3.0, Max = 9999.0,
+        new() { Name = "BlockSize",      Label = "Block Size",      Type = ParameterType.Int,DefaultValue = 11, Min = 3.0, Max = 9999.0,
                 ShowWhenParam = "Method", ShowWhenValues = ["Adaptive"] },
-        new() { Name = "C",              Label = "C",               Type = ParameterType.Double, IsConnectable = false, DefaultValue = 2.0, Min = -100.0, Max = 100.0,
+        new() { Name = "C",              Label = "C",               Type = ParameterType.Double, DefaultValue = 2.0, Min = -100.0, Max = 100.0,
                 ShowWhenParam = "Method", ShowWhenValues = ["Adaptive"] },
         ..RoiParameters.Schema,
     ];
-    public IReadOnlyList<string> OutputPorts => ["Image", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }, ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

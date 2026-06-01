@@ -546,12 +546,13 @@ public class MainViewModel : ViewModelBase
             var images = new Dictionary<(string, string), BitmapSource>();
             foreach (var (id, result) in executor.IntermediateResults)
             {
-                var ports = portsByNode.TryGetValue(id, out var p) ? p : (IReadOnlyList<string>)["Image"];
+                var ports = portsByNode.TryGetValue(id, out var p) ? p
+                    : (IReadOnlyList<OutputPortDescriptor>)[new OutputPortDescriptor { Name = "Image", DataType = typeof(Mat) }];
                 if (result is Mat mat)
                 {
                     var bytes = ImageHelper.TryGetPngBytes(mat);
                     if (bytes is not null)
-                        images[(id, ports.Count > 0 ? ports[0] : "Image")] = BytesToBitmapSource(bytes);
+                        images[(id, ports.Count > 0 ? ports[0].Name : "Image")] = BytesToBitmapSource(bytes);
                 }
                 else if (result is Dictionary<string, object?> dict)
                 {
@@ -640,11 +641,11 @@ public class MainViewModel : ViewModelBase
     }
 
     private IEnumerable<(string Port, BitmapSource Bitmap)> ExtractImageLayers(
-        string operatorId, IReadOnlyList<string> outputPorts)
+        string operatorId, IReadOnlyList<OutputPortDescriptor> outputPorts)
     {
         foreach (var port in outputPorts)
-            if (_precomputedImages.TryGetValue((operatorId, port), out var bitmap))
-                yield return (port, bitmap);
+            if (_precomputedImages.TryGetValue((operatorId, port.Name), out var bitmap))
+                yield return (port.Name, bitmap);
     }
 
     private static BitmapSource BytesToBitmapSource(byte[] bytes)

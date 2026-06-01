@@ -11,15 +11,15 @@ public class DetectCirclesOperator : IOperatorType
     public string Icon      => "circle";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",     Label = "Image",              Type = ParameterType.Object, IsConnectable = true  },
-        new() { Name = "MinDist",   Label = "Min Distance",       Type = ParameterType.Double, IsConnectable = false },
-        new() { Name = "Param1",    Label = "Canny Threshold",    Type = ParameterType.Double, IsConnectable = false },
-        new() { Name = "Param2",    Label = "Accumulator Thresh", Type = ParameterType.Double, IsConnectable = false },
-        new() { Name = "MinRadius", Label = "Min Radius",         Type = ParameterType.Int,    IsConnectable = false },
-        new() { Name = "MaxRadius", Label = "Max Radius",         Type = ParameterType.Int,    IsConnectable = false },
+        new() { Name = "Image",     Label = "Image",              ConnectableType = typeof(Mat) },
+        new() { Name = "MinDist",   Label = "Min Distance",       Type = ParameterType.Double },
+        new() { Name = "Param1",    Label = "Canny Threshold",    Type = ParameterType.Double },
+        new() { Name = "Param2",    Label = "Accumulator Thresh", Type = ParameterType.Double },
+        new() { Name = "MinRadius", Label = "Min Radius",         Type = ParameterType.Int,},
+        new() { Name = "MaxRadius", Label = "Max Radius",         Type = ParameterType.Int,},
         ..RoiParameters.Schema,
     ];
-    public IReadOnlyList<string> OutputPorts => ["Circles", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Circles", DataType = typeof(CircleSegment[]) }, ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

@@ -12,20 +12,20 @@ public class MorphologyOperator : IOperatorType
 
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",       Label = "Image",        Type = ParameterType.Object, IsConnectable = true },
-        new() { Name = "Operation",   Label = "Operation",    Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Image",       Label = "Image",        ConnectableType = typeof(Mat) },
+        new() { Name = "Operation",   Label = "Operation",    Type = ParameterType.Enum,
                 DefaultValue = "Erode",
                 Options = ["Erode", "Dilate", "Open", "Close", "Gradient", "TopHat", "BlackHat"] },
-        new() { Name = "KernelShape", Label = "Kernel Shape", Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "KernelShape", Label = "Kernel Shape", Type = ParameterType.Enum,
                 DefaultValue = "Rect", Options = ["Rect", "Ellipse", "Cross"] },
-        new() { Name = "KernelSize",  Label = "Kernel Size",  Type = ParameterType.Int,    IsConnectable = false,
+        new() { Name = "KernelSize",  Label = "Kernel Size",  Type = ParameterType.Int,
                 DefaultValue = 3, Min = 1, Max = 99 },
-        new() { Name = "Iterations",  Label = "Iterations",   Type = ParameterType.Int,    IsConnectable = false,
+        new() { Name = "Iterations",  Label = "Iterations",   Type = ParameterType.Int,
                 DefaultValue = 1, Min = 1, Max = 20 },
         ..RoiParameters.Schema,
     ];
 
-    public IReadOnlyList<string> OutputPorts => ["Image", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }, ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

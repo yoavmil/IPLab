@@ -49,6 +49,28 @@ public class FlowDef : IFlowDef
                     errors.Add($"Operator '{op.Id}' wires parameter '{pv.Name}' from '{src.OperatorId}' but that operator is not listed in its dependencies.");
         }
 
+        // Check that wired port names exist and their types are compatible.
+        var opById = Operators.ToDictionary(o => o.Id);
+        foreach (var op in Operators)
+        {
+            foreach (var pv in op.Parameters)
+            {
+                if (pv.Source is not { } src) continue;
+                if (!opById.TryGetValue(src.OperatorId, out var srcOp)) continue;
+
+                var portDesc = srcOp.Type.OutputPorts.FirstOrDefault(p => p.Name == src.Port);
+                if (portDesc is null)
+                {
+                    errors.Add($"Operator '{op.Id}' wires parameter '{pv.Name}' from port '{src.Port}' on '{src.OperatorId}', but that port does not exist.");
+                    continue;
+                }
+
+                var paramDesc = op.Type.ParameterSchema.FirstOrDefault(p => p.Name == pv.Name);
+                if (paramDesc is not null && !PortTypeCompat.IsCompatible(paramDesc.ConnectableType, portDesc.DataType))
+                    errors.Add($"Operator '{op.Id}': parameter '{pv.Name}' ({paramDesc.Type}) is not compatible with port '{src.Port}' on '{src.OperatorId}' ({portDesc.DataType.Name}).");
+            }
+        }
+
         if (HasCycle())
             errors.Add("Flow contains circular dependencies.");
 

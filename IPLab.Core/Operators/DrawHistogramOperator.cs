@@ -11,13 +11,13 @@ public class DrawHistogramOperator : IOperatorType
     public string Icon      => "histogram";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",  Label = "Image",  Type = ParameterType.Object, IsConnectable = true  },
-        new() { Name = "Height", Label = "Height", Type = ParameterType.Int,    IsConnectable = false, DefaultValue = 200, Min = 64.0,  Max = 1024.0 },
-        new() { Name = "Width",  Label = "Width",  Type = ParameterType.Int,    IsConnectable = false, DefaultValue = 512, Min = 64.0,  Max = 2048.0 },
-        new() { Name = "Color",  Label = "Color",  Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Image",  Label = "Image",  ConnectableType = typeof(Mat) },
+        new() { Name = "Height", Label = "Height", Type = ParameterType.Int,DefaultValue = 200, Min = 64.0,  Max = 1024.0 },
+        new() { Name = "Width",  Label = "Width",  Type = ParameterType.Int,DefaultValue = 512, Min = 64.0,  Max = 2048.0 },
+        new() { Name = "Color",  Label = "Color",  Type = ParameterType.Enum,
                 DefaultValue = "Green", Options = ["White", "Green", "Cyan", "Red", "Yellow"] },
     ];
-    public IReadOnlyList<string> OutputPorts => ["Image"];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

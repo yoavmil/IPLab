@@ -8,6 +8,6 @@ public interface IOperatorType
     string Category  { get; }
     string Icon      { get; }
     IReadOnlyList<ParameterDescriptor> ParameterSchema { get; }
-    IReadOnlyList<string> OutputPorts { get; }
+    IReadOnlyList<OutputPortDescriptor> OutputPorts { get; }
     object? Execute(IReadOnlyDictionary<string, object?> parameters);
 }

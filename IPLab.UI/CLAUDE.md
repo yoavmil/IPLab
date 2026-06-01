@@ -86,3 +86,7 @@ In XAML, each is bound with `DataContext="{Binding TopConnector}"` (etc.) so tha
 | `MainViewModel` | `Flow: FlowViewModel`, `Status: string` |
 
 Anchor tracking flow: `Connector` (UI) computes screen position → writes to `ConnectorViewModel.Anchor` via `OneWayToSource` binding → `ConnectionViewModel` re-raises `Source`/`Target` via INPC → `LineConnection.Source`/`Target` re-renders.
+
+## AvailableSources type filtering
+
+`RebuildAvailableSources` (in `FlowViewModel`) filters each parameter's `AvailableSources` to only include ports whose `DataType` is compatible with the parameter's `ParameterType`, using `PortTypeCompat.IsCompatible` from `IPLab.Core.Models`. `SourceRefViewModel` carries the port's `DataType: Type` for this purpose. The auto-wiring default on connect picks the first *compatible* port from `AvailableSources` rather than blindly using `OutputPorts[0]`.

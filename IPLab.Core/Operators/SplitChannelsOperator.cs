@@ -11,9 +11,14 @@ public class SplitChannelsOperator : IOperatorType
     public string Icon      => "split";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image", Label = "Image", Type = ParameterType.Object, IsConnectable = true }
+        new() { Name = "Image", Label = "Image", ConnectableType = typeof(Mat) }
     ];
-    public IReadOnlyList<string> OutputPorts => ["Red", "Green", "Blue"];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
+    [
+        new() { Name = "Red",   DataType = typeof(Mat) },
+        new() { Name = "Green", DataType = typeof(Mat) },
+        new() { Name = "Blue",  DataType = typeof(Mat) },
+    ];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

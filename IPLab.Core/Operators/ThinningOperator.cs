@@ -13,13 +13,13 @@ public class ThinningOperator : IOperatorType
 
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",        Label = "Image",         Type = ParameterType.Object, IsConnectable = true },
-        new() { Name = "ThinningType", Label = "Thinning Type", Type = ParameterType.Enum,   IsConnectable = false,
+        new() { Name = "Image",        Label = "Image",         ConnectableType = typeof(Mat) },
+        new() { Name = "ThinningType", Label = "Thinning Type", Type = ParameterType.Enum,
                 DefaultValue = "ZhangSuen", Options = ["ZhangSuen", "GuoHall"] },
         ..RoiParameters.Schema,
     ];
 
-    public IReadOnlyList<string> OutputPorts => ["Image", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }, ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

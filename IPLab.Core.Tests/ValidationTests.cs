@@ -39,4 +39,57 @@ public class ValidationTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.Contains("O2") && e.Contains("O1"));
     }
+
+    [Fact]
+    public void Validate_WiredPortDoesNotExist_ReturnsInvalid()
+    {
+        // O2 references port "NonExistent" which LoadImage does not declare.
+        var flow = new FlowDef(
+        [
+            new Operator { Id = "O1", DisplayName = "Load",      Type = new LoadImageOperator(),          Parameters = [], Dependencies = [] },
+            new Operator { Id = "O2", DisplayName = "Grayscale", Type = new ConvertToGrayscaleOperator(), Dependencies = [new Dependency("D1", "O1")],
+                Parameters = [new ParameterValue { Name = "Image", Source = new SourceRef("O1", "NonExistent") }] },
+        ]);
+
+        var result = flow.Validate();
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("NonExistent"));
+    }
+
+    [Fact]
+    public void Validate_TypeIncompatibleWiring_ReturnsInvalid()
+    {
+        // DetectCircles outputs CircleSegment[] on "Circles"; GaussianBlur.Image expects Mat.
+        // Wiring the Circles port into the Image (Mat) parameter is a declared type mismatch.
+        var flow = new FlowDef(
+        [
+            new Operator { Id = "O1", DisplayName = "Load",    Type = new LoadImageOperator(),     Parameters = [], Dependencies = [] },
+            new Operator { Id = "O2", DisplayName = "Circles", Type = new DetectCirclesOperator(), Dependencies = [new Dependency("D1", "O1")],
+                Parameters = [new ParameterValue { Name = "Image", Source = new SourceRef("O1", "Image") }] },
+            new Operator { Id = "O3", DisplayName = "Blur",    Type = new GaussianBlurOperator(),  Dependencies = [new Dependency("D2", "O2")],
+                Parameters = [new ParameterValue { Name = "Image", Source = new SourceRef("O2", "Circles") }] },
+        ]);
+
+        var result = flow.Validate();
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("Image") && e.Contains("Circles"));
+    }
+
+    [Fact]
+    public void Validate_CompatibleWiring_ReturnsValid()
+    {
+        // LoadImage → GaussianBlur wiring Image (Mat) into Image (Object) — valid.
+        var flow = new FlowDef(
+        [
+            new Operator { Id = "O1", DisplayName = "Load", Type = new LoadImageOperator(),    Parameters = [], Dependencies = [] },
+            new Operator { Id = "O2", DisplayName = "Blur", Type = new GaussianBlurOperator(), Dependencies = [new Dependency("D1", "O1")],
+                Parameters = [new ParameterValue { Name = "Image", Source = new SourceRef("O1", "Image") }] },
+        ]);
+
+        var result = flow.Validate();
+
+        Assert.True(result.IsValid);
+    }
 }

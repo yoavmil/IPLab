@@ -7,15 +7,21 @@ public static class RoiParameters
 {
     public static IReadOnlyList<ParameterDescriptor> Schema =>
     [
-        new() { Name = "RoiX", Label = "ROI X",      Type = ParameterType.Int, IsConnectable = true, DefaultValue = 0 },
-        new() { Name = "RoiY", Label = "ROI Y",      Type = ParameterType.Int, IsConnectable = true, DefaultValue = 0 },
-        new() { Name = "RoiW", Label = "ROI Width",  Type = ParameterType.Int, IsConnectable = true, DefaultValue = 0 },
-        new() { Name = "RoiH", Label = "ROI Height", Type = ParameterType.Int, IsConnectable = true, DefaultValue = 0 },
+        new() { Name = "RoiX", Label = "ROI X",      Type = ParameterType.Int, ConnectableType = typeof(int), DefaultValue = 0 },
+        new() { Name = "RoiY", Label = "ROI Y",      Type = ParameterType.Int, ConnectableType = typeof(int), DefaultValue = 0 },
+        new() { Name = "RoiW", Label = "ROI Width",  Type = ParameterType.Int, ConnectableType = typeof(int), DefaultValue = 0 },
+        new() { Name = "RoiH", Label = "ROI Height", Type = ParameterType.Int, ConnectableType = typeof(int), DefaultValue = 0 },
     ];
 
-    // These port names must be included in an operator's OutputPorts when it supports ROI,
+    // These port descriptors must be included in an operator's OutputPorts when it supports ROI,
     // so downstream operators can wire their own ROI params to the upstream operator's ROI values.
-    public static IReadOnlyList<string> OutputPorts => ["RoiX", "RoiY", "RoiW", "RoiH"];
+    public static IReadOnlyList<OutputPortDescriptor> OutputPorts =>
+    [
+        new() { Name = "RoiX", DataType = typeof(int) },
+        new() { Name = "RoiY", DataType = typeof(int) },
+        new() { Name = "RoiW", DataType = typeof(int) },
+        new() { Name = "RoiH", DataType = typeof(int) },
+    ];
 
     // Returns null → no ROI requested; caller runs on the full image.
     // Returns a Rect → ROI requested and clamped to image bounds.

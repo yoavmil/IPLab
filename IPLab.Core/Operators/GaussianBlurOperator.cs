@@ -12,13 +12,13 @@ public class GaussianBlurOperator : IOperatorType
 
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",      Label = "Image",       Type = ParameterType.Object, IsConnectable = true  },
-        new() { Name = "KernelSize", Label = "Kernel Size", Type = ParameterType.Int,    IsConnectable = false, DefaultValue = 5, Min = 1, Max = 31 },
-        new() { Name = "Sigma",      Label = "Sigma",       Type = ParameterType.Double, IsConnectable = false, DefaultValue = 0.0, Min = 0.0, Max = 50.0 },
+        new() { Name = "Image",      Label = "Image",       ConnectableType = typeof(Mat) },
+        new() { Name = "KernelSize", Label = "Kernel Size", Type = ParameterType.Int,DefaultValue = 5, Min = 1, Max = 31 },
+        new() { Name = "Sigma",      Label = "Sigma",       Type = ParameterType.Double, DefaultValue = 0.0, Min = 0.0, Max = 50.0 },
         ..RoiParameters.Schema,
     ];
 
-    public IReadOnlyList<string> OutputPorts => ["Image", ..RoiParameters.OutputPorts];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }, ..RoiParameters.OutputPorts];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
