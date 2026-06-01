@@ -1,6 +1,8 @@
+using IPLab.Core.Models;
 using IPLab.UI.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -19,6 +21,29 @@ public partial class PipelineEditorControl : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        SettingsPanel.AddHandler(UIElement.GotKeyboardFocusEvent,
+            new KeyboardFocusChangedEventHandler(OnSettingsTextBoxFocused));
+        SettingsPanel.AddHandler(UIElement.PreviewKeyDownEvent,
+            new KeyEventHandler(OnSettingsKeyDown));
+    }
+
+    private static void OnSettingsTextBoxFocused(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (e.NewFocus is TextBox tb)
+            tb.Dispatcher.InvokeAsync(tb.SelectAll);
+    }
+
+    private static void OnSettingsKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.OriginalSource is not TextBox tb) return;
+        if (tb.DataContext is not ParameterEditViewModel vm) return;
+        if (vm.Type != ParameterType.Int) return;
+
+        if (e.Key is Key.Up or Key.Down)
+        {
+            vm.StepValue(e.Key == Key.Up ? 1 : -1);
+            e.Handled = true;
+        }
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

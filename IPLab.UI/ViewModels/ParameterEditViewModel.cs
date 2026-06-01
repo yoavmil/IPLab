@@ -113,6 +113,12 @@ public class ParameterEditViewModel : ViewModelBase
         return new ParameterValue { Name = Name, Value = CoercedValue() };
     }
 
+    public void StepValue(int delta)
+    {
+        if (int.TryParse(ValueText, out var i))
+            ValueText = (i + delta).ToString();
+    }
+
     private string ClampText(string raw)
     {
         if ((_min is null && _max is null) || !TryParseDouble(raw, out var d))

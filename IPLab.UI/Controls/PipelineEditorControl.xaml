@@ -223,6 +223,7 @@
                             <Button HorizontalAlignment="Right"
                                     Content="✕"
                                     Command="{Binding CloseSettingsCommand}"
+                                    IsTabStop="False"
                                     Padding="10 5"
                                     Background="Transparent"
                                     BorderThickness="0"
@@ -276,6 +277,7 @@
                                                 <ToggleButton.Style>
                                                     <Style TargetType="ToggleButton">
                                                         <Setter Property="Visibility"   Value="Collapsed" />
+                                                        <Setter Property="IsTabStop"    Value="False" />
                                                         <Setter Property="Background"   Value="Transparent" />
                                                         <Setter Property="Foreground"   Value="#666" />
                                                         <Setter Property="BorderBrush"  Value="Transparent" />
