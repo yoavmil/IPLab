@@ -51,6 +51,8 @@
 
 ## IPLab.Core (Architecture)
 
+- **Multiple LoadImage operators in one flow** — the current design assumes a single `LoadImageOperator` as the flow's image source. When multiple loaders exist (e.g. for a two-image comparison flow), the following are unresolved: which loader's thumbnail strip is shown and where; whether switching the active image on one loader triggers a full re-run or only the sub-graph downstream of that loader; and how `FlowEx` resolves execution order when two independent source nodes both feed the same downstream operator. Define the execution and UI model before adding multi-source flows.
+
 ## IPLab.Core
 
 - **Serialization: handle array parameter values**
