@@ -22,6 +22,7 @@ public class ConnectedComponentsOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
         new() { Name = "Count",      DataType = typeof(int) },
+        new() { Name = "Labels",     DataType = typeof(Mat) },
         new() { Name = "Stats",      DataType = typeof(Mat) },
         new() { Name = "Centroids",  DataType = typeof(Mat) },
         new() { Name = "LabelImage", DataType = typeof(Mat), IsDisplayImage = true },
@@ -42,6 +43,7 @@ public class ConnectedComponentsOperator : IOperatorType
             var empty = new Dictionary<string, object?>
             {
                 ["Count"]      = 0,
+                ["Labels"]     = new Mat(image.Rows, image.Cols, MatType.CV_32S, Scalar.All(0)),
                 ["Stats"]      = new Mat(0, 5, MatType.CV_32S),
                 ["Centroids"]  = new Mat(0, 2, MatType.CV_64F),
                 ["LabelImage"] = outputLabelImage ? new Mat(image.Rows, image.Cols, MatType.CV_8UC3, Scalar.Black) : null,
@@ -57,7 +59,7 @@ public class ConnectedComponentsOperator : IOperatorType
         using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
         var       src  = crop ?? image;
 
-        using var labels   = new Mat();
+        var       labels   = new Mat();
         var       stats    = new Mat();
         var       centroids = new Mat();
 
@@ -105,6 +107,7 @@ public class ConnectedComponentsOperator : IOperatorType
         var outputs = new Dictionary<string, object?>
         {
             ["Count"]      = count,
+            ["Labels"]     = labels,
             ["Stats"]      = stats,
             ["Centroids"]  = centroids,
             ["LabelImage"] = labelImg,

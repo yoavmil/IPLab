@@ -295,7 +295,8 @@ Supports [ROI](#roi). When an ROI is set, labeling runs only within that region;
 
 | Output Port | Type   | Description                                                                                          |
 |-------------|--------|------------------------------------------------------------------------------------------------------|
-| Count       | int    | Total label count including background; component count = Count − 1. |
+| Count       | int    | Total label count including background; component count = Count − 1. 0 only when the ROI is entirely outside the image (all other outputs also empty). |
+| Labels      | Mat    | `H × W` int32 matrix — each pixel holds its label index: 0 = background, 1..Count−1 = components   |
 | Stats       | Mat    | `Count × 5` int32 matrix — row 0 = background, rows 1..Count−1 = components; cols: LEFT, TOP, WIDTH, HEIGHT, AREA; all in full-image coords |
 | Centroids   | Mat    | `Count × 2` float64 matrix — row 0 = background, rows 1..Count−1 = components; cols: cx, cy; all in full-image coords |
 | LabelImage  | Mat    | BGR image with each component painted a distinct Jet-colormap color; background is black             |
