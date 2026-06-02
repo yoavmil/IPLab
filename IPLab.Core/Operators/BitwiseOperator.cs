@@ -38,6 +38,6 @@ public class BitwiseOperator : IOperatorType
             default:    Cv2.BitwiseAnd(imageA, imageB, result); break;
         }
 
-        return new Dictionary<string, object?> { ["Image"] = result };
+        return result;
     }
 }

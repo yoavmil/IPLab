@@ -49,7 +49,7 @@ public class BitwiseOperatorTests
         var executor = new FlowEx(BuildFlow(a, b, operation));
         await executor.RunAllAsync();
         Assert.Equal(OperatorStatus.Success, executor.Statuses["O3"]);
-        using var result = (Mat)((Dictionary<string, object?>)executor.IntermediateResults["O3"]!)["Image"]!;
+        using var result = (Mat)executor.IntermediateResults["O3"]!;
         Assert.Equal(MatType.CV_8UC1, result.Type());
         return result.At<byte>(0, 0);
     }
