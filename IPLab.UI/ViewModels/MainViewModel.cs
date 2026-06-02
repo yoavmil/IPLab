@@ -3,7 +3,6 @@ using IPLab.Core.Models;
 using IPLab.UI.Dialogs;
 using System.ComponentModel;
 using System.Collections.ObjectModel;
-using ConnectedComponentInfo = IPLab.Core.Models.ConnectedComponentInfo;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 using IPLab.Core.Operators;
 using IPLab.Core.Runtime;
@@ -74,12 +73,11 @@ public class MainViewModel : ViewModelBase
     public ThumbnailStripViewModel ThumbnailStrip { get; }
 
     public sealed record InspectorState(
-        BitmapSource?             Image      = null,
-        CircleSegment[]?          Circles    = null,
-        KeyPoint[]?               Blobs      = null,
-        ConnectedComponentInfo[]? Components = null,
-        OpenCvSharp.Point[][]?    Contours   = null,
-        RoiDef?                   Roi        = null);
+        BitmapSource?          Image    = null,
+        CircleSegment[]?       Circles  = null,
+        KeyPoint[]?            Blobs    = null,
+        OpenCvSharp.Point[][]? Contours = null,
+        RoiDef?                Roi      = null);
 
     private InspectorState _state = new();
     public  InspectorState State
@@ -456,16 +454,6 @@ public class MainViewModel : ViewModelBase
             return;
         }
 
-        var components = Unwrap<ConnectedComponentInfo[]>(result);
-        if (components is not null)
-        {
-            var labelImage = _precomputedImages.GetValueOrDefault((_selectedNode.Id, "LabelImage"))
-                          ?? GetSourceImage();
-            State = new InspectorState(Image: labelImage, Components: components) with { Roi = CurrentRoi };
-            UpdateOverlayLayers();
-            return;
-        }
-
         var contours = Unwrap<OpenCvSharp.Point[][]>(result);
         if (contours is not null)
         {
@@ -474,10 +462,10 @@ public class MainViewModel : ViewModelBase
             return;
         }
 
-        var image = _precomputedImages.Keys
-            .Where(k => k.Id == _selectedNode.Id)
-            .Select(k => _precomputedImages[k])
-            .FirstOrDefault();
+        var displayPort = _selectedNode.Operator.Type.OutputPorts.FirstOrDefault(p => p.IsDisplayImage);
+        var image = displayPort is not null
+            ? _precomputedImages.GetValueOrDefault((_selectedNode.Id, displayPort.Name))
+            : null;
         State = new InspectorState(Image: image) with { Roi = CurrentRoi };
         UpdateOverlayLayers();
     }
@@ -555,17 +543,22 @@ public class MainViewModel : ViewModelBase
                     : (IReadOnlyList<OutputPortDescriptor>)[new OutputPortDescriptor { Name = "Image", DataType = typeof(Mat) }];
                 if (result is Mat mat)
                 {
-                    var bytes = ImageHelper.TryGetPngBytes(mat);
-                    if (bytes is not null)
-                        images[(id, ports.Count > 0 ? ports[0].Name : "Image")] = BytesToBitmapSource(bytes);
+                    var displayPort = ports.FirstOrDefault(p => p.IsDisplayImage);
+                    if (displayPort is not null)
+                    {
+                        var bytes = ImageHelper.TryGetPngBytes(mat);
+                        if (bytes is not null)
+                            images[(id, displayPort.Name)] = BytesToBitmapSource(bytes);
+                    }
                 }
                 else if (result is Dictionary<string, object?> dict)
                 {
-                    foreach (var (port, val) in dict)
+                    foreach (var port in ports.Where(p => p.IsDisplayImage))
                     {
+                        if (!dict.TryGetValue(port.Name, out var val)) continue;
                         var bytes = ImageHelper.TryGetPngBytes(val);
                         if (bytes is not null)
-                            images[(id, port)] = BytesToBitmapSource(bytes);
+                            images[(id, port.Name)] = BytesToBitmapSource(bytes);
                     }
                 }
             }

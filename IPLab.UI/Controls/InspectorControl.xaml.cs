@@ -1,4 +1,3 @@
-using IPLab.Core.Models;
 using IPLab.UI.ViewModels;
 using OpenCvSharp;
 using RControls;
@@ -14,8 +13,6 @@ namespace IPLab.UI.Controls;
 public partial class InspectorControl : UserControl
 {
     private MainViewModel? _vm;
-    private bool _showComponentOverlays = false;
-
     private const string DefaultPixelInfo = "Click on image to inspect pixel";
 
     public InspectorControl()
@@ -51,10 +48,9 @@ public partial class InspectorControl : UserControl
         ImageViewer.RemoveRegion(string.Empty, ShapeMode.Cross);
         ImageViewer.RemoveRegion(string.Empty, ShapeMode.Polygon);
 
-        if (state.Circles    is { } circles)    DrawCircles(circles);
-        if (state.Blobs      is { } blobs)      DrawBlobs(blobs);
-        if (state.Components is { } components) DrawComponents(components);
-        if (state.Contours   is { } contours)   DrawContours(contours);
+        if (state.Circles  is { } circles)  DrawCircles(circles);
+        if (state.Blobs    is { } blobs)    DrawBlobs(blobs);
+        if (state.Contours is { } contours) DrawContours(contours);
         if (state.Roi is { Width: > 0, Height: > 0 } roi)
             ImageViewer.DrawRectangle(roi.Y, roi.X, roi.Y + roi.Height, roi.X + roi.Width,
                                       "ROI", Brushes.Yellow, bFilled: false);
@@ -72,19 +68,6 @@ public partial class InspectorControl : UserControl
         foreach (var b in blobs)
             ImageViewer.DrawCircle(b.Pt.Y, b.Pt.X, b.Size / 2.0,
                                    string.Empty, Brushes.Cyan, bFilled: false);
-    }
-
-    private void DrawComponents(ConnectedComponentInfo[] components)
-    {
-        if (!_showComponentOverlays) return;
-        foreach (var comp in components)
-        {
-            var r = comp.BoundingBox;
-            ImageViewer.DrawRectangle(r.Top, r.Left, r.Bottom, r.Right,
-                                      string.Empty, Brushes.Orange, bFilled: false);
-            ImageViewer.DrawCross(comp.Centroid.Y, comp.Centroid.X, 0,
-                                  string.Empty, 6, Brushes.Orange);
-        }
     }
 
     private void DrawContours(OpenCvSharp.Point[][] contours)

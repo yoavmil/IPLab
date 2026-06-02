@@ -15,7 +15,7 @@ public class ConvertToGrayscaleOperator : IOperatorType
         new() { Name = "Method", Label = "Method", Type = ParameterType.Enum,
                 DefaultValue = "Luminance", Options = ["Luminance", "HsvValue"] }
     ];
-    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

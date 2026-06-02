@@ -1,6 +1,7 @@
 using IPLab.Core.Models;
 using IPLab.Core.Operators;
 using IPLab.Core.Runtime;
+using OpenCvSharp;
 
 namespace IPLab.Core.Tests;
 
@@ -108,12 +109,12 @@ public class ConnectedComponentsTests
         var executor = new FlowEx(flow);
         await executor.RunAllAsync();
 
-        ConnectedComponentInfo[] Components(string id) =>
-            (ConnectedComponentInfo[])((Dictionary<string, object?>)executor.IntermediateResults[id]!)["Components"]!;
+        int Count(string id) =>
+            (int)((Dictionary<string, object?>)executor.IntermediateResults[id]!)["Count"]!;
 
-        Assert.Equal(2, Components("O6").Length);
-        Assert.Equal(3, Components("O7").Length);
-        Assert.Equal(3, Components("O8").Length);
+        Assert.Equal(3, Count("O6"));
+        Assert.Equal(4, Count("O7"));
+        Assert.Equal(4, Count("O8"));
     }
 
     [Fact]
@@ -170,9 +171,55 @@ public class ConnectedComponentsTests
         var executor = new FlowEx(flow);
         await executor.RunAllAsync();
 
-        var result     = (Dictionary<string, object?>)executor.IntermediateResults["O4"]!;
-        var components = (ConnectedComponentInfo[])result["Components"]!;
+        var result = (Dictionary<string, object?>)executor.IntermediateResults["O4"]!;
+        var count  = (int)result["Count"]!;
 
-        Assert.Equal(8, components.Length);
+        Assert.Equal(9, count);
+    }
+
+    [Fact]
+    public void RoiWith10pxMargin_ProducesSameResultAsNoRoi()
+    {
+        using var src = Cv2.ImRead(ImagePath, ImreadModes.Grayscale);
+        using var binary = new Mat();
+        Cv2.Threshold(src, binary, 10, 255, ThresholdTypes.Binary);
+
+        int margin = 10;
+        var op = new ConnectedComponentsOperator();
+
+        var noRoi = (Dictionary<string, object?>)op.Execute(new Dictionary<string, object?>
+        {
+            ["Image"]            = binary,
+            ["OutputLabelImage"] = false,
+        })!;
+
+        var withRoi = (Dictionary<string, object?>)op.Execute(new Dictionary<string, object?>
+        {
+            ["Image"]            = binary,
+            ["OutputLabelImage"] = false,
+            ["RoiX"]             = margin,
+            ["RoiY"]             = margin,
+            ["RoiW"]             = binary.Width  - margin * 2,
+            ["RoiH"]             = binary.Height - margin * 2,
+        })!;
+
+        int countNoRoi   = (int)noRoi["Count"]!;
+        int countWithRoi = (int)withRoi["Count"]!;
+        Assert.Equal(countNoRoi, countWithRoi);
+
+        var statsNoRoi   = (Mat)noRoi["Stats"]!;
+        var statsWithRoi = (Mat)withRoi["Stats"]!;
+        var centNoRoi    = (Mat)noRoi["Centroids"]!;
+        var centWithRoi  = (Mat)withRoi["Centroids"]!;
+
+        // Compare component rows 1..n. Background row 0 differs by design:
+        // the crop's background bounding box is smaller than the full image's.
+        for (int r = 1; r < countNoRoi; r++)
+        {
+            for (int c = 0; c < 5; c++)
+                Assert.Equal(statsNoRoi.At<int>(r, c), statsWithRoi.At<int>(r, c));
+            Assert.Equal(centNoRoi.At<double>(r, 0), centWithRoi.At<double>(r, 0), precision: 1);
+            Assert.Equal(centNoRoi.At<double>(r, 1), centWithRoi.At<double>(r, 1), precision: 1);
+        }
     }
 }

@@ -15,9 +15,9 @@ public class SplitChannelsOperator : IOperatorType
     ];
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
-        new() { Name = "Red",   DataType = typeof(Mat) },
-        new() { Name = "Green", DataType = typeof(Mat) },
-        new() { Name = "Blue",  DataType = typeof(Mat) },
+        new() { Name = "Red",   DataType = typeof(Mat), IsDisplayImage = true },
+        new() { Name = "Green", DataType = typeof(Mat), IsDisplayImage = true },
+        new() { Name = "Blue",  DataType = typeof(Mat), IsDisplayImage = true },
     ];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)

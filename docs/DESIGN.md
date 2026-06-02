@@ -77,6 +77,12 @@ classDiagram
         +string Port
     }
 
+    class OutputPortDescriptor {
+        +string Name
+        +Type DataType
+        +bool IsDisplayImage
+    }
+
     class ParameterDescriptor {
         +string Name
         +string Label

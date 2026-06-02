@@ -19,7 +19,7 @@ public class HistogramEqualizationOperator : IOperatorType
         new() { Name = "TileGridSize", Label = "Tile Grid Size", Type = ParameterType.Int,DefaultValue = 8,   Min = 1.0, Max = 64.0,
                 ShowWhenParam = "Method", ShowWhenValues = ["CLAHE"] },
     ];
-    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

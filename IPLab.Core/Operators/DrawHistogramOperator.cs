@@ -17,7 +17,7 @@ public class DrawHistogramOperator : IOperatorType
         new() { Name = "Color",  Label = "Color",  Type = ParameterType.Enum,
                 DefaultValue = "Green", Options = ["White", "Green", "Cyan", "Red", "Yellow"] },
     ];
-    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {

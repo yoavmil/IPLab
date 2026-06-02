@@ -12,8 +12,8 @@ public class ConnectedComponentsOperator : IOperatorType
     public string Icon      => "component";
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
-        new() { Name = "Image",            Label = "Image",             ConnectableType = typeof(Mat) },
-        new() { Name = "Connectivity",     Label = "Connectivity",      Type = ParameterType.Enum,
+        new() { Name = "Image",            Label = "Image",              ConnectableType = typeof(Mat) },
+        new() { Name = "Connectivity",     Label = "Connectivity",       Type = ParameterType.Enum,
                 DefaultValue = "8", Options = ["4", "8"] },
         new() { Name = "OutputLabelImage", Label = "Output Label Image", Type = ParameterType.Bool,
                 DefaultValue = true },
@@ -21,8 +21,10 @@ public class ConnectedComponentsOperator : IOperatorType
     ];
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
-        new() { Name = "Components", DataType = typeof(ConnectedComponentInfo[]) },
-        new() { Name = "LabelImage", DataType = typeof(Mat) },
+        new() { Name = "Count",      DataType = typeof(int) },
+        new() { Name = "Stats",      DataType = typeof(Mat) },
+        new() { Name = "Centroids",  DataType = typeof(Mat) },
+        new() { Name = "LabelImage", DataType = typeof(Mat), IsDisplayImage = true },
         ..RoiParameters.OutputPorts,
     ];
 
@@ -39,7 +41,9 @@ public class ConnectedComponentsOperator : IOperatorType
         {
             var empty = new Dictionary<string, object?>
             {
-                ["Components"] = Array.Empty<ConnectedComponentInfo>(),
+                ["Count"]      = 0,
+                ["Stats"]      = new Mat(0, 5, MatType.CV_32S),
+                ["Centroids"]  = new Mat(0, 2, MatType.CV_64F),
                 ["LabelImage"] = outputLabelImage ? new Mat(image.Rows, image.Cols, MatType.CV_8UC3, Scalar.Black) : null,
             };
             RoiParameters.AddToOutputs(empty, parameters);
@@ -53,38 +57,40 @@ public class ConnectedComponentsOperator : IOperatorType
         using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
         var       src  = crop ?? image;
 
-        using var labels    = new Mat();
-        using var stats     = new Mat();
-        using var centroids = new Mat();
+        using var labels   = new Mat();
+        var       stats    = new Mat();
+        var       centroids = new Mat();
 
         int count = Cv2.ConnectedComponentsWithStats(src, labels, stats, centroids, conn);
+        int n     = count - 1; // exclude background label 0
 
-        // Label 0 is the background; start from 1.
-        var result = new ConnectedComponentInfo[count - 1];
-        for (int i = 1; i < count; i++)
+        if (roiRect.HasValue)
         {
-            int left   = stats.At<int>(i, 0) + offsetX;
-            int top    = stats.At<int>(i, 1) + offsetY;
-            int width  = stats.At<int>(i, 2);
-            int height = stats.At<int>(i, 3);
-            int area   = stats.At<int>(i, 4);
-            float cx   = (float)centroids.At<double>(i, 0) + offsetX;
-            float cy   = (float)centroids.At<double>(i, 1) + offsetY;
+            // Translate bounding-box origin (LEFT, TOP) for all rows (including background row 0) directly in the Mat buffer.
+            for (int i = 0; i < count; i++)
+            {
+                nint left = stats.Data + (i * 5 + 0) * sizeof(int);
+                nint top  = stats.Data + (i * 5 + 1) * sizeof(int);
+                Marshal.WriteInt32(left, Marshal.ReadInt32(left) + offsetX);
+                Marshal.WriteInt32(top,  Marshal.ReadInt32(top)  + offsetY);
+            }
 
-            result[i - 1] = new ConnectedComponentInfo(
-                Label:       i,
-                Area:        area,
-                BoundingBox: new Rect(left, top, width, height),
-                Centroid:    new Point2f(cx, cy));
+            // Translate centroids for all rows (including background row 0) directly in the Mat buffer.
+            for (int i = 0; i < count; i++)
+            {
+                nint cx = centroids.Data + (i * 2 + 0) * sizeof(double);
+                nint cy = centroids.Data + (i * 2 + 1) * sizeof(double);
+                Marshal.WriteInt64(cx, BitConverter.DoubleToInt64Bits(BitConverter.Int64BitsToDouble(Marshal.ReadInt64(cx)) + offsetX));
+                Marshal.WriteInt64(cy, BitConverter.DoubleToInt64Bits(BitConverter.Int64BitsToDouble(Marshal.ReadInt64(cy)) + offsetY));
+            }
         }
 
         Mat? labelImg = null;
         if (outputLabelImage)
         {
-            var cropLabel = BuildLabelImage(labels, result, randomColors: true);
+            var cropLabel = BuildLabelImage(labels, n);
             if (crop is not null)
             {
-                // Embed the crop-sized label image into a full-size black mat.
                 labelImg = new Mat(image.Rows, image.Cols, MatType.CV_8UC3, Scalar.Black);
                 using var dst = new Mat(labelImg, rect);
                 cropLabel.CopyTo(dst);
@@ -98,33 +104,26 @@ public class ConnectedComponentsOperator : IOperatorType
 
         var outputs = new Dictionary<string, object?>
         {
-            ["Components"] = result,
+            ["Count"]      = count,
+            ["Stats"]      = stats,
+            ["Centroids"]  = centroids,
             ["LabelImage"] = labelImg,
         };
         RoiParameters.AddToOutputs(outputs, parameters);
         return outputs;
     }
 
-    private static Mat BuildLabelImage(Mat labels, ConnectedComponentInfo[] components, bool randomColors)
+    private static Mat BuildLabelImage(Mat labels, int componentCount)
     {
-        int n = components.Length;
+        int n = componentCount;
 
         // Build label→colorByte lookup — O(n) where n = component count.
         // Index 0 = background, stays 0.
         var colorByteOf = new byte[n + 1];
-        if (randomColors)
-        {
-            var ranks = Enumerable.Range(1, n).ToArray();
-            new Random(n).Shuffle(ranks);
-            for (int i = 0; i < n; i++)
-                colorByteOf[components[i].Label] = (byte)(ranks[i] * 255 / n);
-        }
-        else
-        {
-            var sorted = components.OrderBy(c => c.Area).ToArray();
-            for (int r = 0; r < n; r++)
-                colorByteOf[sorted[r].Label] = (byte)((r + 1) * 255 / n);
-        }
+        var ranks       = Enumerable.Range(1, n).ToArray();
+        new Random(n).Shuffle(ranks);
+        for (int i = 0; i < n; i++)
+            colorByteOf[i + 1] = (byte)(ranks[i] * 255 / n);
 
         // Single pass over all pixels: label int32 → color byte — O(W*H).
         int pixelCount = labels.Rows * labels.Cols;

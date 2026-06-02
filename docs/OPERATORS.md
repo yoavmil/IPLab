@@ -22,7 +22,7 @@
 ## Detection
 - [DetectCircles](#detectcircles) — detect circles using Hough Gradient transform
 - [DetectSimpleBlobs](#detectsimpleblobs) — detect circular blobs using SimpleBlobDetector
-- [ConnectedComponents](#connectedcomponents) — label connected regions and return per-component stats
+- [ConnectedComponents](#connectedcomponents) — label connected regions; outputs Count, Stats (Mat), Centroids (Mat), LabelImage
 - [FindContours](#findcontours) — find contours in a binary image with built-in filter/repair
 
 ## Scripting
@@ -263,7 +263,7 @@ Supports [ROI](#roi). When an ROI is set, detection runs only within that region
 
 Labels connected regions in a binary (thresholded) single-channel image using `Cv2.ConnectedComponentsWithStats`.
 
-Supports [ROI](#roi). When an ROI is set, labeling runs only within that region; all returned coordinates (bounding boxes, centroids) are in full-image space, and the label image shows component colors inside the ROI on a black background. Returns one `ConnectedComponentInfo` per region (background label 0 is excluded). Visualised as orange bounding-box rectangles with centroid cross-marks in the Inspector.
+Supports [ROI](#roi). When an ROI is set, labeling runs only within that region; all returned coordinates are in full-image space, and the label image shows component colors inside the ROI on a black background. `Count` is the raw OpenCV label count (background label 0 included); actual components = Count − 1. `Stats` and `Centroids` rows follow OpenCV layout: row 0 = background, rows 1..Count−1 = components.
 
 | Parameter        | Type   | Connectable | Description                                                    |
 |------------------|--------|-------------|----------------------------------------------------------------|
@@ -271,12 +271,12 @@ Supports [ROI](#roi). When an ROI is set, labeling runs only within that region;
 | Connectivity     | Enum   | No          | `8` (default) — 8-connected; `4` — 4-connected                 |
 | OutputLabelImage | Bool   | No          | When `true` (default), produce the colored label image. Set to `false` for offline/batch use to skip the image build. |
 
-| Output Port | Type                     | Description                                                              |
-|-------------|--------------------------|--------------------------------------------------------------------------|
-| Components  | ConnectedComponentInfo[] | Per-component stats (label, area, bounding box, centroid)                |
-| LabelImage  | Mat                      | BGR image with each component painted a distinct color; background is black |
-
-`ConnectedComponentInfo` fields: `Label` (int), `Area` (int, pixels), `BoundingBox` (OpenCvSharp.Rect), `Centroid` (Point2f).
+| Output Port | Type   | Description                                                                                          |
+|-------------|--------|------------------------------------------------------------------------------------------------------|
+| Count       | int    | Total label count including background; component count = Count − 1. |
+| Stats       | Mat    | `Count × 5` int32 matrix — row 0 = background, rows 1..Count−1 = components; cols: LEFT, TOP, WIDTH, HEIGHT, AREA; all in full-image coords |
+| Centroids   | Mat    | `Count × 2` float64 matrix — row 0 = background, rows 1..Count−1 = components; cols: cx, cy; all in full-image coords |
+| LabelImage  | Mat    | BGR image with each component painted a distinct Jet-colormap color; background is black             |
 
 ---
 

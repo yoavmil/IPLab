@@ -25,7 +25,7 @@ public class CSharpScriptOperator : IOperatorType
 
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
-        new() { Name = "Image", DataType = typeof(Mat)    },
+        new() { Name = "Image", DataType = typeof(Mat),    IsDisplayImage = true },
         new() { Name = "Out1",  DataType = typeof(object) },
         new() { Name = "Out2",  DataType = typeof(object) },
         new() { Name = "Out3",  DataType = typeof(object) },

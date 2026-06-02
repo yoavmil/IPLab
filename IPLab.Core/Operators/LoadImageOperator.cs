@@ -14,7 +14,7 @@ public class LoadImageOperator : IOperatorType
         new() { Name = "FilePaths",   Label = "File Paths",   Type = ParameterType.StringList, IsHidden = true, DefaultValue = Array.Empty<string>() },
         new() { Name = "ActiveIndex", Label = "Active Index", Type = ParameterType.Int,IsHidden = true, DefaultValue = 0, Min = 0 }
     ];
-    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
+    public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
