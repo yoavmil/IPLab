@@ -13,8 +13,8 @@ public class GaussianBlurOperator : IOperatorType
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",      Label = "Image",       ConnectableType = typeof(Mat) },
-        new() { Name = "KernelSize", Label = "Kernel Size", Type = ParameterType.Int,DefaultValue = 5, Min = 1, Max = 31 },
-        new() { Name = "Sigma",      Label = "Sigma",       Type = ParameterType.Double, DefaultValue = 0.0, Min = 0.0, Max = 50.0 },
+        new() { Name = "KernelSize", Label = "Kernel Size", Type = ParameterType.Int,DefaultValue = 5, Min = 1 },
+        new() { Name = "Sigma",      Label = "Sigma",       Type = ParameterType.Double, DefaultValue = 0.0, Min = 0.0 },
         ..RoiParameters.Schema,
     ];
 
