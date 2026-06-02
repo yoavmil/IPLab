@@ -29,15 +29,54 @@ public class BitwiseOperator : IOperatorType
         var imageB    = (Mat)parameters["ImageB"]!;
         var operation = parameters.GetValueOrDefault("Operation") as string ?? "And";
 
-        var result = new Mat();
+        if (imageA.Size() != imageB.Size())
+            throw new InvalidOperationException(
+                $"Image sizes do not match: A is {imageA.Width}x{imageA.Height}, B is {imageB.Width}x{imageB.Height}.");
 
-        switch (operation)
+        if (imageA.Depth() != imageB.Depth())
+            throw new InvalidOperationException(
+                $"Image depths do not match: A is {imageA.Depth()}, B is {imageB.Depth()}.");
+
+        int channels = imageA.Channels();
+        if (channels != imageB.Channels())
+            throw new InvalidOperationException(
+                $"Channel counts do not match: A has {channels} channel(s), B has {imageB.Channels()}.");
+
+        if (channels != 1 && channels != 3)
+            throw new InvalidOperationException(
+                $"Unsupported channel count: {channels}. Only 1 or 3 channels are supported.");
+
+        Action<Mat, Mat, Mat> op = operation switch
         {
-            case "Or":  Cv2.BitwiseOr(imageA,  imageB, result); break;
-            case "Xor": Cv2.BitwiseXor(imageA, imageB, result); break;
-            default:    Cv2.BitwiseAnd(imageA, imageB, result); break;
+            "Or"  => (a, b, dst) => Cv2.BitwiseOr(a,  b, dst),
+            "Xor" => (a, b, dst) => Cv2.BitwiseXor(a, b, dst),
+            _     =>  (a, b, dst) => Cv2.BitwiseAnd(a, b, dst),
+        };
+
+        if (channels == 1)
+        {
+            var result = new Mat();
+            op(imageA, imageB, result);
+            return result;
         }
 
-        return result;
+        // 3-channel: apply op per channel then merge.
+        Mat[] chA = Cv2.Split(imageA);
+        Mat[] chB = Cv2.Split(imageB);
+        Mat[] chR = new Mat[3];
+        for (int i = 0; i < 3; i++)
+        {
+            chR[i] = new Mat();
+            op(chA[i], chB[i], chR[i]);
+        }
+
+        var merged = new Mat();
+        Cv2.Merge(chR, merged);
+
+        foreach (var m in chA) m.Dispose();
+        foreach (var m in chB) m.Dispose();
+        foreach (var m in chR) m.Dispose();
+
+        return merged;
     }
 }

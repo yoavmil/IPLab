@@ -204,7 +204,7 @@ Supports [ROI](#roi).
 
 ## Bitwise
 
-Applies a pixel-wise bitwise operation to two images of the same size and type (`Cv2.BitwiseAnd`, `Cv2.BitwiseOr`, `Cv2.BitwiseXor`). Both inputs must have the same dimensions and depth. Supports integer depths (`CV_8U`, `CV_16U`, `CV_32S`); float images are not supported by OpenCV bitwise functions. Works on any channel count — operations are applied independently per channel.
+Applies a pixel-wise bitwise operation to two images (`Cv2.BitwiseAnd`, `Cv2.BitwiseOr`, `Cv2.BitwiseXor`). Both inputs must have the same dimensions, depth, and channel count. Supports integer depths (`CV_8U`, `CV_16U`, `CV_32S`); float images are not supported by OpenCV bitwise functions. Supports grayscale and color inputs — for color images the operation is applied per channel and the result is merged back into a color image.
 
 | Parameter | Type   | Connectable | Description                  |
 |-----------|--------|-------------|------------------------------|
