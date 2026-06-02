@@ -1,5 +1,10 @@
 # IPLab Operators
 
+<!-- STRUCTURE: This file has two parts separated by ---
+     1. TOC at the top — one bullet per operator, no details.
+     2. Detailed sections below the --- divider — one ## heading per operator.
+     New operators: add a bullet to the TOC AND a ## section below. Never put detail content in the TOC block. -->
+
 ## I/O
 - [LoadImage](#loadimage) — load a color image from disk
 - [SaveImage](#saveimage) — save an image to disk
@@ -15,6 +20,7 @@
 - [GaussianBlur](#gaussianblur) — smooth an image with a Gaussian kernel
 - [Morphology](#morphology) — morphological operations (erode, dilate, open, close, gradient, top-hat, black-hat)
 - [Thinning](#thinning) — skeletonize a binary image via iterative thinning (Zhang-Suen or Guo-Hall)
+- [Bitwise](#bitwise) — pixel-wise AND, OR, or XOR of two images
 
 ## Visualization
 - [DrawHistogram](#drawhistogram) — render a single-channel image's intensity histogram as an image
@@ -189,6 +195,22 @@ Supports [ROI](#roi).
 |--------------|--------|-------------|-----------------------------------------------------------------------------------------------|
 | Image        | Object | Yes         | Binary single-channel input Mat (8-bit, values 0/255)                                         |
 | ThinningType | Enum   | No          | `ZhangSuen` (default) — Zhang-Suen algorithm; `GuoHall` — Guo-Hall algorithm (slightly faster) |
+
+| Output Port | Type |
+|-------------|------|
+| Image       | Mat  |
+
+---
+
+## Bitwise
+
+Applies a pixel-wise bitwise operation to two images of the same size and type (`Cv2.BitwiseAnd`, `Cv2.BitwiseOr`, `Cv2.BitwiseXor`). Both inputs must have the same dimensions and depth. Supports integer depths (`CV_8U`, `CV_16U`, `CV_32S`); float images are not supported by OpenCV bitwise functions. Works on any channel count — operations are applied independently per channel.
+
+| Parameter | Type   | Connectable | Description                  |
+|-----------|--------|-------------|------------------------------|
+| Image A   | Object | Yes         | First input Mat              |
+| Image B   | Object | Yes         | Second input Mat             |
+| Operation | Enum   | No          | `And` (default), `Or`, `Xor` |
 
 | Output Port | Type |
 |-------------|------|
