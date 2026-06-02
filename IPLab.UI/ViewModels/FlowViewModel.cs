@@ -17,13 +17,16 @@ public class FlowViewModel
 
     private readonly Action<OperatorNodeViewModel>? _onOpenSettings;
     private readonly Action<OperatorNodeViewModel>? _onSelected;
+    private readonly Action<OperatorNodeViewModel>? _onBeforeDeleteNode;
 
     public FlowViewModel(IFlow flow,
                          Action<OperatorNodeViewModel>? onOpenSettings = null,
-                         Action<OperatorNodeViewModel>? onSelected = null)
+                         Action<OperatorNodeViewModel>? onSelected = null,
+                         Action<OperatorNodeViewModel>? onBeforeDeleteNode = null)
     {
         _onOpenSettings        = onOpenSettings;
         _onSelected            = onSelected;
+        _onBeforeDeleteNode    = onBeforeDeleteNode;
         ConnectCommand         = new RelayCommand<(object, object?)>(OnConnect);
         DeleteConnectionCommand = new RelayCommand<ConnectionViewModel>(OnDeleteConnection);
 
@@ -67,7 +70,7 @@ public class FlowViewModel
             .ToList();
 
         Nodes.Add(new OperatorNodeViewModel(op, availableSources,
-            _onOpenSettings, _onSelected, RebuildDescendantSources)
+            _onOpenSettings, _onSelected, RebuildDescendantSources, OnDeleteNode)
         {
             Location = pos
         });
@@ -97,7 +100,7 @@ public class FlowViewModel
             Connections.Remove(old);
 
         var depId = $"D_{sourceNode.Id}_{targetNode.Id}";
-        Connections.Add(new ConnectionViewModel(sourceConnector, targetConnector, depId));
+        Connections.Add(new ConnectionViewModel(sourceConnector, targetConnector, depId, OnDeleteConnection));
 
         // Rebuild available sources for target and all downstream nodes now that the
         // new edge is in place — this adds the full ancestor chain, not just the direct source.
@@ -130,6 +133,33 @@ public class FlowViewModel
         // Rebuild sources for the target and every node downstream of it.
         foreach (var node in GetSelfAndDescendants(targetNode))
             RebuildAvailableSources(node);
+    }
+
+    private void OnDeleteNode(OperatorNodeViewModel node)
+    {
+        if (!Nodes.Contains(node)) return;
+
+        _onBeforeDeleteNode?.Invoke(node);
+
+        // Snapshot downstream nodes before removing anything so graph traversal is still valid.
+        var toRebuild = Connections
+            .Where(c => node.HasConnector(c.Source))
+            .Select(c => Nodes.FirstOrDefault(n => n.HasConnector(c.Target)))
+            .OfType<OperatorNodeViewModel>()
+            .Distinct()
+            .SelectMany(GetSelfAndDescendants)
+            .Distinct()
+            .ToList();
+
+        foreach (var conn in Connections
+            .Where(c => node.HasConnector(c.Source) || node.HasConnector(c.Target))
+            .ToList())
+            Connections.Remove(conn);
+
+        Nodes.Remove(node);
+
+        foreach (var n in toRebuild)
+            RebuildAvailableSources(n);
     }
 
     // Syncs AvailableSources for every connectable parameter on a node to match
@@ -224,7 +254,7 @@ public class FlowViewModel
                 var pos     = positionsLookup.TryGetValue(ops[i].Id, out var p) ? p : autoPos;
 
                 var node = new OperatorNodeViewModel(ops[i], availableSources,
-                    _onOpenSettings, _onSelected, RebuildDescendantSources)
+                    _onOpenSettings, _onSelected, RebuildDescendantSources, OnDeleteNode)
                 {
                     Location = pos
                 };
@@ -253,7 +283,8 @@ public class FlowViewModel
                 Connections.Add(new ConnectionViewModel(
                     GetConnector(sourceNode, srcSide),
                     GetConnector(targetNode, tgtSide),
-                    dep.DependencyId));
+                    dep.DependencyId,
+                    OnDeleteConnection));
             }
         }
 

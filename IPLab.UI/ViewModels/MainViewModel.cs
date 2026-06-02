@@ -204,8 +204,10 @@ public class MainViewModel : ViewModelBase
 
         Toolbox = new ToolboxViewModel(OperatorRegistry.CreateDefault(), type => Flow.AddNode(type));
         Flow = new FlowViewModel(BuildSampleFlow(),
-            onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
-            onSelected:     node => SelectedNode = node);
+            onOpenSettings:      node => EditingNode = (EditingNode == node) ? null : node,
+            onSelected:          node => SelectedNode = node,
+            onBeforeDeleteNode:  node => { if (EditingNode == node) EditingNode = null;
+                                           if (SelectedNode == node) SelectedNode = null; });
         _savedJson = SerializeCurrentFlow();
         RunOnceCommand       = new RelayCommand(RunOnce, () => !IsRunningContinuous);
         RunContinuousCommand = new RelayCommand(ToggleContinuousRun);
@@ -415,8 +417,10 @@ public class MainViewModel : ViewModelBase
             _layersCache.Clear();
             _precomputedImages = new();
             Flow = new FlowViewModel(flow,
-                onOpenSettings: node => EditingNode = (EditingNode == node) ? null : node,
-                onSelected:     node => SelectedNode = node);
+                onOpenSettings:      node => EditingNode = (EditingNode == node) ? null : node,
+                onSelected:          node => SelectedNode = node,
+                onBeforeDeleteNode:  node => { if (EditingNode == node) EditingNode = null;
+                                               if (SelectedNode == node) SelectedNode = null; });
             _currentFilePath = dialog.FileName;
             _savedJson       = SerializeCurrentFlow();
             Status           = $"Loaded: {Path.GetFileName(dialog.FileName)}";

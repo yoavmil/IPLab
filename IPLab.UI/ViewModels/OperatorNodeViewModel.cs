@@ -45,6 +45,7 @@ public class OperatorNodeViewModel : ViewModelBase
 
     public IReadOnlyList<ParameterEditViewModel> Parameters                  { get; }
     public ICommand                              OpenSettingsCommand         { get; }
+    public ICommand                              DeleteCommand               { get; }
     public ICommand                              ScaffoldDebugProjectCommand { get; }
     public ICommand                              BrowseScriptCommand         { get; }
     public bool                                  IsCSharpScript             => TypeName == "CSharpScript";
@@ -86,7 +87,8 @@ public class OperatorNodeViewModel : ViewModelBase
                                   IEnumerable<SourceRefViewModel> availableSources,
                                   Action<OperatorNodeViewModel>? onOpenSettings = null,
                                   Action<OperatorNodeViewModel>? onSelected = null,
-                                  Action<OperatorNodeViewModel>? onDisplayNameChanged = null)
+                                  Action<OperatorNodeViewModel>? onDisplayNameChanged = null,
+                                  Action<OperatorNodeViewModel>? onDelete = null)
     {
         Operator               = op;
         Id                     = op.Id;
@@ -123,6 +125,7 @@ public class OperatorNodeViewModel : ViewModelBase
         }
 
         OpenSettingsCommand         = new RelayCommand(() => onOpenSettings?.Invoke(this));
+        DeleteCommand               = new RelayCommand(() => onDelete?.Invoke(this));
         ScaffoldDebugProjectCommand = new RelayCommand(() => CSharpScriptService.ScaffoldDebugProject(Parameters));
         BrowseScriptCommand         = new RelayCommand(() => CSharpScriptService.BrowseScript(Parameters));
     }

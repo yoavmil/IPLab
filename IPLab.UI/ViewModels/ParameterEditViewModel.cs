@@ -124,12 +124,15 @@ public class ParameterEditViewModel : ViewModelBase
         if ((_min is null && _max is null) || !TryParseDouble(raw, out var d))
             return raw;
 
-        if (_min is { } lo && d < lo) d = lo;
-        if (_max is { } hi && d > hi) d = hi;
+        var clamped = d;
+        if (_min is { } lo && clamped < lo) clamped = lo;
+        if (_max is { } hi && clamped > hi) clamped = hi;
+
+        if (clamped == d) return raw; // in range — preserve raw text so "0." isn't stripped mid-edit
 
         return (Type == ParameterType.Int)
-            ? ((int)d).ToString()
-            : d.ToString(CultureInfo.InvariantCulture);
+            ? ((int)clamped).ToString()
+            : clamped.ToString(CultureInfo.InvariantCulture);
     }
 
     private static bool TryParseDouble(string? s, out double d) =>

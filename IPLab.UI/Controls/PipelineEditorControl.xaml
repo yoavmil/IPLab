@@ -8,6 +8,17 @@
     <UserControl.Resources>
         <conv:OperatorStatusToBrushConverter x:Key="StatusToBrush" />
 
+        <Style x:Key="DarkContextMenu" TargetType="ContextMenu">
+            <Setter Property="Background"   Value="#252526" />
+            <Setter Property="BorderBrush"  Value="#3F3F46" />
+            <Setter Property="Foreground"   Value="#DCDCDC" />
+        </Style>
+        <Style x:Key="DarkMenuItem" TargetType="MenuItem">
+            <Setter Property="Background"   Value="#252526" />
+            <Setter Property="Foreground"   Value="#DCDCDC" />
+            <Setter Property="BorderBrush"  Value="Transparent" />
+        </Style>
+
         <!-- Top/Bottom pill connector -->
         <Style x:Key="ConnectorStyle" TargetType="{x:Type nodify:Connector}">
             <Setter Property="Width" Value="16" />
@@ -63,6 +74,16 @@
                             <Setter Property="IsSelected"              Value="{Binding IsSelected, Mode=TwoWay}" />
                             <Setter Property="BorderThickness"         Value="0" />
                             <Setter Property="SelectedBorderThickness" Value="0" />
+                            <Setter Property="ContextMenu">
+                                <Setter.Value>
+                                    <ContextMenu Style="{StaticResource DarkContextMenu}">
+                                        <MenuItem Header="Delete"
+                                                  Command="{Binding PlacementTarget.DataContext.DeleteCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  Style="{StaticResource DarkMenuItem}" />
+                                    </ContextMenu>
+                                </Setter.Value>
+                            </Setter>
                         </Style>
                     </nodify:NodifyEditor.ItemContainerStyle>
 
@@ -184,7 +205,14 @@
                                 Stroke="#888888"
                                 StrokeThickness="2"
                                 ArrowEnds="End"
-                                ArrowSize="8,6" />
+                                ArrowSize="8,6">
+                                <nodify:StepConnection.ContextMenu>
+                                    <ContextMenu Style="{StaticResource DarkContextMenu}">
+                                        <MenuItem Header="Delete" Command="{Binding DeleteCommand}"
+                                                  Style="{StaticResource DarkMenuItem}" />
+                                    </ContextMenu>
+                                </nodify:StepConnection.ContextMenu>
+                            </nodify:StepConnection>
                         </DataTemplate>
                     </nodify:NodifyEditor.ConnectionTemplate>
 
