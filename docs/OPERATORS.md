@@ -45,9 +45,10 @@ Loads a color image from disk. Supports a list of images; the active one is dete
 | FilePaths   | StringList | No          | Ordered list of image file paths               |
 | ActiveIndex | Int        | No          | Zero-based index of the currently active image |
 
-| Output Port | Type |
-|-------------|------|
-| Image       | Mat  |
+| Output Port | Type   |
+|-------------|--------|
+| Image       | Mat    |
+| FilePath    | string |
 
 ---
 
