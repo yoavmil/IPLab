@@ -3,6 +3,8 @@
 This project (`IPLab.Core`) contains all operator implementations, the flow data model, and the runtime executor.
 See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 
+**Rule: whenever a new operator is added, update the operator table in [README.md](README.md) to keep the NuGet-facing docs in sync.**
+
 ## Operator implementation rules
 
 **Rule: whenever a new operator is added to `IPLab.Core.Operators`, add a corresponding entry to [docs/OPERATORS.md](../docs/OPERATORS.md).**

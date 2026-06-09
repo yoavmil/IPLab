@@ -67,12 +67,12 @@ See [IPLab.UI/CLAUDE.md](IPLab.UI/CLAUDE.md) for UI-specific rules and Nodify im
 
 ## NuGet Distribution
 
-`IPLab.Core` is published as a local NuGet package so external solutions can consume it without a source reference.
+`IPLab.Core` is published as a local NuGet package so external solutions can consume it without a source reference. `IPLab.Core/README.md` is the NuGet-facing readme (shown on nuget.org) — it is included in the package via `<PackageReadmeFile>`.
 
 - **Local feed:** `%USERPROFILE%\LocalNuGet\`
 - **nuget.config** at the repo root registers this feed alongside nuget.org.
-- **Pack command:** `dotnet pack IPLab.Core\IPLab.Core.csproj -o %USERPROFILE%\LocalNuGet`
-- **Version:** bump `<Version>` in `IPLab.Core\IPLab.Core.csproj` before packing a new release.
+- **Pack command:** `dotnet pack IPLab.Core\IPLab.Core.csproj -c Release -o .\nupkg`
+- **Version:** bump `<Version>` in `IPLab.Core\IPLab.Core.csproj` before packing a new release. Current: `1.0.0-alpha.2`.
 - Consuming solutions add the same `nuget.config` and reference `<PackageReference Include="IPLab.Core" Version="x.y.z" />`.
 
 ## MVP Feature List

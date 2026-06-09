@@ -4,13 +4,16 @@
 
 ## Docs
 
-- **README.md** — root-level project introduction: what IPLab is, who it's for,
-  quick-start (how to build and run), and links to OPERATORS.md. Include a
-  *Usage example* section that links to [`scripts/Waviness/`](../scripts/Waviness/)
-  as a worked end-to-end example of building and running an IPLab flow from code.
-  Also document the local NuGet workflow: how to pack `IPLab.Core` and consume it
-  from an external solution (local feed at `%USERPROFILE%\LocalNuGet`, pack command,
-  version bump process).
+- **Document algorithm vs. wrapper distinction in OPERATORS.md** — `FindStripeEdges` is a self-contained algorithm (1D projection, box-difference derivative, parabolic interpolation, subpixel peak detection) rather than a thin wrapper around a single OpenCV call like most other operators. OPERATORS.md should acknowledge this distinction — e.g. a short prose section explaining that most operators delegate to one `Cv2.*` function while a few implement multi-step algorithms internally. The `FindStripeEdges` entry should note its algorithmic nature (caliper-style 1D edge finder, not an OpenCV primitive) so readers know what to expect when reading or modifying its implementation.
+
+- **Root README.md** — root-level project introduction: what IPLab is, who it's for,
+  quick-start (how to build and run the desktop app), and links to OPERATORS.md and
+  `IPLab.Core/README.md`. Include a *Usage example* section that links to
+  [`scripts/Waviness/`](../scripts/Waviness/) as a worked end-to-end example.
+
+## CI / CD
+
+- **GitHub Actions: publish IPLab.Core to NuGet.org on git tag** — a workflow that triggers on `v*.*.*` tag pushes and publishes the package. Use NuGet.org Trusted Publishers (OIDC) to avoid storing an API key.
 
 ## IPLab (UI project)
 
