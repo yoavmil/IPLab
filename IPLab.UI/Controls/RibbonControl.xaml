@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ToolBarTray Background="#2D2D30">
         <ToolBar Band="0" BandIndex="0" Header="File">
+            <Button Content="New Flow"  Padding="8 2" Command="{Binding NewFlowCommand}" />
             <Button Content="Open Flow" Padding="8 2" Command="{Binding LoadFlowCommand}" />
             <Button Content="Save Flow" Padding="8 2" Command="{Binding SaveFlowCommand}" />
         </ToolBar>

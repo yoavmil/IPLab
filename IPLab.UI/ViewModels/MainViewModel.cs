@@ -2,7 +2,6 @@ using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.UI.Dialogs;
 using IPLab.UI.Services;
-using System.ComponentModel;
 using System.Collections.ObjectModel;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
 using IPLab.Core.Operators;
@@ -10,12 +9,10 @@ using IPLab.Core.Runtime;
 using IPLab.Core.Serialization;
 using IPLab.Core.Utilities;
 using Microsoft.Win32;
-using OpenCvSharp;
 using Settings;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CoreFlow = IPLab.Core.Runtime.Flow;
 
@@ -39,7 +36,12 @@ public class MainViewModel : ViewModelBase
     private string? _currentFilePath = null;
     private readonly IPLabSettings _settings;
 
-    // Returns true if it's safe to proceed (flow not dirty, or user handled it).
+    private readonly ExecutionService   _execution;
+    private readonly InspectorViewModel _inspector;
+
+    public InspectorState                      State        => _inspector.State;
+    public ObservableCollection<LayerViewModel> OverlayLayers => _inspector.OverlayLayers;
+
     public bool ConfirmNavigateAway()
     {
         if (SerializeCurrentFlow() == _savedJson) return true;
@@ -70,29 +72,11 @@ public class MainViewModel : ViewModelBase
     public OperatorNodeViewModel? SelectedNode
     {
         get => _selectedNode;
-        set { _selectedNode = value; RaisePropertyChanged(); UpdateSelectedImage(); }
+        set { _selectedNode = value; RaisePropertyChanged(); _inspector.SetSelectedNode(value, _flow); }
     }
 
     public ThumbnailStripViewModel ThumbnailStrip { get; }
-
-    public sealed record InspectorState(
-        BitmapSource?          Image    = null,
-        CircleSegment[]?       Circles  = null,
-        KeyPoint[]?            Blobs    = null,
-        OpenCvSharp.Point[][]? Contours = null,
-        RoiDef?                Roi      = null,
-        LineSegmentPoint[]?    Lines    = null);
-
-    private InspectorState _state = new();
-    public  InspectorState State
-    {
-        get => _state;
-        private set { _state = value; RaisePropertyChanged(); }
-    }
-
     public event Action<OperatorNodeViewModel?>? EditingNodeChanged;
-
-    private List<ParameterEditViewModel> _roiParamSubscriptions = [];
 
     private OperatorNodeViewModel? _editingNode;
     public OperatorNodeViewModel? EditingNode
@@ -100,62 +84,11 @@ public class MainViewModel : ViewModelBase
         get => _editingNode;
         private set
         {
-            foreach (var p in _roiParamSubscriptions)
-                p.PropertyChanged -= OnRoiParamChanged;
-            _roiParamSubscriptions.Clear();
-
             _editingNode = value;
-
-            if (_editingNode is not null)
-            {
-                _roiParamSubscriptions = _editingNode.Parameters
-                    .Where(p => p.Name is "RoiCX" or "RoiCY" or "RoiW" or "RoiH" or "RoiAngle")
-                    .ToList();
-                foreach (var p in _roiParamSubscriptions)
-                    p.PropertyChanged += OnRoiParamChanged;
-            }
-
-            RefreshRoiOverlay();
+            _inspector.SetEditingNode(value);
             RaisePropertyChanged();
             RaisePropertyChanged(nameof(IsSettingsPanelOpen));
             EditingNodeChanged?.Invoke(value);
-        }
-    }
-
-    private void OnRoiParamChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ParameterEditViewModel.ValueText))
-            RefreshRoiOverlay();
-    }
-
-    private void RefreshRoiOverlay() => State = State with { Roi = CurrentRoi };
-
-    private double ResolveParamAsDouble(ParameterEditViewModel p)
-    {
-        if (p.IsWired && p.SelectedSource is { } src && _executor is not null &&
-            _executor.IntermediateResults.TryGetValue(src.OperatorId, out var result) &&
-            result is Dictionary<string, object?> dict &&
-            dict.TryGetValue(src.Port, out var raw) && raw is IConvertible conv)
-            return conv.ToDouble(null);
-        return double.TryParse(p.ValueText, out var v) ? v : 0.0;
-    }
-
-    private RoiDef? CurrentRoi
-    {
-        get
-        {
-            if (_editingNode is null) return null;
-            double GetVal(string name)
-            {
-                var p = _editingNode.Parameters.FirstOrDefault(p => p.Name == name);
-                return p is null ? 0.0 : ResolveParamAsDouble(p);
-            }
-            var cx    = GetVal("RoiCX");
-            var cy    = GetVal("RoiCY");
-            var w     = GetVal("RoiW");
-            var h     = GetVal("RoiH");
-            var angle = GetVal("RoiAngle");
-            return (w > 0 && h > 0) ? new RoiDef(cx, cy, w, h, angle) : null;
         }
     }
 
@@ -170,15 +103,6 @@ public class MainViewModel : ViewModelBase
         set { _displayingNode = value; RaisePropertyChanged(); }
     }
 
-    private readonly ObservableCollection<LayerViewModel> _overlayLayers = [];
-    public  ObservableCollection<LayerViewModel> OverlayLayers => _overlayLayers;
-
-    private readonly Dictionary<string, List<LayerViewModel>> _layersCache = new();
-
-    private FlowEx? _executor;
-    private CancellationTokenSource? _cts;
-    private Dictionary<(string Id, string Port), BitmapSource> _precomputedImages = new();
-
     private bool _isRunningContinuous;
     public bool IsRunningContinuous
     {
@@ -192,6 +116,7 @@ public class MainViewModel : ViewModelBase
     }
 
     public ToolboxViewModel Toolbox           { get; }
+    public ICommand         NewFlowCommand       { get; }
     public ICommand         RunOnceCommand       { get; }
     public ICommand         RunContinuousCommand { get; }
     public ICommand         StopCommand          { get; }
@@ -202,6 +127,15 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        _execution = new ExecutionService();
+        _inspector = new InspectorViewModel(_execution);
+        _inspector.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(InspectorViewModel.State))
+                RaisePropertyChanged(nameof(State));
+        };
+        _execution.StatusChanged += OnOperatorStatusChanged;
+
         ThumbnailStrip = new ThumbnailStripViewModel(
             clearResults: ClearExecutionResults,
             runAsync:     async () => await ExecuteRunAsync(),
@@ -212,15 +146,12 @@ public class MainViewModel : ViewModelBase
         _settings = SettingsStore.Load<IPLabSettings>();
         var lastFlow = TryLoadFlowFromPath(_settings.LastFlowPath);
         if (lastFlow is not null)
-        {
             _currentFilePath = _settings.LastFlowPath;
-        }
-        Flow = new FlowViewModel(lastFlow ?? BuildSampleFlow(),
-            onOpenSettings:      node => EditingNode = (EditingNode == node) ? null : node,
-            onSelected:          node => SelectedNode = node,
-            onBeforeDeleteNode:  node => { if (EditingNode == node) EditingNode = null;
-                                           if (SelectedNode == node) SelectedNode = null; });
+
+        Flow = CreateFlowViewModel(lastFlow ?? BuildSampleFlow());
         _savedJson = SerializeCurrentFlow();
+
+        NewFlowCommand       = new RelayCommand(NewFlow);
         RunOnceCommand       = new RelayCommand(RunOnce, () => !IsRunningContinuous);
         RunContinuousCommand = new RelayCommand(ToggleContinuousRun);
         StopCommand          = new RelayCommand(Stop);
@@ -230,14 +161,33 @@ public class MainViewModel : ViewModelBase
         LoadFlowCommand      = new RelayCommand(LoadFlow);
     }
 
+    private FlowViewModel CreateFlowViewModel(IFlow flow) => new(flow,
+        onOpenSettings:     node => EditingNode = (EditingNode == node) ? null : node,
+        onSelected:         node => SelectedNode = node,
+        onBeforeDeleteNode: node => { if (EditingNode == node) EditingNode = null;
+                                      if (SelectedNode == node) SelectedNode = null; });
+
+    private void NewFlow()
+    {
+        if (!ConfirmNavigateAway()) return;
+
+        EditingNode  = null;
+        SelectedNode = null;
+        _execution.Clear();
+        _inspector.Clear();
+
+        Flow             = CreateFlowViewModel(new CoreFlow(new FlowDef([]), new FlowLayout([], [])));
+        _currentFilePath = null;
+        _savedJson       = SerializeCurrentFlow();
+        Status           = "New flow";
+    }
+
     private async void RunOnce() => await ExecuteRunAsync();
 
     private void ToggleContinuousRun()
     {
         if (IsRunningContinuous)
-        {
             Stop();
-        }
         else
         {
             IsRunningContinuous = true;
@@ -247,7 +197,6 @@ public class MainViewModel : ViewModelBase
 
     private async Task<bool> ExecuteRunAsync()
     {
-        // If the image source operator has no files, prompt the user to add some.
         if (ThumbnailStrip.IsEmpty)
         {
             var dialog = new OpenFileDialog
@@ -261,15 +210,17 @@ public class MainViewModel : ViewModelBase
         }
 
         Status = "Running…";
-        _cts = new CancellationTokenSource();
         try
         {
-            var flow = BuildExecutionFlow();
-            _executor = new FlowEx(flow);
-            _executor.StatusChanged += OnOperatorStatusChanged;
-            await _executor.RunAllAsync(_cts.Token);
-            await PrecomputeImagesAsync();
-            RefreshCachedLayerImages();
+            bool success = await _execution.RunAsync(BuildExecutionFlow());
+            if (!success)
+            {
+                Status = "Stopped";
+                return false;
+            }
+
+            await _inspector.PrecomputeAsync(Flow);
+            _inspector.RefreshCachedLayerImages(Flow);
 
             var failed = Flow.Nodes.Count(n => n.Status == OperatorStatus.Failed);
             if (failed > 0)
@@ -283,7 +234,8 @@ public class MainViewModel : ViewModelBase
                     ? $"Done  |  {Path.GetFileName(activeFile)}"
                     : "Done";
             }
-            UpdateSelectedImage();
+
+            _inspector.UpdateSelectedImage(Flow);
 
             if (IsRunningContinuous)
             {
@@ -294,28 +246,18 @@ public class MainViewModel : ViewModelBase
             }
             return true;
         }
-        catch (OperationCanceledException)
-        {
-            Status = "Stopped";
-            return false;
-        }
         catch (Exception ex)
         {
             Status = $"Error: {ex.Message}";
             IsRunningContinuous = false;
             return false;
         }
-        finally
-        {
-            _cts?.Dispose();
-            _cts = null;
-        }
     }
 
     private void Stop()
     {
         IsRunningContinuous = false;
-        _cts?.Cancel();
+        _execution.Stop();
     }
 
     private void OnOperatorStatusChanged(string id, OperatorStatus status, Exception? ex)
@@ -333,16 +275,9 @@ public class MainViewModel : ViewModelBase
 
     private void ClearExecutionResults()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts      = null;
-        _executor = null;
-        State     = new InspectorState();
-        Status    = "Ready";
-
-        _overlayLayers.Clear();
-        _layersCache.Clear();
-        _precomputedImages = new();
+        _execution.Clear();
+        _inspector.Clear();
+        Status = "Ready";
 
         foreach (var node in Flow.Nodes)
         {
@@ -359,9 +294,6 @@ public class MainViewModel : ViewModelBase
         var opLayouts = Flow.Nodes
             .Select(n => new OperatorLayout(n.Id, new LayoutPoint(n.Location.X, n.Location.Y)));
 
-        // Derive dep IDs from execFlow so they match the serialized FlowDef.
-        // Multiple visual connections to the same parameter all share one dep ID —
-        // use the first matching visual connection to get the connector sides.
         var depLayouts = execFlow.Operators
             .SelectMany(op => op.Dependencies, (op, dep) =>
             {
@@ -387,7 +319,7 @@ public class MainViewModel : ViewModelBase
         _savedJson = json;
         _settings.LastFlowPath = _currentFilePath;
         SettingsStore.Save(_settings);
-        Status     = $"Saved: {Path.GetFileName(_currentFilePath)}";
+        Status = $"Saved: {Path.GetFileName(_currentFilePath)}";
         return true;
     }
 
@@ -407,7 +339,7 @@ public class MainViewModel : ViewModelBase
         _savedJson       = json;
         _settings.LastFlowPath = _currentFilePath;
         SettingsStore.Save(_settings);
-        Status           = $"Saved: {Path.GetFileName(dialog.FileName)}";
+        Status = $"Saved: {Path.GetFileName(dialog.FileName)}";
         return true;
     }
 
@@ -427,90 +359,20 @@ public class MainViewModel : ViewModelBase
             var flow = FlowDefSerializer.Deserialize(
                 File.ReadAllText(dialog.FileName), OperatorRegistry.CreateDefault());
 
-            EditingNode        = null;
-            _executor          = null;
-            State              = new InspectorState();
-            _layersCache.Clear();
-            _precomputedImages = new();
-            Flow = new FlowViewModel(flow,
-                onOpenSettings:      node => EditingNode = (EditingNode == node) ? null : node,
-                onSelected:          node => SelectedNode = node,
-                onBeforeDeleteNode:  node => { if (EditingNode == node) EditingNode = null;
-                                               if (SelectedNode == node) SelectedNode = null; });
+            EditingNode = null;
+            _execution.Clear();
+            _inspector.Clear();
+            Flow = CreateFlowViewModel(flow);
             _currentFilePath = dialog.FileName;
             _savedJson       = SerializeCurrentFlow();
             _settings.LastFlowPath = _currentFilePath;
             SettingsStore.Save(_settings);
-            Status           = $"Loaded: {Path.GetFileName(dialog.FileName)}";
+            Status = $"Loaded: {Path.GetFileName(dialog.FileName)}";
         }
         catch (Exception ex)
         {
             Status = $"Load failed: {ex.Message}";
         }
-    }
-
-    private void UpdateSelectedImage()
-    {
-        if (_selectedNode is null || _executor is null)
-        {
-            State = new InspectorState() with { Roi = CurrentRoi };
-            UpdateOverlayLayers();
-            return;
-        }
-
-        _executor.IntermediateResults.TryGetValue(_selectedNode.Id, out var result);
-
-        var circles = Unwrap<CircleSegment[]>(result);
-        if (circles is not null)
-        {
-            State = new InspectorState(Image: GetSourceImage(), Circles: circles) with { Roi = CurrentRoi };
-            UpdateOverlayLayers();
-            return;
-        }
-
-        var blobs = Unwrap<KeyPoint[]>(result);
-        if (blobs is not null)
-        {
-            State = new InspectorState(Image: GetSourceImage(), Blobs: blobs) with { Roi = CurrentRoi };
-            UpdateOverlayLayers();
-            return;
-        }
-
-        var contours = Unwrap<OpenCvSharp.Point[][]>(result);
-        if (contours is not null)
-        {
-            State = new InspectorState(Image: GetSourceImage(), Contours: contours) with { Roi = CurrentRoi };
-            UpdateOverlayLayers();
-            return;
-        }
-
-        var stripeEdges = Unwrap<LineSegmentPoint[]>(result);
-        if (stripeEdges is not null)
-        {
-            State = new InspectorState(Image: GetSourceImage(), Lines: stripeEdges) with { Roi = CurrentRoi };
-            UpdateOverlayLayers();
-            return;
-        }
-
-        var displayPort = _selectedNode.Operator.Type.OutputPorts.FirstOrDefault(p => p.IsDisplayImage);
-        var image = displayPort is not null
-            ? _precomputedImages.GetValueOrDefault((_selectedNode.Id, displayPort.Name))
-            : null;
-        State = new InspectorState(Image: image) with { Roi = CurrentRoi };
-        UpdateOverlayLayers();
-    }
-
-    private static T? Unwrap<T>(object? result) where T : class
-        => result as T
-           ?? (result as Dictionary<string, object?>)?.Values.OfType<T>().FirstOrDefault();
-
-    private BitmapSource? GetSourceImage()
-    {
-        var imageParam = _selectedNode!.Parameters
-            .FirstOrDefault(p => p.Name == "Image" && p.IsWired && p.SelectedSource is not null);
-        if (imageParam is null) return null;
-        return _precomputedImages.GetValueOrDefault(
-            (imageParam.SelectedSource!.OperatorId, imageParam.SelectedSource.Port));
     }
 
     private FlowDef BuildExecutionFlow() => new(
@@ -520,173 +382,12 @@ public class MainViewModel : ViewModelBase
             DisplayName  = node.DisplayName,
             Type         = node.Operator.Type,
             Parameters   = node.Parameters.Select(p => p.ToParameterValue()).ToList(),
-            // One Dependency per unique upstream operator — execution ordering only.
-            // Parameter wiring lives in ParameterValue.Source, not here.
             Dependencies = node.Parameters
                 .Where(p => p.IsWired && p.SelectedSource is not null)
                 .GroupBy(p => p.SelectedSource!.OperatorId)
                 .Select(g => new Dependency($"D_{g.Key}_{node.Id}", g.Key))
                 .ToList()
         }));
-
-    // Rebuilds OverlayLayers from the selected node's layers cache.
-    // Called at every exit point of UpdateSelectedImage because that method returns
-    // early from separate branches and has no single shared exit path.
-    private void UpdateOverlayLayers()
-    {
-        if (_selectedNode is null || _executor is null)
-        {
-            _overlayLayers.Clear();
-            return;
-        }
-
-        if (!_layersCache.TryGetValue(_selectedNode.Id, out var layers))
-            _layersCache[_selectedNode.Id] = layers = BuildLayersForNode(_selectedNode);
-
-        // On repeated runs with the same node selected the LayerViewModel objects are
-        // identical (cached and image-refreshed in place), so skip the clear+re-add.
-        // The clear causes a visible flash because RefreshOverlays removes canvas Image
-        // elements synchronously, even though rendering is deferred.
-        if (_overlayLayers.SequenceEqual(layers))
-            return;
-
-        _overlayLayers.Clear();
-        foreach (var layer in layers)
-            _overlayLayers.Add(layer);
-    }
-
-    // Encodes all executor results to frozen BitmapSources on a background thread.
-    // Called once per run so all downstream consumers do cheap dict lookups on the UI thread.
-    private async Task PrecomputeImagesAsync()
-    {
-        if (_executor is null) { _precomputedImages = new(); return; }
-
-        var executor     = _executor;
-        var portsByNode  = Flow.Nodes.ToDictionary(n => n.Id, n => n.Operator.Type.OutputPorts);
-
-        _precomputedImages = await Task.Run(() =>
-        {
-            var images = new Dictionary<(string, string), BitmapSource>();
-            foreach (var (id, result) in executor.IntermediateResults)
-            {
-                var ports = portsByNode.TryGetValue(id, out var p) ? p
-                    : (IReadOnlyList<OutputPortDescriptor>)[new OutputPortDescriptor { Name = "Image", DataType = typeof(Mat) }];
-                if (result is Mat mat)
-                {
-                    var displayPort = ports.FirstOrDefault(p => p.IsDisplayImage);
-                    if (displayPort is not null)
-                    {
-                        var bytes = ImageHelper.TryGetPngBytes(mat);
-                        if (bytes is not null)
-                            images[(id, displayPort.Name)] = BytesToBitmapSource(bytes);
-                    }
-                }
-                else if (result is Dictionary<string, object?> dict)
-                {
-                    foreach (var port in ports.Where(p => p.IsDisplayImage))
-                    {
-                        if (!dict.TryGetValue(port.Name, out var val)) continue;
-                        var bytes = ImageHelper.TryGetPngBytes(val);
-                        if (bytes is not null)
-                            images[(id, port.Name)] = BytesToBitmapSource(bytes);
-                    }
-                }
-            }
-            return images;
-        });
-    }
-
-    // After a re-run, refreshes Image on every cached LayerViewModel using the precomputed dict.
-    // Drops cache entries for nodes that were removed from the flow.
-    private void RefreshCachedLayerImages()
-    {
-        var existingIds = Flow.Nodes.Select(n => n.Id).ToHashSet();
-        foreach (var id in _layersCache.Keys.Where(id => !existingIds.Contains(id)).ToList())
-            _layersCache.Remove(id);
-
-        foreach (var layers in _layersCache.Values)
-            foreach (var layer in layers)
-                layer.Image = _precomputedImages.GetValueOrDefault((layer.OperatorId, layer.Port));
-    }
-
-    // Builds the layer list for a node once per run: ancestor images in topological order,
-    // then the node's own image output (or its wired input image for annotation operators).
-    // The returned LayerViewModel objects are cached so user toggle/opacity choices survive
-    // node switching without a separate save/restore mechanism.
-    private List<LayerViewModel> BuildLayersForNode(OperatorNodeViewModel node)
-    {
-        var layers = new List<LayerViewModel>();
-        if (_executor is null) return layers;
-
-        var edges = Flow.Connections
-            .Select(c => (
-                Source: Flow.Nodes.FirstOrDefault(n => n.HasConnector(c.Source))?.Id,
-                Target: Flow.Nodes.FirstOrDefault(n => n.HasConnector(c.Target))?.Id))
-            .Where(e => e.Source is not null && e.Target is not null)
-            .Select(e => (e.Source!, e.Target!));
-
-        var ancestorIds = FlowGraph.GetAncestors(node.Id, edges);
-        var orderedAncestors = FlowGraph.TopologicalSort(ancestorIds, edges)
-            .Select(id => Flow.Nodes.FirstOrDefault(n => n.Id == id))
-            .OfType<OperatorNodeViewModel>();
-
-        foreach (var ancestor in orderedAncestors)
-        {
-            foreach (var (port, bitmap) in ExtractImageLayers(ancestor.Id, ancestor.Operator.Type.OutputPorts))
-            {
-                var label = ancestor.Operator.Type.OutputPorts.Count > 1
-                    ? $"{ancestor.DisplayName} / {port}"
-                    : ancestor.DisplayName;
-                layers.Add(new LayerViewModel(ancestor.Id, port, label) { Image = bitmap });
-            }
-        }
-
-        var ownImageLayers = ExtractImageLayers(node.Id, node.Operator.Type.OutputPorts).ToList();
-        if (ownImageLayers.Count > 0)
-        {
-            foreach (var (port, bitmap) in ownImageLayers)
-            {
-                var label = ownImageLayers.Count > 1
-                    ? $"{node.DisplayName} / {port}"
-                    : node.DisplayName;
-                layers.Add(new LayerViewModel(node.Id, port, label, isOwnLayer: true) { Image = bitmap });
-            }
-        }
-        else
-        {
-            // Annotation operator (no image output, e.g. DetectCircles): mark the wired
-            // input image's ancestor layer as enabled so it appears active in the panel.
-            var imageParam = node.Parameters
-                .FirstOrDefault(p => p.Name == "Image" && p.IsWired && p.SelectedSource is not null);
-            if (imageParam is not null)
-            {
-                var inputLayer = layers.FirstOrDefault(l => l.OperatorId == imageParam.SelectedSource!.OperatorId);
-                if (inputLayer is not null)
-                    inputLayer.IsEnabled = true;
-            }
-        }
-        return layers;
-    }
-
-    private IEnumerable<(string Port, BitmapSource Bitmap)> ExtractImageLayers(
-        string operatorId, IReadOnlyList<OutputPortDescriptor> outputPorts)
-    {
-        foreach (var port in outputPorts)
-            if (_precomputedImages.TryGetValue((operatorId, port.Name), out var bitmap))
-                yield return (port.Name, bitmap);
-    }
-
-    private static BitmapSource BytesToBitmapSource(byte[] bytes)
-    {
-        using var ms = new MemoryStream(bytes);
-        var bi = new BitmapImage();
-        bi.BeginInit();
-        bi.CacheOption  = BitmapCacheOption.OnLoad;
-        bi.StreamSource = ms;
-        bi.EndInit();
-        bi.Freeze();
-        return bi;
-    }
 
     private static IFlow? TryLoadFlowFromPath(string? path)
     {

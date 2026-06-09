@@ -41,7 +41,7 @@ public partial class InspectorControl : UserControl
             RedrawAnnotations(_vm!.State);
     }
 
-    private void RedrawAnnotations(MainViewModel.InspectorState state)
+    private void RedrawAnnotations(InspectorState state)
     {
         ImageViewer.RemoveRegion(string.Empty, ShapeMode.Circle);
         ImageViewer.RemoveRegion(string.Empty, ShapeMode.Rectangle);
