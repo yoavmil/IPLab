@@ -1,6 +1,7 @@
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.UI.Dialogs;
+using IPLab.UI.Services;
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using OperatorStatus = IPLab.Core.Models.OperatorStatus;
@@ -10,6 +11,7 @@ using IPLab.Core.Serialization;
 using IPLab.Core.Utilities;
 using Microsoft.Win32;
 using OpenCvSharp;
+using Settings;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -35,6 +37,7 @@ public class MainViewModel : ViewModelBase
 
     private string  _savedJson       = string.Empty;
     private string? _currentFilePath = null;
+    private readonly IPLabSettings _settings;
 
     // Returns true if it's safe to proceed (flow not dirty, or user handled it).
     public bool ConfirmNavigateAway()
@@ -205,7 +208,14 @@ public class MainViewModel : ViewModelBase
             setStatus:    s => Status = s);
 
         Toolbox = new ToolboxViewModel(OperatorRegistry.CreateDefault(), type => Flow.AddNode(type));
-        Flow = new FlowViewModel(BuildSampleFlow(),
+
+        _settings = SettingsStore.Load<IPLabSettings>();
+        var lastFlow = TryLoadFlowFromPath(_settings.LastFlowPath);
+        if (lastFlow is not null)
+        {
+            _currentFilePath = _settings.LastFlowPath;
+        }
+        Flow = new FlowViewModel(lastFlow ?? BuildSampleFlow(),
             onOpenSettings:      node => EditingNode = (EditingNode == node) ? null : node,
             onSelected:          node => SelectedNode = node,
             onBeforeDeleteNode:  node => { if (EditingNode == node) EditingNode = null;
@@ -375,6 +385,8 @@ public class MainViewModel : ViewModelBase
         var json = SerializeCurrentFlow();
         File.WriteAllText(_currentFilePath, json);
         _savedJson = json;
+        _settings.LastFlowPath = _currentFilePath;
+        SettingsStore.Save(_settings);
         Status     = $"Saved: {Path.GetFileName(_currentFilePath)}";
         return true;
     }
@@ -393,6 +405,8 @@ public class MainViewModel : ViewModelBase
         File.WriteAllText(dialog.FileName, json);
         _currentFilePath = dialog.FileName;
         _savedJson       = json;
+        _settings.LastFlowPath = _currentFilePath;
+        SettingsStore.Save(_settings);
         Status           = $"Saved: {Path.GetFileName(dialog.FileName)}";
         return true;
     }
@@ -425,6 +439,8 @@ public class MainViewModel : ViewModelBase
                                                if (SelectedNode == node) SelectedNode = null; });
             _currentFilePath = dialog.FileName;
             _savedJson       = SerializeCurrentFlow();
+            _settings.LastFlowPath = _currentFilePath;
+            SettingsStore.Save(_settings);
             Status           = $"Loaded: {Path.GetFileName(dialog.FileName)}";
         }
         catch (Exception ex)
@@ -670,6 +686,13 @@ public class MainViewModel : ViewModelBase
         bi.EndInit();
         bi.Freeze();
         return bi;
+    }
+
+    private static IFlow? TryLoadFlowFromPath(string? path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+        try   { return FlowDefSerializer.Deserialize(File.ReadAllText(path), OperatorRegistry.CreateDefault()); }
+        catch { return null; }
     }
 
     private static IFlow BuildSampleFlow()

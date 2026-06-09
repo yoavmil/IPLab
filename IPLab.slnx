@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/common/">
+    <Project Path="common/Common/Common.csproj" />
+    <Project Path="common/Log/Log.csproj" />
+    <Project Path="common/Settings/Settings.csproj" />
+    <Project Path="common/SettingsTester/SettingsTester.csproj" />
+  </Folder>
   <Folder Name="/3rd/">
     <Project Path="3rd/Nodify/Nodify.csproj" />
     <Project Path="3rd/RControls/RControls.csproj" Id="16d7e75b-02fa-4b97-9ccd-dd0db936f481" />

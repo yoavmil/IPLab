@@ -46,6 +46,8 @@
 
 - **Output display settings per operator** — let the user configure how detection results are visualised in the inspector. For annotation color, offer three modes: a single fixed color (color-picker), a random-per-entity color (stable hash of entity index so colors don't shuffle on re-run), and a heatmap (map a scalar — e.g. circle radius or blob response — to a gradient). Store the chosen mode and parameters inside the operator's display metadata so settings persist with the saved flow. Start with circle/blob annotations; apply the same system to any future operator that produces non-image output.
 
+- **Add snackbar / toast notification** — add a snackbar component and replace all `MessageBox.Show` calls with it. User has ready-made code for this component.
+
 - **Open empty .ipl file doesn't show error message** - it doesn't crash the app, but the user doesn't know anything happened. a popup error message is needed here.
 
 - **Inspector overlay layers survive image-selection change** — when the user clicks a different thumbnail in a `LoadImageOperator` and the flow re-runs, the inspector's overlay layers (circle annotations, contour overlays, etc.) reset to their defaults. The active layer selection and any per-layer visibility toggles should be preserved across re-runs so the user doesn't have to re-enable them after every image switch.

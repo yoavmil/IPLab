@@ -1,5 +1,6 @@
-﻿using System.Configuration;
-using System.Data;
+﻿using Common;
+using Logger;
+using System.IO;
 using System.Windows;
 
 namespace IPLab.UI
@@ -9,6 +10,11 @@ namespace IPLab.UI
 	/// </summary>
 	public partial class App : Application
 	{
+		protected override void OnStartup(StartupEventArgs e)
+		{
+			Log.Folder = Paths.LogFolder;
+			base.OnStartup(e);
+		}
 	}
 
 }
