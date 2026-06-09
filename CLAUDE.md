@@ -65,6 +65,16 @@ See [IPLab.UI/CLAUDE.md](IPLab.UI/CLAUDE.md) for UI-specific rules and Nodify im
 1. How should multiple outputs be represented — overlaid on the image, or shown in the textual result panel?
 2. Where should the parameter settings panel open when an operator is double-clicked?
 
+## NuGet Distribution
+
+`IPLab.Core` is published as a local NuGet package so external solutions can consume it without a source reference.
+
+- **Local feed:** `%USERPROFILE%\LocalNuGet\`
+- **nuget.config** at the repo root registers this feed alongside nuget.org.
+- **Pack command:** `dotnet pack IPLab.Core\IPLab.Core.csproj -o %USERPROFILE%\LocalNuGet`
+- **Version:** bump `<Version>` in `IPLab.Core\IPLab.Core.csproj` before packing a new release.
+- Consuming solutions add the same `nuget.config` and reference `<PackageReference Include="IPLab.Core" Version="x.y.z" />`.
+
 ## MVP Feature List
 
 - Open image, add operators visually, connect into a linear flow

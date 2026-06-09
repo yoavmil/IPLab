@@ -8,6 +8,9 @@
   quick-start (how to build and run), and links to OPERATORS.md. Include a
   *Usage example* section that links to [`scripts/Waviness/`](../scripts/Waviness/)
   as a worked end-to-end example of building and running an IPLab flow from code.
+  Also document the local NuGet workflow: how to pack `IPLab.Core` and consume it
+  from an external solution (local feed at `%USERPROFILE%\LocalNuGet`, pack command,
+  version bump process).
 
 ## IPLab (UI project)
 
