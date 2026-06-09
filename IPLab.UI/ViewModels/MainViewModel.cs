@@ -116,6 +116,7 @@ public class MainViewModel : ViewModelBase
     }
 
     public ToolboxViewModel Toolbox           { get; }
+    public ICommand         NewFlowCommand       { get; }
     public ICommand         RunOnceCommand       { get; }
     public ICommand         RunContinuousCommand { get; }
     public ICommand         StopCommand          { get; }
@@ -147,13 +148,10 @@ public class MainViewModel : ViewModelBase
         if (lastFlow is not null)
             _currentFilePath = _settings.LastFlowPath;
 
-        Flow = new FlowViewModel(lastFlow ?? BuildSampleFlow(),
-            onOpenSettings:     node => EditingNode = (EditingNode == node) ? null : node,
-            onSelected:         node => SelectedNode = node,
-            onBeforeDeleteNode: node => { if (EditingNode == node) EditingNode = null;
-                                          if (SelectedNode == node) SelectedNode = null; });
+        Flow = CreateFlowViewModel(lastFlow ?? BuildSampleFlow());
         _savedJson = SerializeCurrentFlow();
 
+        NewFlowCommand       = new RelayCommand(NewFlow);
         RunOnceCommand       = new RelayCommand(RunOnce, () => !IsRunningContinuous);
         RunContinuousCommand = new RelayCommand(ToggleContinuousRun);
         StopCommand          = new RelayCommand(Stop);
@@ -161,6 +159,27 @@ public class MainViewModel : ViewModelBase
         CloseSettingsCommand = new RelayCommand(() => EditingNode = null);
         SaveFlowCommand      = new RelayCommand(() => SaveFlowAs());
         LoadFlowCommand      = new RelayCommand(LoadFlow);
+    }
+
+    private FlowViewModel CreateFlowViewModel(IFlow flow) => new(flow,
+        onOpenSettings:     node => EditingNode = (EditingNode == node) ? null : node,
+        onSelected:         node => SelectedNode = node,
+        onBeforeDeleteNode: node => { if (EditingNode == node) EditingNode = null;
+                                      if (SelectedNode == node) SelectedNode = null; });
+
+    private void NewFlow()
+    {
+        if (!ConfirmNavigateAway()) return;
+
+        EditingNode  = null;
+        SelectedNode = null;
+        _execution.Clear();
+        _inspector.Clear();
+
+        Flow             = CreateFlowViewModel(new CoreFlow(new FlowDef([]), new FlowLayout([], [])));
+        _currentFilePath = null;
+        _savedJson       = SerializeCurrentFlow();
+        Status           = "New flow";
     }
 
     private async void RunOnce() => await ExecuteRunAsync();
@@ -343,11 +362,7 @@ public class MainViewModel : ViewModelBase
             EditingNode = null;
             _execution.Clear();
             _inspector.Clear();
-            Flow = new FlowViewModel(flow,
-                onOpenSettings:     node => EditingNode = (EditingNode == node) ? null : node,
-                onSelected:         node => SelectedNode = node,
-                onBeforeDeleteNode: node => { if (EditingNode == node) EditingNode = null;
-                                              if (SelectedNode == node) SelectedNode = null; });
+            Flow = CreateFlowViewModel(flow);
             _currentFilePath = dialog.FileName;
             _savedJson       = SerializeCurrentFlow();
             _settings.LastFlowPath = _currentFilePath;
