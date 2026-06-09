@@ -57,7 +57,11 @@ public class DetectSimpleBlobsOperator : IOperatorType
             MinRepeatability     = minRepeatability
         };
 
-        var roiRect = RoiParameters.Clamp(parameters, image.Width, image.Height);
+        var roi = RoiParameters.Extract(parameters);
+        using var warped = roi is { Angle: not 0.0 } ? RoiParameters.WarpForRoi(image, roi) : null;
+        var effectiveImg = warped ?? image;
+
+        var roiRect = roi is not null ? (Rect?)RoiParameters.Clamp(roi, effectiveImg.Width, effectiveImg.Height) : null;
         if (roiRect is { Width: <= 0 } or { Height: <= 0 })
         {
             var empty = new Dictionary<string, object?> { ["Blobs"] = Array.Empty<KeyPoint>() };
@@ -66,16 +70,15 @@ public class DetectSimpleBlobsOperator : IOperatorType
         }
 
         var rect      = roiRect ?? default;
-        using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
-        var       src  = crop ?? image;
+        var transform = roiRect.HasValue ? RoiParameters.BuildTransform(roi!, rect) : null;
+        using var crop = roiRect.HasValue ? new Mat(effectiveImg, rect) : null;
+        var       src  = crop ?? effectiveImg;
 
         using var detector = SimpleBlobDetector.Create(p);
         var blobs = detector.Detect(src);
 
-        // Translate crop-local coordinates back to full-image coordinates.
-        if (roiRect.HasValue)
-            blobs = [.. blobs.Select(k => new KeyPoint(k.Pt.X + rect.X, k.Pt.Y + rect.Y,
-                                                        k.Size, k.Angle, k.Response, k.Octave, k.ClassId))];
+        if (transform is { } t)
+            blobs = [.. blobs.Select(k => RoiParameters.BackProject(k, t))];
 
         var outputs = new Dictionary<string, object?> { ["Blobs"] = blobs };
         RoiParameters.AddToOutputs(outputs, parameters);

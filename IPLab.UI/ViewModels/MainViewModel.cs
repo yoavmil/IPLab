@@ -77,7 +77,8 @@ public class MainViewModel : ViewModelBase
         CircleSegment[]?       Circles  = null,
         KeyPoint[]?            Blobs    = null,
         OpenCvSharp.Point[][]? Contours = null,
-        RoiDef?                Roi      = null);
+        RoiDef?                Roi      = null,
+        LineSegmentPoint[]?    Lines    = null);
 
     private InspectorState _state = new();
     public  InspectorState State
@@ -105,7 +106,7 @@ public class MainViewModel : ViewModelBase
             if (_editingNode is not null)
             {
                 _roiParamSubscriptions = _editingNode.Parameters
-                    .Where(p => p.Name is "RoiX" or "RoiY" or "RoiW" or "RoiH")
+                    .Where(p => p.Name is "RoiCX" or "RoiCY" or "RoiW" or "RoiH" or "RoiAngle")
                     .ToList();
                 foreach (var p in _roiParamSubscriptions)
                     p.PropertyChanged += OnRoiParamChanged;
@@ -126,14 +127,14 @@ public class MainViewModel : ViewModelBase
 
     private void RefreshRoiOverlay() => State = State with { Roi = CurrentRoi };
 
-    private int ResolveRoiParam(ParameterEditViewModel p)
+    private double ResolveParamAsDouble(ParameterEditViewModel p)
     {
         if (p.IsWired && p.SelectedSource is { } src && _executor is not null &&
             _executor.IntermediateResults.TryGetValue(src.OperatorId, out var result) &&
             result is Dictionary<string, object?> dict &&
             dict.TryGetValue(src.Port, out var raw) && raw is IConvertible conv)
-            return conv.ToInt32(null);
-        return int.TryParse(p.ValueText, out var v) ? v : 0;
+            return conv.ToDouble(null);
+        return double.TryParse(p.ValueText, out var v) ? v : 0.0;
     }
 
     private RoiDef? CurrentRoi
@@ -141,16 +142,17 @@ public class MainViewModel : ViewModelBase
         get
         {
             if (_editingNode is null) return null;
-            int GetVal(string name)
+            double GetVal(string name)
             {
                 var p = _editingNode.Parameters.FirstOrDefault(p => p.Name == name);
-                return p is null ? 0 : ResolveRoiParam(p);
+                return p is null ? 0.0 : ResolveParamAsDouble(p);
             }
-            var x = GetVal("RoiX");
-            var y = GetVal("RoiY");
-            var w = GetVal("RoiW");
-            var h = GetVal("RoiH");
-            return (w > 0 && h > 0) ? new RoiDef(x, y, w, h) : null;
+            var cx    = GetVal("RoiCX");
+            var cy    = GetVal("RoiCY");
+            var w     = GetVal("RoiW");
+            var h     = GetVal("RoiH");
+            var angle = GetVal("RoiAngle");
+            return (w > 0 && h > 0) ? new RoiDef(cx, cy, w, h, angle) : null;
         }
     }
 
@@ -462,6 +464,14 @@ public class MainViewModel : ViewModelBase
         if (contours is not null)
         {
             State = new InspectorState(Image: GetSourceImage(), Contours: contours) with { Roi = CurrentRoi };
+            UpdateOverlayLayers();
+            return;
+        }
+
+        var stripeEdges = Unwrap<LineSegmentPoint[]>(result);
+        if (stripeEdges is not null)
+        {
+            State = new InspectorState(Image: GetSourceImage(), Lines: stripeEdges) with { Roi = CurrentRoi };
             UpdateOverlayLayers();
             return;
         }

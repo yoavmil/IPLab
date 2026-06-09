@@ -15,6 +15,16 @@
 
 - **Per-operator execution timing** — record how long each operator's `Execute` call takes (wall-clock, excluding queue wait). Display the duration in the bottom-right corner of the operator node (e.g. "14 ms") so the user can spot bottlenecks at a glance. Also surface the timing in the Data tab of the inspector when that operator is selected. Store timings inside `FlowEx` alongside `IntermediateResults`; reset on `ClearResults`.
 
+- **Split `MainViewModel` into focused classes** — at ~780 lines `MainViewModel.cs` handles too many concerns. Suggested split:
+  - `ExecutionService` — owns `FlowEx`, `RunAllAsync`, `Stop`, `CancellationTokenSource`, `OnOperatorStatusChanged`, and `BuildExecutionFlow`; exposes `Run`, `Stop`, `ClearResults`, `IntermediateResults`, and a `StatusChanged` event so callers never touch `FlowEx` directly.
+  - `InspectorViewModel` — owns `State`, `OverlayLayers`, `_layersCache`, `_precomputedImages`, `UpdateSelectedImage`, `PrecomputeImagesAsync`, `BuildLayersForNode`, `RefreshCachedLayerImages`, and the ROI/stripe parameter subscriptions; depends on `ExecutionService` for result lookup.
+  - `MainViewModel` becomes a thin coordinator: holds `Flow`, `Toolbox`, `ThumbnailStrip`, commands, and the settings-panel state (`EditingNode`, `DisplayingNode`); delegates execution to `ExecutionService` and inspection to `InspectorViewModel`.
+
+- **Application settings dialog** — a modal settings window (accessible from a toolbar button or Tools menu) that stores preferences in a small JSON file next to the executable (or in `%AppData%\IPLab\settings.json`). Initial settings to expose:
+  - **Inspector overlay colors** — one color-picker per overlay type: ROI rectangle, stripe region, circles/blobs, contours, line segments. Defaults match the current hard-coded colors in `InspectorControl`. Changes take effect immediately (live preview while the picker is open). Colors are passed into `InspectorControl.RedrawAnnotations` instead of being hard-coded there. call it legend.
+
+  Persistence: serialize using ready-made ISettings I would take from another project I have.
+
 - **Cursor change on connection hover** — when the mouse hovers over a connector line (edge) between two operators, change the cursor to indicate it is interactive (e.g. `Hand` or a custom pointer). Currently the cursor stays as the default arrow, giving no affordance that the connection can be clicked or deleted.
 
 - **Delete connection with confirmation** — before `OnDeleteConnection` removes a connection, show a brief confirmation (e.g. "Remove this connection? Downstream nodes may lose their inputs.") so the user doesn't accidentally break the flow.
@@ -42,6 +52,8 @@
 
 - **New flow command** — provide a "New flow" action (toolbar button or File menu) that clears the current graph and starts fresh. If the current flow has unsaved changes, prompt to save first. Complements the existing open/save commands.
 
+- **Reopen last flow on startup** — on launch, if a flow was open at the end of the previous session, automatically reload it instead of showing the default sample flow. Persist the last-used file path in user settings (e.g. `Properties.Settings` or a small JSON settings file next to the executable). If the file no longer exists, silently fall back to the sample flow.
+
 
 ## Project
 
@@ -50,6 +62,8 @@
 - **Project view** — a home screen showing all flows in the project as a card grid. Each card displays the flow's name and its configured display image with annotation overlays (see *Flow display settings* below). Clicking a card navigates into the Flow view (the existing node graph editor). A breadcrumb or back button returns to the Project view.
 
 - **Flow display settings** — each flow carries display metadata: `DisplayImageOperatorId` (which operator's output image to render on the project card) and `AnnotationOperatorIds[]` (which operators' detection results to overlay on that image as annotations). These settings are edited from within the Flow view — e.g. right-clicking an operator node offers "Set as display image" / "Toggle annotation". The project card re-renders whenever the flow is re-run.
+
+- **Operator demo project** — a built-in `.iplproj` file (committed under `scripts/OperatorDemo/`) that ships with the repo and contains one flow per operator, each demonstrating its typical use with a small bundled sample image. Serves as both a test-drive for new users and a regression check when operators change. Each flow should be minimal — just enough operators to produce a visible, meaningful result (e.g. LoadImage → GaussianBlur for the blur demo, LoadImage → ConvertToGrayscale → Threshold → DetectCircles for the circle demo). The project opens via File → Open and is listed in a "Recent / Featured" section of the Project view. Bundled sample images live under `scripts/OperatorDemo/images/`.
 
 ## IPLab.Core (Architecture)
 

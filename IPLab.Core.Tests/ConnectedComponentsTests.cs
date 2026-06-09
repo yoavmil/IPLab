@@ -197,10 +197,10 @@ public class ConnectedComponentsTests
         {
             ["Image"]            = binary,
             ["OutputLabelImage"] = false,
-            ["RoiX"]             = margin,
-            ["RoiY"]             = margin,
-            ["RoiW"]             = binary.Width  - margin * 2,
-            ["RoiH"]             = binary.Height - margin * 2,
+            ["RoiCX"]            = (double)binary.Width  / 2,
+            ["RoiCY"]            = (double)binary.Height / 2,
+            ["RoiW"]             = (double)(binary.Width  - margin * 2),
+            ["RoiH"]             = (double)(binary.Height - margin * 2),
         })!;
 
         int countNoRoi   = (int)noRoi["Count"]!;
@@ -221,5 +221,33 @@ public class ConnectedComponentsTests
             Assert.Equal(centNoRoi.At<double>(r, 0), centWithRoi.At<double>(r, 0), precision: 1);
             Assert.Equal(centNoRoi.At<double>(r, 1), centWithRoi.At<double>(r, 1), precision: 1);
         }
+    }
+
+    [Fact]
+    public void RotatedRoi_LabelsAndLabelImageAreFullSize()
+    {
+        using var src = Cv2.ImRead(ImagePath, ImreadModes.Grayscale);
+        using var binary = new Mat();
+        Cv2.Threshold(src, binary, 10, 255, ThresholdTypes.Binary);
+
+        var op = new ConnectedComponentsOperator();
+        var result = (Dictionary<string, object?>)op.Execute(new Dictionary<string, object?>
+        {
+            ["Image"]            = binary,
+            ["OutputLabelImage"] = true,
+            ["RoiCX"]            = (double)binary.Width  / 2,
+            ["RoiCY"]            = (double)binary.Height / 2,
+            ["RoiW"]             = (double)binary.Width  * 0.8,
+            ["RoiH"]             = (double)binary.Height * 0.8,
+            ["RoiAngle"]         = 30.0,
+        })!;
+
+        var labels     = (Mat)result["Labels"]!;
+        var labelImage = (Mat)result["LabelImage"]!;
+
+        Assert.Equal(binary.Width,  labels.Width);
+        Assert.Equal(binary.Height, labels.Height);
+        Assert.Equal(binary.Width,  labelImage.Width);
+        Assert.Equal(binary.Height, labelImage.Height);
     }
 }

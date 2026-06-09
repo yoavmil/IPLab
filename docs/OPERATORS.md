@@ -30,6 +30,7 @@
 - [DetectSimpleBlobs](#detectsimpleblobs) — detect circular blobs using SimpleBlobDetector
 - [ConnectedComponents](#connectedcomponents) — label connected regions; outputs Count, Stats (Mat), Centroids (Mat), LabelImage
 - [FindContours](#findcontours) — find contours in a binary image with built-in filter/repair
+- [FindStripeEdges](#findstripeedges) — find N strongest 1D edges along a rotated stripe (caliper-style)
 
 ## Scripting
 - [CSharpScript](#csharpscipt) — run a user-written C# snippet loaded from a `.cs` file
@@ -323,6 +324,35 @@ Raw output commonly contains degenerate contours (zero area, self-intersecting r
 | Output Port | Type      | Description                                        |
 |-------------|-----------|----------------------------------------------------|
 | Contours    | Point[][] | Array of contours, each an ordered array of points |
+
+---
+
+## FindStripeEdges
+
+Finds the N most prominent edges along a stripe ROI.
+
+| Parameter       | Type   | Connectable | Description |
+|-----------------|--------|-------------|-------------|
+| Image           | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
+| Center X        | Double | No          | X coordinate of the stripe center in image pixels |
+| Center Y        | Double | No          | Y coordinate of the stripe center in image pixels |
+| Length          | Double | No          | Length of the stripe along the search axis in pixels |
+| Width           | Double | No          | Height of the stripe perpendicular to the axis; wider stripes average over more rows, reducing noise (default 1) |
+| Angle (°)       | Double | Rotation of the search axis in degrees; 0 = horizontal left-to-right |
+| Filter Size     | Int    | Width of the box-difference derivative kernel (min 2, clamped to at most Length/2); larger = smoother profile, less noise sensitivity |
+| Threshold       | Enum   | No          | `Manual` (default) — use Threshold Value; `Auto` — Otsu on the gradient response distribution |
+| Threshold Value | Double | No          | Minimum gradient response to consider as an edge candidate; shown only when Threshold = Manual (default 10) |
+| Polarity        | Enum   | No          | `Both` (default) — any transition; `DarkToBright` — rising edges only; `BrightToDark` — falling edges only |
+| Max Edges       | Int    | No          | Maximum number of edges to return, strongest first (default 1) |
+
+| Output Port | Type                | Description |
+|-------------|---------------------|-------------|
+| Points      | Point2f[]           | Edge center points in full-image coordinates; sorted by Score descending |
+| Score       | double[]            | Absolute gradient response at each edge; parallel to Points |
+| Lines       | LineSegmentPoint[]  | One line per edge, perpendicular to the stripe axis, spanning the full stripe Width; endpoints in full-image pixel coordinates (integer-rounded) |
+| Polarity    | string[]            | Per-edge polarity: `"DarkToBright"` or `"BrightToDark"`; determined by sign of the raw gradient regardless of the Polarity filter |
+
+All four output arrays share the same index and are always the same length (≤ Max Edges).
 
 ---
 

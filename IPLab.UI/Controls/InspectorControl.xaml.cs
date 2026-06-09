@@ -47,37 +47,64 @@ public partial class InspectorControl : UserControl
         ImageViewer.RemoveRegion(string.Empty, ShapeMode.Rectangle);
         ImageViewer.RemoveRegion(string.Empty, ShapeMode.Cross);
         ImageViewer.RemoveRegion(string.Empty, ShapeMode.Polygon);
+        ImageViewer.RemoveRegion(string.Empty, ShapeMode.Line);
 
-        if (state.Circles  is { } circles)  DrawCircles(circles);
-        if (state.Blobs    is { } blobs)    DrawBlobs(blobs);
-        if (state.Contours is { } contours) DrawContours(contours);
-        if (state.Roi is { Width: > 0, Height: > 0 } roi)
-            ImageViewer.DrawRectangle(roi.Y, roi.X, roi.Y + roi.Height, roi.X + roi.Width,
-                                      "ROI", Brushes.Yellow, bFilled: false);
+        DrawCircles(state.Circles);
+        DrawBlobs(state.Blobs);
+        DrawContours(state.Contours);
+        DrawLines(state.Lines);
+        DrawRoi(state.Roi);
     }
 
-    private void DrawCircles(CircleSegment[] circles)
+    private void DrawCircles(CircleSegment[]? circles)
     {
+        if (circles is null) return;
         foreach (var c in circles)
             ImageViewer.DrawCircle(c.Center.Y, c.Center.X, c.Radius,
                                    string.Empty, Brushes.Lime, bFilled: false);
     }
 
-    private void DrawBlobs(KeyPoint[] blobs)
+    private void DrawBlobs(KeyPoint[]? blobs)
     {
+        if (blobs is null) return;
         foreach (var b in blobs)
             ImageViewer.DrawCircle(b.Pt.Y, b.Pt.X, b.Size / 2.0,
                                    string.Empty, Brushes.Cyan, bFilled: false);
     }
 
-    private void DrawContours(OpenCvSharp.Point[][] contours)
+    private void DrawContours(OpenCvSharp.Point[][]? contours)
     {
+        if (contours is null) return;
         var polygons = contours
             .Select(c => c.Select(p => new System.Windows.Point(p.X, p.Y)).ToList())
             .Where(pts => pts.Count >= 3)
             .ToList();
         if (polygons.Count == 0) return;
         ImageViewer.DrawPolygons(polygons, string.Empty, Brushes.Yellow);
+    }
+
+    private void DrawLines(LineSegmentPoint[]? lines)
+    {
+        if (lines is null || lines.Length == 0) return;
+        var rowBegin    = lines.Select(l => (double)l.P1.Y).ToArray();
+        var columnBegin = lines.Select(l => (double)l.P1.X).ToArray();
+        var rowEnd      = lines.Select(l => (double)l.P2.Y).ToArray();
+        var columnEnd   = lines.Select(l => (double)l.P2.X).ToArray();
+        ImageViewer.DrawLine(rowBegin, columnBegin, rowEnd, columnEnd, string.Empty, Brushes.Lime, bFilled: false);
+    }
+
+    private void DrawRoi(IPLab.Core.Models.RoiDef? roi)
+    {
+        if (roi is not { Width: > 0, Height: > 0 }) return;
+        // User Angle convention: positive = right-up (CCW); RotatedRect uses CW positive, so negate.
+        var rr = new RotatedRect(
+            new Point2f((float)roi.CX, (float)roi.CY),
+            new Size2f((float)roi.Width, (float)roi.Height),
+            (float)-roi.Angle);
+        var pts = rr.Points()
+            .Select(p => new System.Windows.Point(p.X, p.Y))
+            .ToList();
+        ImageViewer.DrawPolygon(pts, "ROI", Brushes.Yellow, bFilled: false);
     }
 
     private void OnImageClicked(System.Windows.Point imagePoint)

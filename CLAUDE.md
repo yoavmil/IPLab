@@ -34,15 +34,8 @@ First version: **offline image processing only** — no live camera, no video, n
 See [docs/DESIGN.md](docs/DESIGN.md) for core interface definitions and diagrams.
 See [docs/OPERATORS.md](docs/OPERATORS.md) for the catalogue of built-in operators.
 See [docs/TODO.md](docs/TODO.md) for the backlog of planned work and known gaps.
+See [IPLab.Core/CLAUDE.md](IPLab.Core/CLAUDE.md) for operator implementation rules and OpenCV coding patterns.
 See [IPLab.UI/CLAUDE.md](IPLab.UI/CLAUDE.md) for UI-specific rules and Nodify implementation notes.
-
-**Rule: whenever a new operator is added to `IPLab.Core.Operators`, add a corresponding entry to [docs/OPERATORS.md](docs/OPERATORS.md).**
-
-**Rule: whenever a new operator is added, decide explicitly whether it supports ROI and discuss with the user before implementing. If it does, follow the pattern in `RoiParameters` — filter operators use `ApplyImageFilter`, detection operators use `Clamp` + coordinate translation. See [docs/OPERATORS.md#roi](docs/OPERATORS.md) for the full list of ROI-supporting operators.**
-
-**Rule: whenever a new operator is added, its `OutputPorts` must use `IReadOnlyList<OutputPortDescriptor>` with an explicit `DataType` per port (e.g. `typeof(Mat)`, `typeof(CircleSegment[])`, `typeof(int)`). Set `IsDisplayImage = true` on the port the inspector should render as an image (omit or leave `false` on data ports like stats matrices). Script/dynamic operators use `typeof(object)` as a wildcard. Connectable input parameters declare `ConnectableType` — the C# type they accept; `null` (omitted) means not connectable; `typeof(object)` means connectable wildcard. Omit `Type` for wire-only sockets (defaults to `ParameterType.Object` = no UI control). There is no `IsConnectable` flag — connectability is implied by `ConnectableType != null`. See `PortTypeCompat.IsCompatible` for the full compatibility rules.**
-
-**Rule: after any meaningful change to `IPLab.Core` or its tests, run the full test suite (`dotnet test`) and confirm it passes before considering the task done.**
 
 ## Design Decisions
 

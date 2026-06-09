@@ -71,11 +71,11 @@
           "value": 1
         },
         {
-          "name": "RoiX",
+          "name": "RoiCX",
           "value": 0
         },
         {
-          "name": "RoiY",
+          "name": "RoiCY",
           "value": 0
         },
         {
@@ -84,6 +84,10 @@
         },
         {
           "name": "RoiH",
+          "value": 0
+        },
+        {
+          "name": "RoiAngle",
           "value": 0
         }
       ],
@@ -123,11 +127,11 @@
           "value": 40
         },
         {
-          "name": "RoiX",
+          "name": "RoiCX",
           "value": 0
         },
         {
-          "name": "RoiY",
+          "name": "RoiCY",
           "value": 0
         },
         {
@@ -136,6 +140,10 @@
         },
         {
           "name": "RoiH",
+          "value": 0
+        },
+        {
+          "name": "RoiAngle",
           "value": 0
         }
       ],
@@ -167,11 +175,11 @@
           "value": "GuoHall"
         },
         {
-          "name": "RoiX",
+          "name": "RoiCX",
           "value": 0
         },
         {
-          "name": "RoiY",
+          "name": "RoiCY",
           "value": 0
         },
         {
@@ -180,6 +188,10 @@
         },
         {
           "name": "RoiH",
+          "value": 0
+        },
+        {
+          "name": "RoiAngle",
           "value": 0
         }
       ],
@@ -215,11 +227,11 @@
           "value": 5
         },
         {
-          "name": "RoiX",
+          "name": "RoiCX",
           "value": 0
         },
         {
-          "name": "RoiY",
+          "name": "RoiCY",
           "value": 0
         },
         {
@@ -228,6 +240,10 @@
         },
         {
           "name": "RoiH",
+          "value": 0
+        },
+        {
+          "name": "RoiAngle",
           "value": 0
         }
       ],

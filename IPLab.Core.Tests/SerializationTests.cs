@@ -52,10 +52,11 @@ public class SerializationTests
                 Type         = new MorphologyOperator(),
                 Parameters   =
                 [
-                    new ParameterValue { Name = "RoiX", Value = 10 },
-                    new ParameterValue { Name = "RoiY", Value = 20 },
-                    new ParameterValue { Name = "RoiW", Value = 50 },
-                    new ParameterValue { Name = "RoiH", Value = 40 },
+                    new ParameterValue { Name = "RoiCX",    Value = 35.0 },
+                    new ParameterValue { Name = "RoiCY",    Value = 40.0 },
+                    new ParameterValue { Name = "RoiW",     Value = 50.0 },
+                    new ParameterValue { Name = "RoiH",     Value = 40.0 },
+                    new ParameterValue { Name = "RoiAngle", Value = 15.0 },
                 ],
                 Dependencies = []
             }
@@ -65,10 +66,11 @@ public class SerializationTests
         var restored = FlowDefSerializer.Deserialize(json, OperatorRegistry.CreateDefault());
 
         var p = restored.Def.Operators.Single().Parameters.ToDictionary(v => v.Name);
-        Assert.Equal(10, Convert.ToInt32(p["RoiX"].Value));
-        Assert.Equal(20, Convert.ToInt32(p["RoiY"].Value));
-        Assert.Equal(50, Convert.ToInt32(p["RoiW"].Value));
-        Assert.Equal(40, Convert.ToInt32(p["RoiH"].Value));
+        Assert.Equal(35.0, Convert.ToDouble(p["RoiCX"].Value));
+        Assert.Equal(40.0, Convert.ToDouble(p["RoiCY"].Value));
+        Assert.Equal(50.0, Convert.ToDouble(p["RoiW"].Value));
+        Assert.Equal(40.0, Convert.ToDouble(p["RoiH"].Value));
+        Assert.Equal(15.0, Convert.ToDouble(p["RoiAngle"].Value));
     }
 
     [Fact]

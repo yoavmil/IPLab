@@ -90,3 +90,33 @@ Anchor tracking flow: `Connector` (UI) computes screen position → writes to `C
 ## AvailableSources type filtering
 
 `RebuildAvailableSources` (in `FlowViewModel`) filters each parameter's `AvailableSources` to only include ports whose `DataType` is compatible with the parameter's `ParameterType`, using `PortTypeCompat.IsCompatible` from `IPLab.Core.Models`. `SourceRefViewModel` carries the port's `DataType: Type` for this purpose. The auto-wiring default on connect picks the first *compatible* port from `AvailableSources` rather than blindly using `OutputPorts[0]`.
+
+## Inspector Overlay Rendering
+
+The inspector uses `RControls.ImageViewer` (wrapping `RControls.ImageCanvas`) to draw overlays on top of the displayed image. Coordinate system: image pixels, (column=X, row=Y).
+
+**Data flow:**
+1. `MainViewModel.InspectorState` — record that carries the current operator's results + overlay data
+2. `MainViewModel.UpdateSelectedImage` — type-dispatches the executor result via `Unwrap<T>` and sets `State`
+3. `MainViewModel.EditingNode` setter — subscribes to parameter changes for live overlay updates (ROI params, stripe params)
+4. `InspectorControl.RedrawAnnotations` — called on every `State` change; clears old shapes and calls `ImageViewer.DrawXxx`
+
+**Available draw methods on `ImageViewer`:**
+- `DrawCircle(row, column, radius, name, color, bFilled)` — for circles/blobs
+- `DrawRectangle(row1, col1, row2, col2, name, color, bFilled)` — axis-aligned rectangle (used for ROI)
+- `DrawRectangle2(row, col, phi, length1, length2, name, color, bFilled)` — rotated rectangle; `length1`/`length2` are half-width/half-height; used for stripe region overlay
+- `DrawLine(rowBegin, colBegin, rowEnd, colEnd, name, color, bFilled)` — single line
+- `DrawLine(double[], double[], double[], double[], name, color, bFilled)` — multiple lines in one call; all four arrays must be the same length; `bFilled` is **required** (not optional unlike the `ImageCanvas` overload)
+- `DrawPolygons(IReadOnlyList<List<Point>> polygons, name, color)` — multiple closed polygons as a single `Path`
+- `RemoveRegion(name, ShapeMode)` — remove overlays by name and/or shape type
+
+**`ShapeMode` values used for `RemoveRegion`:** `Circle`, `Rectangle`, `Cross`, `Polygon`, `Line`
+
+**`StrokeThickness`** is automatically set to `2.0 / Viewer.scaleRatio` so lines stay 2px wide at any zoom level.
+
+**Pattern for adding a new overlay type:**
+1. Add a field to `InspectorState` for the data
+2. Add an `Unwrap<T>` branch in `UpdateSelectedImage` to detect it from the executor result
+3. If the overlay should react to parameter changes while editing, subscribe in the `EditingNode` setter (see `_roiParamSubscriptions` / `_stripeParamSubscriptions` pattern)
+4. Add a `DrawXxx` private method in `InspectorControl` and call it from `RedrawAnnotations`
+5. Add the corresponding `RemoveRegion` call at the top of `RedrawAnnotations`

@@ -29,7 +29,12 @@ public class DetectCirclesOperator : IOperatorType
         var param2    = Convert.ToDouble(parameters["Param2"]);
         var minRadius = Convert.ToInt32(parameters["MinRadius"]);
         var maxRadius = Convert.ToInt32(parameters["MaxRadius"]);
-        var roiRect = RoiParameters.Clamp(parameters, image.Width, image.Height);
+
+        var roi = RoiParameters.Extract(parameters);
+        using var warped = roi is { Angle: not 0.0 } ? RoiParameters.WarpForRoi(image, roi) : null;
+        var effectiveImg = warped ?? image;
+
+        var roiRect = roi is not null ? (Rect?)RoiParameters.Clamp(roi, effectiveImg.Width, effectiveImg.Height) : null;
         if (roiRect is { Width: <= 0 } or { Height: <= 0 })
         {
             var empty = new Dictionary<string, object?> { ["Circles"] = Array.Empty<CircleSegment>() };
@@ -38,17 +43,16 @@ public class DetectCirclesOperator : IOperatorType
         }
 
         var rect      = roiRect ?? default;
-        using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
-        var       src  = crop ?? image;
+        var transform = roiRect.HasValue ? RoiParameters.BuildTransform(roi!, rect) : null;
+        using var crop = roiRect.HasValue ? new Mat(effectiveImg, rect) : null;
+        var       src  = crop ?? effectiveImg;
 
         var circles = Cv2.HoughCircles(src, HoughModes.Gradient, dp: 1, minDist,
                                         param1: param1, param2: param2,
                                         minRadius: minRadius, maxRadius: maxRadius);
 
-        // Translate crop-local coordinates back to full-image coordinates.
-        if (roiRect.HasValue)
-            circles = [.. circles.Select(c => new CircleSegment(
-                new Point2f(c.Center.X + rect.X, c.Center.Y + rect.Y), c.Radius))];
+        if (transform is { } t)
+            circles = [.. circles.Select(c => RoiParameters.BackProject(c, t))];
 
         var outputs = new Dictionary<string, object?> { ["Circles"] = circles };
         RoiParameters.AddToOutputs(outputs, parameters);

@@ -56,7 +56,11 @@ public class FindContoursOperator : IOperatorType
             _          => ContourApproximationModes.ApproxSimple
         };
 
-        var roiRect = RoiParameters.Clamp(parameters, image.Width, image.Height);
+        var roi = RoiParameters.Extract(parameters);
+        using var warped = roi is { Angle: not 0.0 } ? RoiParameters.WarpForRoi(image, roi) : null;
+        var effectiveImg = warped ?? image;
+
+        var roiRect = roi is not null ? (Rect?)RoiParameters.Clamp(roi, effectiveImg.Width, effectiveImg.Height) : null;
         if (roiRect is { Width: <= 0 } or { Height: <= 0 })
         {
             var empty = new Dictionary<string, object?> { ["Contours"] = Array.Empty<Point[]>() };
@@ -65,8 +69,9 @@ public class FindContoursOperator : IOperatorType
         }
 
         var rect      = roiRect ?? default;
-        using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
-        var       src  = crop ?? image;
+        var transform = roiRect.HasValue ? RoiParameters.BuildTransform(roi!, rect) : null;
+        using var crop = roiRect.HasValue ? new Mat(effectiveImg, rect) : null;
+        var       src  = crop ?? effectiveImg;
 
         Cv2.FindContours(src, out Point[][] contours, out _, retrievalMode, approxMethod);
 
@@ -81,9 +86,8 @@ public class FindContoursOperator : IOperatorType
             _        => contours
         };
 
-        // Translate crop-local coordinates back to full-image coordinates.
-        if (roiRect.HasValue)
-            output = [.. output.Select(c => c.Select(p => new Point(p.X + rect.X, p.Y + rect.Y)).ToArray())];
+        if (transform is { } t)
+            output = [.. output.Select(c => RoiParameters.BackProject(c, t))];
 
         var outputs = new Dictionary<string, object?> { ["Contours"] = output };
         RoiParameters.AddToOutputs(outputs, parameters);

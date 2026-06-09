@@ -1,3 +1,3 @@
 namespace IPLab.Core.Models;
 
-public record RoiDef(double X, double Y, double Width, double Height, double Theta = 0.0);
+public record RoiDef(double CX, double CY, double Width, double Height, double Angle = 0.0);

@@ -36,7 +36,12 @@ public class ConnectedComponentsOperator : IOperatorType
         var outputLabelImage = parameters.GetValueOrDefault("OutputLabelImage") is not false;
 
         var conn    = connectivity == "4" ? PixelConnectivity.Connectivity4 : PixelConnectivity.Connectivity8;
-        var roiRect = RoiParameters.Clamp(parameters, image.Width, image.Height);
+
+        var roi = RoiParameters.Extract(parameters);
+        using var warped = roi is { Angle: not 0.0 } ? RoiParameters.WarpForRoi(image, roi) : null;
+        var effectiveImg = warped ?? image;
+
+        var roiRect = roi is not null ? (Rect?)RoiParameters.Clamp(roi, effectiveImg.Width, effectiveImg.Height) : null;
 
         if (roiRect is { Width: <= 0 } or { Height: <= 0 })
         {
@@ -52,62 +57,85 @@ public class ConnectedComponentsOperator : IOperatorType
             return empty;
         }
 
-        var rect    = roiRect ?? default;
-        int offsetX = rect.X;
-        int offsetY = rect.Y;
+        var rect      = roiRect ?? default;
+        var transform = roiRect.HasValue ? RoiParameters.BuildTransform(roi!, rect) : null;
+        using var crop = roiRect.HasValue ? new Mat(effectiveImg, rect) : null;
+        var       src  = crop ?? effectiveImg;
 
-        using var crop = roiRect.HasValue ? new Mat(image, rect) : null;
-        var       src  = crop ?? image;
-
-        var       labels   = new Mat();
-        var       stats    = new Mat();
-        var       centroids = new Mat();
+        var labels    = new Mat();
+        var stats     = new Mat();
+        var centroids = new Mat();
 
         int count = Cv2.ConnectedComponentsWithStats(src, labels, stats, centroids, conn);
         int n     = count - 1; // exclude background label 0
 
         if (roiRect.HasValue)
         {
-            // Translate bounding-box origin (LEFT, TOP) for all rows (including background row 0) directly in the Mat buffer.
-            for (int i = 0; i < count; i++)
+            if (roi!.Angle == 0.0)
             {
-                nint left = stats.Data + (i * 5 + 0) * sizeof(int);
-                nint top  = stats.Data + (i * 5 + 1) * sizeof(int);
-                Marshal.WriteInt32(left, Marshal.ReadInt32(left) + offsetX);
-                Marshal.WriteInt32(top,  Marshal.ReadInt32(top)  + offsetY);
+                // Axis-aligned only: offset bounding box X/Y in stats by the crop origin.
+                // For rotated ROI, stats remain in warped-crop frame (documented limitation).
+                int offsetX = rect.X;
+                int offsetY = rect.Y;
+                for (int i = 0; i < count; i++)
+                {
+                    nint left = stats.Data + (i * 5 + 0) * sizeof(int);
+                    nint top  = stats.Data + (i * 5 + 1) * sizeof(int);
+                    Marshal.WriteInt32(left, Marshal.ReadInt32(left) + offsetX);
+                    Marshal.WriteInt32(top,  Marshal.ReadInt32(top)  + offsetY);
+                }
             }
 
-            // Translate centroids for all rows (including background row 0) directly in the Mat buffer.
+            // BackProject maps centroids from crop coords to image coords for both cases.
+            // For angle=0 it degenerates to cropX + rect.X, cropY + rect.Y.
+            var centIdx = centroids.GetGenericIndexer<double>();
             for (int i = 0; i < count; i++)
             {
-                nint cx = centroids.Data + (i * 2 + 0) * sizeof(double);
-                nint cy = centroids.Data + (i * 2 + 1) * sizeof(double);
-                Marshal.WriteInt64(cx, BitConverter.DoubleToInt64Bits(BitConverter.Int64BitsToDouble(Marshal.ReadInt64(cx)) + offsetX));
-                Marshal.WriteInt64(cy, BitConverter.DoubleToInt64Bits(BitConverter.Int64BitsToDouble(Marshal.ReadInt64(cy)) + offsetY));
+                var bp = RoiParameters.BackProject(centIdx[i, 0], centIdx[i, 1], transform!);
+                centIdx[i, 0] = bp.X;
+                centIdx[i, 1] = bp.Y;
             }
         }
 
-        Mat? labelImg = null;
-        if (outputLabelImage)
+        // Composite Labels and LabelImage back to original-image space when ROI was used.
+        // For axis-aligned ROI (Angle=0), bwdMat is the identity and WarpAffine degenerates to a copy.
+        Mat labelsResult = labels;
+        Mat? labelImg    = null;
+
+        if (crop is null)
         {
-            var cropLabel = BuildLabelImage(labels, n);
-            if (crop is not null)
+            // No ROI — both outputs are already full-size.
+            if (outputLabelImage)
+                labelImg = BuildLabelImage(labels, n);
+        }
+        else
+        {
+            var center       = new Point2f((float)roi!.CX, (float)roi.CY);
+            using var bwdMat = Cv2.GetRotationMatrix2D(center, roi.Angle, 1.0);
+
+            if (outputLabelImage)
             {
-                labelImg = new Mat(image.Rows, image.Cols, MatType.CV_8UC3, Scalar.Black);
-                using var dst = new Mat(labelImg, rect);
-                cropLabel.CopyTo(dst);
+                var cropLabel        = BuildLabelImage(labels, n);
+                using var warpedLbl  = new Mat(image.Rows, image.Cols, MatType.CV_8UC3, Scalar.Black);
+                using var imgDst     = new Mat(warpedLbl, rect);
+                cropLabel.CopyTo(imgDst);
                 cropLabel.Dispose();
+                labelImg = new Mat();
+                Cv2.WarpAffine(warpedLbl, labelImg, bwdMat, image.Size(), InterpolationFlags.Nearest, BorderTypes.Constant, Scalar.Black);
             }
-            else
-            {
-                labelImg = cropLabel;
-            }
+
+            using var warpedLbls = new Mat(image.Rows, image.Cols, MatType.CV_32S, Scalar.All(0));
+            using var lblDst     = new Mat(warpedLbls, rect);
+            labels.CopyTo(lblDst);
+            labelsResult = new Mat();
+            Cv2.WarpAffine(warpedLbls, labelsResult, bwdMat, image.Size(), InterpolationFlags.Nearest, BorderTypes.Constant, Scalar.All(0));
+            labels.Dispose();
         }
 
         var outputs = new Dictionary<string, object?>
         {
             ["Count"]      = count,
-            ["Labels"]     = labels,
+            ["Labels"]     = labelsResult,
             ["Stats"]      = stats,
             ["Centroids"]  = centroids,
             ["LabelImage"] = labelImg,
