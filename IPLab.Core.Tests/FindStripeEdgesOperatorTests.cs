@@ -141,7 +141,85 @@ public class FindStripeEdgesOperatorTests
         int maxY = Math.Max(lines[0].P1.Y, lines[0].P2.Y);
         int minY = Math.Min(lines[0].P1.Y, lines[0].P2.Y);
 
-        Assert.InRange(minY, 0, 5);          // top of line near y=0
-        Assert.InRange(maxY, 45, 55);        // bottom of line near y=50, not y=100
+        Assert.InRange(minY, 0, 5);     // top of line near y=0
+        Assert.InRange(maxY, 45, 55);   // bottom of line near y=50, not y=100
+    }
+
+    [Fact]
+    public void LineEndpoints_ClampedToVisibleRegion_WhenRoiPartiallyOutsideBottom()
+    {
+        // Same as the top test but ROI centered at y=200 (bottom edge).
+        //   Unclamped crop:  y=150 .. y=250  (height=100)
+        //   Clamped crop:    y=150 .. y=200  (height=50)
+        // Expected line: endpoints at y≈150 and y≈200, NOT y=150..250.
+        using var image = new Mat(200, 200, MatType.CV_8UC1, new Scalar(0));
+        image.SubMat(new Rect(100, 0, 100, 200)).SetTo(new Scalar(200));
+
+        var result = Run(image, cx: 100, cy: 200, w: 180, h: 100, angleDeg: 0);
+        var lines  = (LineSegmentPoint[])result["Lines"]!;
+
+        Assert.Single(lines);
+
+        int maxY = Math.Max(lines[0].P1.Y, lines[0].P2.Y);
+        int minY = Math.Min(lines[0].P1.Y, lines[0].P2.Y);
+
+        Assert.InRange(minY, 145, 155);     // top of line near y=150
+        Assert.InRange(maxY, 195, 200);     // bottom of line near y=200, not y=250
+    }
+
+    // ── ROI clamping with angle=90 ────────────────────────────────────────────────
+    // For angle=90 the stripe runs vertically; the perpendicular direction is X.
+    // After WarpForRoi rotates the image +90° around the ROI centre, the X direction
+    // in the original image maps to the Y direction in the rotated image.
+    // So "ROI near top/bottom of image" for angle=90 clamps rect.Height in the same
+    // way angle=0 does, and the same bug applies.
+    //
+    // For a 200×200 image, cx=100, h=100:
+    //   CY=0   (top):    clamped perpendicular X = [100, 150]  (right-of-centre half)
+    //   CY=200 (bottom): clamped perpendicular X = [50,  100]  (left-of-centre half)
+
+    [Fact]
+    public void LineEndpoints_ClampedToVisibleRegion_Angle90_RoiPartiallyOutsideTop()
+    {
+        // Image: horizontal edge at y=30 (dark above, bright below).
+        // For angle=90 the profile runs along Y → detects horizontal edges.
+        // ROI: angle=90, cx=100, cy=0, w=100, h=100.
+        //   rect.Height = 50 (clamped); visible perpendicular X = [100, 150].
+        // Before fix: perpHalf=50, lines extend to X=200; after fix: X in [100, 150].
+        using var image = new Mat(200, 200, MatType.CV_8UC1, new Scalar(0));
+        image.SubMat(new Rect(0, 30, 200, 170)).SetTo(new Scalar(200));
+
+        var result = Run(image, cx: 100, cy: 0, w: 100, h: 100, angleDeg: 90);
+        var lines  = (LineSegmentPoint[])result["Lines"]!;
+
+        Assert.Single(lines);
+
+        int maxX = Math.Max(lines[0].P1.X, lines[0].P2.X);
+        int minX = Math.Min(lines[0].P1.X, lines[0].P2.X);
+
+        Assert.InRange(minX, 95, 105);    // left endpoint near x=100
+        Assert.InRange(maxX, 145, 155);   // right endpoint near x=150, NOT x=200
+    }
+
+    [Fact]
+    public void LineEndpoints_ClampedToVisibleRegion_Angle90_RoiPartiallyOutsideBottom()
+    {
+        // Image: horizontal edge at y=170 (dark above, bright below).
+        // ROI: angle=90, cx=100, cy=200, w=100, h=100.
+        //   rect.Height = 50 (clamped); visible perpendicular X = [50, 100].
+        // Before fix: perpHalf=50, lines extend to X=0; after fix: X in [50, 100].
+        using var image = new Mat(200, 200, MatType.CV_8UC1, new Scalar(0));
+        image.SubMat(new Rect(0, 170, 200, 30)).SetTo(new Scalar(200));
+
+        var result = Run(image, cx: 100, cy: 200, w: 100, h: 100, angleDeg: 90);
+        var lines  = (LineSegmentPoint[])result["Lines"]!;
+
+        Assert.Single(lines);
+
+        int maxX = Math.Max(lines[0].P1.X, lines[0].P2.X);
+        int minX = Math.Min(lines[0].P1.X, lines[0].P2.X);
+
+        Assert.InRange(minX, 45, 55);     // left endpoint near x=50, NOT x=0
+        Assert.InRange(maxX, 95, 105);    // right endpoint near x=100
     }
 }

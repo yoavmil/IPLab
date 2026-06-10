@@ -20,11 +20,19 @@ public class ExecutionService
 
     public async Task<bool> RunAsync(FlowDef flow)
     {
-        _cts = new CancellationTokenSource();
-        try
+        if (_executor is null)
         {
             _executor = new FlowEx(flow);
             _executor.StatusChanged += (id, status, ex) => StatusChanged?.Invoke(id, status, ex);
+        }
+        else
+        {
+            _executor.UpdateFlow(flow);
+        }
+
+        _cts = new CancellationTokenSource();
+        try
+        {
             await _executor.RunAllAsync(_cts.Token);
             return true;
         }

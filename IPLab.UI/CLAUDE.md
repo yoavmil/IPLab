@@ -96,10 +96,10 @@ Anchor tracking flow: `Connector` (UI) computes screen position → writes to `C
 The inspector uses `RControls.ImageViewer` (wrapping `RControls.ImageCanvas`) to draw overlays on top of the displayed image. Coordinate system: image pixels, (column=X, row=Y).
 
 **Data flow:**
-1. `MainViewModel.InspectorState` — record that carries the current operator's results + overlay data
-2. `MainViewModel.UpdateSelectedImage` — type-dispatches the executor result via `Unwrap<T>` and sets `State`
-3. `MainViewModel.EditingNode` setter — subscribes to parameter changes for live overlay updates (ROI params, stripe params)
-4. `InspectorControl.RedrawAnnotations` — called on every `State` change; clears old shapes and calls `ImageViewer.DrawXxx`
+1. `InspectorState` — sealed record carrying the current operator's results + overlay data. Because it is a record, `==` does structural comparison: all fields are reference types (arrays, `BitmapSource`) so equality is reference equality per field, except `RoiDef` which is a value record.
+2. `InspectorViewModel.UpdateSelectedImage` — computes a candidate `InspectorState` via `BuildState()`, then **only assigns `State` if `newState != State`**. This prevents unnecessary `RedrawAnnotations` calls when nothing changed.
+3. `InspectorViewModel.EditingNode` setter — subscribes to parameter changes for live overlay updates (ROI params).
+4. `InspectorControl.RedrawAnnotations` — called only when `State` actually changes; clears old shapes and calls `ImageViewer.DrawXxx`.
 
 **Available draw methods on `ImageViewer`:**
 - `DrawCircle(row, column, radius, name, color, bFilled)` — for circles/blobs
@@ -116,7 +116,17 @@ The inspector uses `RControls.ImageViewer` (wrapping `RControls.ImageCanvas`) to
 
 **Pattern for adding a new overlay type:**
 1. Add a field to `InspectorState` for the data
-2. Add an `Unwrap<T>` branch in `UpdateSelectedImage` to detect it from the executor result
-3. If the overlay should react to parameter changes while editing, subscribe in the `EditingNode` setter (see `_roiParamSubscriptions` / `_stripeParamSubscriptions` pattern)
+2. Add an `Unwrap<T>` branch in `BuildState()` to detect it from the executor result
+3. If the overlay should react to parameter changes while editing, subscribe in the `EditingNode` setter (see `_roiParamSubscriptions` pattern)
 4. Add a `DrawXxx` private method in `InspectorControl` and call it from `RedrawAnnotations`
 5. Add the corresponding `RemoveRegion` call at the top of `RedrawAnnotations`
+
+## Flicker / CPU rules — do not regress these
+
+**Rule: `InspectorViewModel.UpdateSelectedImage` must use the `newState != State` guard.** Never set `State` unconditionally. The guard prevents `RedrawAnnotations` from firing when nothing changed, which is the primary cause of inspector flicker.
+
+**Rule: `PrecomputeAsync` must reuse `BitmapSource` objects when the source `Mat` reference is unchanged.** The `_precomputedMats` dictionary tracks which `Mat` produced each cached `BitmapSource`. When the same `Mat` reference appears again (because `FlowEx` caching kept it alive), skip PNG re-encoding and copy the old `BitmapSource`. A new `BitmapSource` object — even with identical pixels — breaks reference equality in `InspectorState` and causes a flicker.
+
+**Rule: `ExecutionService` must reuse its `FlowEx` instance across runs.** Call `_executor.UpdateFlow(newFlow)` rather than `new FlowEx(newFlow)` on every run. Creating a new `FlowEx` discards `_paramSnapshot`, which defeats operator-level caching entirely: every run re-executes all operators, producing new `Mat` objects, which breaks `BitmapSource` caching, which breaks the `State` equality guard.
+
+**Rule: continuous-run mode must enforce a minimum cycle time.** After each run in `ExecuteRunAsync`, compute elapsed time and `await Task.Delay` for the remainder of the minimum cycle (currently 16 ms). Without this, a fully-cached run completes in ~0 ms and the dispatcher loop spins at 100% CPU on one core.

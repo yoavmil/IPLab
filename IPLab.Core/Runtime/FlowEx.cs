@@ -8,14 +8,38 @@ public class FlowEx : IFlowEx
 {
     private readonly ConcurrentDictionary<string, object?> _results = new();
     private readonly ConcurrentDictionary<string, OperatorStatus> _statuses;
+    private readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, object?>> _paramSnapshot = new();
 
-    public IFlowDef Flow { get; }
+    private IFlowDef _flow;
+    public IFlowDef Flow => _flow;
+    private readonly bool _enableCaching;
 
-    public FlowEx(IFlowDef flow)
+    public FlowEx(IFlowDef flow, bool enableCaching = false)
     {
-        Flow = flow;
+        _flow = flow;
+        _enableCaching = enableCaching;
         _statuses = new ConcurrentDictionary<string, OperatorStatus>(
             flow.Operators.Select(o => KeyValuePair.Create(o.Id, OperatorStatus.NotRun)));
+    }
+
+    /// <summary>
+    /// Replaces the flow definition in place so the executor can be reused across runs
+    /// without losing the cached param snapshots and intermediate results.
+    /// Operators added since the last run get a fresh NotRun status; deleted operators
+    /// are pruned from results, statuses, and snapshots.
+    /// </summary>
+    public void UpdateFlow(IFlowDef newFlow)
+    {
+        _flow = newFlow;
+        var newIds = newFlow.Operators.Select(o => o.Id).ToHashSet();
+        foreach (var id in _statuses.Keys.Where(id => !newIds.Contains(id)).ToList())
+        {
+            _statuses.TryRemove(id, out _);
+            _results.TryRemove(id, out _);
+            _paramSnapshot.TryRemove(id, out _);
+        }
+        foreach (var op in newFlow.Operators)
+            _statuses.TryAdd(op.Id, OperatorStatus.NotRun);
     }
 
     public IReadOnlyDictionary<string, object?> IntermediateResults => _results;
@@ -53,6 +77,7 @@ public class FlowEx : IFlowEx
     public void ClearResults()
     {
         _results.Clear();
+        _paramSnapshot.Clear();
         foreach (var key in _statuses.Keys)
             _statuses[key] = OperatorStatus.NotRun;
     }
@@ -60,11 +85,23 @@ public class FlowEx : IFlowEx
     private async Task RunOperatorAsync(IOperator op, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
+
+        var resolved = ResolveParameters(op);
+
+        if (_enableCaching &&
+            _results.ContainsKey(op.Id) &&
+            _paramSnapshot.TryGetValue(op.Id, out var snapshot) &&
+            ParamsEqual(resolved, snapshot))
+        {
+            SetStatus(op.Id, OperatorStatus.Success, null);
+            return;
+        }
+
         SetStatus(op.Id, OperatorStatus.Running, null);
         try
         {
-            var resolved = ResolveParameters(op);
             _results[op.Id] = await Task.Run(() => op.Type.Execute(resolved), ct);
+            _paramSnapshot[op.Id] = resolved;
             SetStatus(op.Id, OperatorStatus.Success, null);
         }
         catch (OperationCanceledException)
@@ -76,6 +113,26 @@ public class FlowEx : IFlowEx
         {
             SetStatus(op.Id, OperatorStatus.Failed, ex);
         }
+    }
+
+    private static bool ParamsEqual(IReadOnlyDictionary<string, object?> a, IReadOnlyDictionary<string, object?> b)
+    {
+        if (a.Count != b.Count) return false;
+        foreach (var (key, av) in a)
+        {
+            if (!b.TryGetValue(key, out var bv)) return false;
+            if (!ValuesEqual(av, bv)) return false;
+        }
+        return true;
+    }
+
+    private static bool ValuesEqual(object? a, object? b)
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a is null || b is null) return false;
+        if (a is string[] sa && b is string[] sb) return sa.SequenceEqual(sb);
+        if (a.GetType().IsValueType || a is string) return a.Equals(b);
+        return false; // reference types (Mat, etc.) → already equal only by ReferenceEquals above
     }
 
     private void SetStatus(string id, OperatorStatus status, Exception? ex)

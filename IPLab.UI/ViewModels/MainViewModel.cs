@@ -209,6 +209,7 @@ public class MainViewModel : ViewModelBase
             ThumbnailStrip.AddPaths(dialog.FileNames);
         }
 
+        var cycleStart = System.Diagnostics.Stopwatch.GetTimestamp();
         Status = "Running…";
         try
         {
@@ -242,7 +243,16 @@ public class MainViewModel : ViewModelBase
                 if (failed > 0)
                     IsRunningContinuous = false;
                 else
+                {
+                    // Enforce a minimum cycle time so a fully-cached (near-zero) run
+                    // doesn't spin one CPU core at 100%.
+                    const int MinCycleMs = 16; // ~60 fps ceiling
+                    var elapsedMs = (System.Diagnostics.Stopwatch.GetTimestamp() - cycleStart)
+                                    * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                    var delayMs = (int)Math.Max(0, MinCycleMs - elapsedMs);
+                    if (delayMs > 0) await Task.Delay(delayMs);
                     Application.Current?.Dispatcher.InvokeAsync(RunOnce, DispatcherPriority.Background);
+                }
             }
             return true;
         }

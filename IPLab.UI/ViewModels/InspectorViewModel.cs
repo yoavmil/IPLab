@@ -25,6 +25,7 @@ public class InspectorViewModel : ViewModelBase
 
     private readonly Dictionary<string, List<LayerViewModel>> _layersCache = new();
     private Dictionary<(string Id, string Port), BitmapSource> _precomputedImages = new();
+    private Dictionary<(string Id, string Port), Mat?>        _precomputedMats    = new();
 
     private List<ParameterEditViewModel> _roiParamSubscriptions = [];
 
@@ -101,53 +102,40 @@ public class InspectorViewModel : ViewModelBase
 
     public void UpdateSelectedImage(FlowViewModel? flow)
     {
+        var newState = BuildState();
+        if (newState != State)
+            State = newState;
+        UpdateOverlayLayers(flow);
+    }
+
+    private InspectorState BuildState()
+    {
         if (_selectedNode is null || !_execution.HasResults)
-        {
-            State = new InspectorState() with { Roi = CurrentRoi };
-            UpdateOverlayLayers(flow);
-            return;
-        }
+            return new InspectorState() with { Roi = CurrentRoi };
 
         _execution.IntermediateResults.TryGetValue(_selectedNode.Id, out var result);
 
         var circles = Unwrap<CircleSegment[]>(result);
         if (circles is not null)
-        {
-            State = new InspectorState(Image: GetSourceImage(), Circles: circles) with { Roi = CurrentRoi };
-            UpdateOverlayLayers(flow);
-            return;
-        }
+            return new InspectorState(Image: GetSourceImage(), Circles: circles) with { Roi = CurrentRoi };
 
         var blobs = Unwrap<KeyPoint[]>(result);
         if (blobs is not null)
-        {
-            State = new InspectorState(Image: GetSourceImage(), Blobs: blobs) with { Roi = CurrentRoi };
-            UpdateOverlayLayers(flow);
-            return;
-        }
+            return new InspectorState(Image: GetSourceImage(), Blobs: blobs) with { Roi = CurrentRoi };
 
         var contours = Unwrap<OpenCvSharp.Point[][]>(result);
         if (contours is not null)
-        {
-            State = new InspectorState(Image: GetSourceImage(), Contours: contours) with { Roi = CurrentRoi };
-            UpdateOverlayLayers(flow);
-            return;
-        }
+            return new InspectorState(Image: GetSourceImage(), Contours: contours) with { Roi = CurrentRoi };
 
         var stripeEdges = Unwrap<LineSegmentPoint[]>(result);
         if (stripeEdges is not null)
-        {
-            State = new InspectorState(Image: GetSourceImage(), Lines: stripeEdges) with { Roi = CurrentRoi };
-            UpdateOverlayLayers(flow);
-            return;
-        }
+            return new InspectorState(Image: GetSourceImage(), Lines: stripeEdges) with { Roi = CurrentRoi };
 
         var displayPort = _selectedNode.Operator.Type.OutputPorts.FirstOrDefault(p => p.IsDisplayImage);
         var image = displayPort is not null
             ? _precomputedImages.GetValueOrDefault((_selectedNode.Id, displayPort.Name))
             : null;
-        State = new InspectorState(Image: image) with { Roi = CurrentRoi };
-        UpdateOverlayLayers(flow);
+        return new InspectorState(Image: image) with { Roi = CurrentRoi };
     }
 
     private static T? Unwrap<T>(object? result) where T : class
@@ -165,14 +153,18 @@ public class InspectorViewModel : ViewModelBase
 
     public async Task PrecomputeAsync(FlowViewModel flow)
     {
-        if (!_execution.HasResults) { _precomputedImages = new(); return; }
+        if (!_execution.HasResults) { _precomputedImages = new(); _precomputedMats = new(); return; }
 
         var results     = _execution.IntermediateResults;
         var portsByNode = flow.Nodes.ToDictionary(n => n.Id, n => n.Operator.Type.OutputPorts);
+        var oldImages   = _precomputedImages;
+        var oldMats     = _precomputedMats;
 
-        _precomputedImages = await Task.Run(() =>
+        var (newImages, newMats) = await Task.Run(() =>
         {
             var images = new Dictionary<(string, string), BitmapSource>();
+            var mats   = new Dictionary<(string, string), Mat?>();
+
             foreach (var (id, result) in results)
             {
                 var ports = portsByNode.TryGetValue(id, out var p) ? p
@@ -181,25 +173,46 @@ public class InspectorViewModel : ViewModelBase
                 {
                     var displayPort = ports.FirstOrDefault(p => p.IsDisplayImage);
                     if (displayPort is not null)
-                    {
-                        var bytes = ImageHelper.TryGetPngBytes(mat);
-                        if (bytes is not null)
-                            images[(id, displayPort.Name)] = BytesToBitmapSource(bytes);
-                    }
+                        TryAddImage(images, mats, oldImages, oldMats, id, displayPort.Name, mat);
                 }
                 else if (result is Dictionary<string, object?> dict)
                 {
                     foreach (var port in ports.Where(p => p.IsDisplayImage))
                     {
                         if (!dict.TryGetValue(port.Name, out var val)) continue;
-                        var bytes = ImageHelper.TryGetPngBytes(val);
-                        if (bytes is not null)
-                            images[(id, port.Name)] = BytesToBitmapSource(bytes);
+                        TryAddImage(images, mats, oldImages, oldMats, id, port.Name, val as Mat);
                     }
                 }
             }
-            return images;
+            return (images, mats);
         });
+
+        _precomputedImages = newImages;
+        _precomputedMats   = newMats;
+    }
+
+    private static void TryAddImage(
+        Dictionary<(string, string), BitmapSource> images,
+        Dictionary<(string, string), Mat?> mats,
+        Dictionary<(string, string), BitmapSource> oldImages,
+        Dictionary<(string, string), Mat?> oldMats,
+        string id, string port, Mat? mat)
+    {
+        var key = (id, port);
+        if (mat is not null &&
+            oldMats.TryGetValue(key, out var prevMat) && ReferenceEquals(prevMat, mat) &&
+            oldImages.TryGetValue(key, out var prevBmp))
+        {
+            images[key] = prevBmp;
+            mats[key]   = mat;
+            return;
+        }
+        var bytes = ImageHelper.TryGetPngBytes(mat);
+        if (bytes is not null)
+        {
+            images[key] = BytesToBitmapSource(bytes);
+            mats[key]   = mat;
+        }
     }
 
     public void RefreshCachedLayerImages(FlowViewModel flow)
@@ -298,6 +311,7 @@ public class InspectorViewModel : ViewModelBase
         _overlayLayers.Clear();
         _layersCache.Clear();
         _precomputedImages = new();
+        _precomputedMats   = new();
         State = new InspectorState();
     }
 
