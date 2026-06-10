@@ -14,11 +14,7 @@ public class FindStripeEdgesOperator : IOperatorType
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",          Label = "Image",           ConnectableType = typeof(Mat) },
-        new() { Name = "RoiCX",          Label = "Center X",        Type = ParameterType.Double, DefaultValue = 0.0 },
-        new() { Name = "RoiCY",          Label = "Center Y",        Type = ParameterType.Double, DefaultValue = 0.0 },
-        new() { Name = "RoiW",           Label = "Length",          Type = ParameterType.Double, DefaultValue = 0.0, Min = 0.0 },
-        new() { Name = "RoiH",           Label = "Width",           Type = ParameterType.Double, DefaultValue = 1.0, Min = 1.0 },
-        new() { Name = "RoiAngle",       Label = "Angle (°)",       Type = ParameterType.Double, DefaultValue = 0.0 },
+        ..RoiParameters.Schema,
         new() { Name = "FilterSize",     Label = "Filter Size",     Type = ParameterType.Int,    DefaultValue = 5, Min = 2.0 },
         new() { Name = "Threshold",      Label = "Threshold",       Type = ParameterType.Enum,   DefaultValue = "Manual", Options = ["Manual", "Auto"] },
         new() { Name = "ThresholdValue", Label = "Threshold Value", Type = ParameterType.Double, DefaultValue = 10.0, Min = 0.0,
@@ -33,6 +29,7 @@ public class FindStripeEdgesOperator : IOperatorType
         new() { Name = "Score",    DataType = typeof(double[]) },
         new() { Name = "Lines",    DataType = typeof(LineSegmentPoint[]) },
         new() { Name = "Polarity", DataType = typeof(string[]) },
+        ..RoiParameters.OutputPorts,
     ];
 
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
@@ -218,12 +215,14 @@ public class FindStripeEdgesOperator : IOperatorType
             polarities[idx] = gradMat.At<double>(0, (int)Math.Round(col)) > 0 ? "DarkToBright" : "BrightToDark";
         }
 
-        return new Dictionary<string, object?>
+        var outputs = new Dictionary<string, object?>
         {
             ["Points"] = points,
             ["Score"] = scores,
             ["Lines"] = lines,
             ["Polarity"] = polarities,
         };
+        RoiParameters.AddToOutputs(outputs, parameters);
+        return outputs;
     }
 }
