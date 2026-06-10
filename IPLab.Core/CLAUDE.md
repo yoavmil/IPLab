@@ -17,6 +17,8 @@ See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 
 **Rule: every operator that supports ROI must have tests covering the rotated-ROI path (angle ≠ 0), not just axis-aligned. The key invariant to assert: all Mat outputs that represent full-image data (display images, label maps, coordinate arrays) must have the same width/height as the input image, even when a rotated ROI is active. Detection operators must also verify that back-projected coordinates fall within the original image bounds.**
 
+**Rule: when an operator back-projects crop coordinates to image space, always use `rect.Width` / `rect.Height` (the clamped dimensions returned by `RoiParameters.Clamp`) — never `roi.Width` / `roi.Height` (the original unclamped dimensions). This applies to both the centre-row/column passed to `BackProject` and to any perpendicular-extent (`perpHalf`) used to compute line endpoints. When the ROI is partially outside the image, `rect` is smaller than the full ROI; using `roi` dimensions causes the back-projected centre and the line endpoints to land outside the visible image area. Tests must cover ROI-at-edge cases (e.g. `cy=0`, `cy=imageHeight`, and for rotated stripes the equivalent axis).**
+
 ## OpenCV usage patterns
 
 ### Prefer bulk OpenCV operations over C# loops
