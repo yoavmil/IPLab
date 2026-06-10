@@ -73,6 +73,10 @@
 
 - **Operator demo project** — a built-in `.iplproj` file (committed under `scripts/OperatorDemo/`) that ships with the repo and contains one flow per operator, each demonstrating its typical use with a small bundled sample image. Serves as both a test-drive for new users and a regression check when operators change. Each flow should be minimal — just enough operators to produce a visible, meaningful result (e.g. LoadImage → GaussianBlur for the blur demo, LoadImage → ConvertToGrayscale → Threshold → DetectCircles for the circle demo). The project opens via File → Open and is listed in a "Recent / Featured" section of the Project view. Bundled sample images live under `scripts/OperatorDemo/images/`.
 
+## IPLab.Core
+
+- **Replace `GaussianBlur` with `NoiseFilter` operator** — retire `GaussianBlurOperator` and replace it with a `NoiseFilterOperator` that exposes a `Method` enum (`Gaussian` / `Median`). Gaussian keeps its existing `KernelSize` and `Sigma` parameters (shown always / shown when Method=Gaussian respectively); Median only needs `KernelSize`. Both support ROI via `ApplyImageFilter`. Existing `.ipl` files that reference type `GaussianBlur` will need migration (sed rename + add `Method=Gaussian`).
+
 ## IPLab.Core (Architecture)
 
 - **Uniform operator return convention** — `Execute` currently returns the value directly for single-output operators and a `Dictionary<string, object?>` for multi-output ones; `FlowEx.ResolveParameters` branches on `OutputPorts.Count` to handle both. This is an implicit convention that's easy to get wrong. Change `IOperatorType.Execute` return type from `object?` to `IReadOnlyDictionary<string, object?>`, update all operators to always return a dictionary keyed by port name, and simplify `ResolveParameters` to always extract by port name — eliminating the count-based branch. The interface change makes the compiler enforce the convention.
