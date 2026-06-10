@@ -57,7 +57,6 @@ public class FindStripeEdgesOperator : IOperatorType
             return Empty();
 
         int w = (int)Math.Round(roi.Width);
-        int h = (int)Math.Round(roi.Height);
 
         filterSize = Math.Clamp(filterSize, 2, Math.Max(2, w / 2));
         int half = filterSize / 2;
@@ -87,13 +86,13 @@ public class FindStripeEdgesOperator : IOperatorType
             Directory.CreateDirectory(dbgDir);
 
             File.WriteAllText(Path.Combine(dbgDir, "matrix.txt"),
-                $"angleDeg={roi.Angle}  cx={roi.CX}  cy={roi.CY}  w={w}  h={h}\n" +
+                $"angleDeg={roi.Angle}  cx={roi.CX}  cy={roi.CY}  w={w}  h={roi.Height}\n" +
                 $"rect=({rect.X},{rect.Y},{rect.Width},{rect.Height})\n");
 
             using var dbg1 = new Mat();
             Cv2.CvtColor(image, dbg1, ColorConversionCodes.GRAY2BGR);
             var rr = new RotatedRect(new Point2f((float)roi.CX, (float)roi.CY),
-                                     new Size2f(w, h), (float)-roi.Angle);
+                                     new Size2f(w, (float)roi.Height), (float)-roi.Angle);
             var corners = rr.Points();
             for (int i = 0; i < 4; i++)
                 Cv2.Line(dbg1,
@@ -184,7 +183,8 @@ public class FindStripeEdgesOperator : IOperatorType
         if (peaks.Count > maxEdges)
             peaks.RemoveRange(maxEdges, peaks.Count - maxEdges);
 
-        double perpHalf = roi.Height / 2.0;
+        // Use the clamped crop height so line endpoints stay within the visible image region.
+        double perpHalf = rect.Height / 2.0;
 
         var points     = new Point2f[peaks.Count];
         var scores     = new double[peaks.Count];
@@ -199,7 +199,7 @@ public class FindStripeEdgesOperator : IOperatorType
             // RoiParameters.BackProject convention: outX = CX + dx*cos + dy*sin,
             //                                       outY = CY - dx*sin + dy*cos
             // (see RoiParameters.cs for derivation).
-            var center2 = RoiParameters.BackProject(col, h / 2.0, transform);
+            var center2 = RoiParameters.BackProject(col, rect.Height / 2.0, transform);
             double imgX = center2.X;
             double imgY = center2.Y;
 

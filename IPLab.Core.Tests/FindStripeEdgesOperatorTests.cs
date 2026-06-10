@@ -117,4 +117,31 @@ public class FindStripeEdgesOperatorTests
         Assert.Single(points);
         Assert.InRange(points[0].X, 48, 52);
     }
+
+    // ── ROI partially outside image (top) ────────────────────────────────────────
+    // When the stripe is centered at y=0 with height=100, the visible region is
+    // y=0..50.  Line endpoints must stay within [0, 50], not extend to y=100.
+
+    [Fact]
+    public void LineEndpoints_ClampedToVisibleRegion_WhenRoiPartiallyOutsideTop()
+    {
+        // 200×200 image: left half dark, right half bright → vertical edge at x=100.
+        // Stripe: angle=0, cx=100, cy=0, w=180, h=100.
+        //   Unclamped crop:  y=-50 .. y=50   (height=100)
+        //   Clamped crop:    y=0   .. y=50   (height=50)
+        // Expected line: endpoints at y≈0 and y≈50, NOT y=0..100.
+        using var image = new Mat(200, 200, MatType.CV_8UC1, new Scalar(0));
+        image.SubMat(new Rect(100, 0, 100, 200)).SetTo(new Scalar(200));
+
+        var result = Run(image, cx: 100, cy: 0, w: 180, h: 100, angleDeg: 0);
+        var lines  = (LineSegmentPoint[])result["Lines"]!;
+
+        Assert.Single(lines);
+
+        int maxY = Math.Max(lines[0].P1.Y, lines[0].P2.Y);
+        int minY = Math.Min(lines[0].P1.Y, lines[0].P2.Y);
+
+        Assert.InRange(minY, 0, 5);          // top of line near y=0
+        Assert.InRange(maxY, 45, 55);        // bottom of line near y=50, not y=100
+    }
 }
