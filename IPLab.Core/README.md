@@ -44,7 +44,7 @@ See [`scripts/Waviness/`](../scripts/Waviness/) for a complete example: it defin
 | Detection | DetectCircles, DetectSimpleBlobs, ConnectedComponents, FindContours, FindStripeEdges |
 | Scripting | CSharpScript |
 
-Full documentation: [docs/OPERATORS.md](../docs/OPERATORS.md)
+Full documentation: [docs/OPERATORS.md](https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md)
 
 ## Dependencies
 
