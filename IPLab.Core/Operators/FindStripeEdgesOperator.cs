@@ -5,12 +5,17 @@ using System.IO;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Detects sub-pixel stripe edges within a rotated ROI using a box-difference derivative and parabolic interpolation. Outputs edge positions, scores, line segments, and polarity labels.</summary>
 public class FindStripeEdgesOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName => "FindStripeEdges";
+    /// <inheritdoc/>
     public string Category => "Detection";
+    /// <inheritdoc/>
     public string Icon => "stripe-edge";
 
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",          Label = "Image",           ConnectableType = typeof(Mat) },
@@ -23,6 +28,7 @@ public class FindStripeEdgesOperator : IOperatorType
         new() { Name = "MaxEdges",       Label = "Max Edges",       Type = ParameterType.Int,    DefaultValue = 1, Min = 1.0 },
     ];
 
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
         new() { Name = "Points",   DataType = typeof(Point2f[]) },
@@ -32,6 +38,7 @@ public class FindStripeEdgesOperator : IOperatorType
         ..RoiParameters.OutputPorts,
     ];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image      = (Mat)parameters["Image"]!;

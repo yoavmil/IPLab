@@ -4,11 +4,17 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Detects blobs using OpenCV's SimpleBlobDetector and outputs their key-points back-projected to original-image coordinates, with optional ROI support.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/d0/d7a/classcv_1_1SimpleBlobDetector.html">OpenCV: SimpleBlobDetector</seealso>
 public class DetectSimpleBlobsOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName  => "DetectSimpleBlobs";
+    /// <inheritdoc/>
     public string Category  => "Detection";
+    /// <inheritdoc/>
     public string Icon      => "blob";
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",              Label = "Image",                ConnectableType = typeof(Mat) },
@@ -24,8 +30,10 @@ public class DetectSimpleBlobsOperator : IOperatorType
         new() { Name = "MinRepeatability",   Label = "Min Repeatability",     Type = ParameterType.Int,DefaultValue = 2     },
         ..RoiParameters.Schema,
     ];
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Blobs", DataType = typeof(KeyPoint[]) }, ..RoiParameters.OutputPorts];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image               = (Mat)parameters["Image"]!;

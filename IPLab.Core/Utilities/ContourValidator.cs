@@ -8,6 +8,7 @@ using NtsPolygon = NetTopologySuite.Geometries.Polygon;
 
 namespace IPLab.Core.Utilities;
 
+/// <summary>Validates and repairs OpenCV contours using NTS (NetTopologySuite) geometry operations.</summary>
 public static class ContourValidator
 {
     private static readonly GeometryFactory _factory =

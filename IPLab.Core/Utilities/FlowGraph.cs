@@ -1,5 +1,6 @@
 namespace IPLab.Core.Utilities;
 
+/// <summary>Graph traversal and sorting utilities for operator dependency graphs.</summary>
 public static class FlowGraph
 {
     /// <summary>

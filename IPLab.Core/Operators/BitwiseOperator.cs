@@ -4,12 +4,20 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Applies a bitwise AND, OR, or XOR operation between two input images of equal size and type.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/d2/de8/group__core__array.html#ga60b4d04b251ba5eb1392c34425497e14">OpenCV: bitwise_and</seealso>
+/// <seealso href="https://docs.opencv.org/4.x/d2/de8/group__core__array.html#gab85523db362a4e26ff0c703793a719b4">OpenCV: bitwise_or</seealso>
+/// <seealso href="https://docs.opencv.org/4.x/d2/de8/group__core__array.html#ga84b2d8188ce506593dcc3f8cd00e8e2c">OpenCV: bitwise_xor</seealso>
 public class BitwiseOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName => "Bitwise";
+    /// <inheritdoc/>
     public string Category => "Filters";
+    /// <inheritdoc/>
     public string Icon     => "bitwise";
 
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "ImageA",    Label = "Image A",   ConnectableType = typeof(Mat) },
@@ -18,11 +26,13 @@ public class BitwiseOperator : IOperatorType
                 DefaultValue = "And", Options = ["And", "Or", "Xor"] },
     ];
 
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
         new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true },
     ];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var imageA    = (Mat)parameters["ImageA"]!;

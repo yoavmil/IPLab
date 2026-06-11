@@ -4,12 +4,18 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Applies Gaussian blur to the input image, with optional ROI support.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1">OpenCV: GaussianBlur</seealso>
 public class GaussianBlurOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName => "GaussianBlur";
+    /// <inheritdoc/>
     public string Category => "Filters";
+    /// <inheritdoc/>
     public string Icon     => "blur";
 
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",      Label = "Image",       ConnectableType = typeof(Mat) },
@@ -18,8 +24,10 @@ public class GaussianBlurOperator : IOperatorType
         ..RoiParameters.Schema,
     ];
 
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }, ..RoiParameters.OutputPorts];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image  = (Mat)parameters["Image"]!;

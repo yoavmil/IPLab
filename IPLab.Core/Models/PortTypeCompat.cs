@@ -1,10 +1,11 @@
 namespace IPLab.Core.Models;
 
+/// <summary>Type-compatibility rules for connecting output ports to input parameters.</summary>
 public static class PortTypeCompat
 {
     /// <summary>
     /// Returns true when a port with <paramref name="portDataType"/> can feed a parameter
-    /// of <paramref name="paramType"/>.
+    /// of <paramref name="paramConnectableType"/>.
     /// Object is a wildcard (accepts any port type).
     /// Double accepts both double and int (widening).
     /// All other scalar types require an exact match.

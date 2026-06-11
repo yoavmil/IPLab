@@ -2,6 +2,7 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Utilities;
 
+/// <summary>Utility methods for converting OpenCV <see cref="OpenCvSharp.Mat"/> objects for use outside the core library.</summary>
 public static class ImageHelper
 {
     /// <summary>
