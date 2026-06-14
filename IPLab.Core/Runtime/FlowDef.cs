@@ -4,11 +4,13 @@ using IPLab.Core.Models;
 
 namespace IPLab.Core.Runtime;
 
+/// <summary>Mutable, WPF-observable collection of operators forming a processing pipeline.</summary>
 public class FlowDef : IFlowDef
 {
     private readonly ObservableCollection<IOperator> _operators;
     private readonly ReadOnlyObservableCollection<IOperator> _readOnlyOperators;
 
+    /// <summary>Initializes a new <see cref="FlowDef"/>, optionally pre-populated with operators.</summary>
     public FlowDef(IEnumerable<IOperator>? operators = null)
     {
         _operators = new ObservableCollection<IOperator>(operators ?? []);
@@ -17,16 +19,20 @@ public class FlowDef : IFlowDef
 
     // IReadOnlyList<T> for the interface contract; the runtime type is
     // ReadOnlyObservableCollection so WPF bindings still receive CollectionChanged events.
+    /// <inheritdoc/>
     public IReadOnlyList<IOperator> Operators => _readOnlyOperators;
 
+    /// <inheritdoc/>
     public void AddOperator(IOperator op) => _operators.Add(op);
 
+    /// <inheritdoc/>
     public void RemoveOperator(string operatorId)
     {
         var op = _operators.FirstOrDefault(o => o.Id == operatorId);
         if (op is not null) _operators.Remove(op);
     }
 
+    /// <inheritdoc/>
     public ValidationResult Validate()
     {
         var errors = new List<string>();

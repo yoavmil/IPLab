@@ -8,12 +8,17 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Executes a C# script file at runtime, providing up to four wired inputs and producing up to one image and four data outputs via <see cref="ScriptGlobals"/>.</summary>
 public class CSharpScriptOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName => "CSharpScript";
+    /// <inheritdoc/>
     public string Category => "Scripting";
+    /// <inheritdoc/>
     public string Icon     => "code";
 
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "ScriptPath", Label = "Script Path", Type = ParameterType.String, DefaultValue = "" },
@@ -23,6 +28,7 @@ public class CSharpScriptOperator : IOperatorType
         new() { Name = "In4", Label = "In 4", ConnectableType = typeof(object) },
     ];
 
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
         new() { Name = "Image", DataType = typeof(Mat),    IsDisplayImage = true },
@@ -50,6 +56,7 @@ public class CSharpScriptOperator : IOperatorType
             typeof(ScriptGlobals).Assembly  // IPLab.Core (ConnectedComponentInfo, etc.)
         );
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var path = parameters.GetValueOrDefault("ScriptPath") as string ?? "";

@@ -7,6 +7,7 @@ using IPLab.Core.Runtime;
 
 namespace IPLab.Core.Serialization;
 
+/// <summary>Serializes and deserializes <see cref="IFlow"/> to/from pretty-printed camelCase JSON.</summary>
 public static class FlowDefSerializer
 {
     private static readonly JsonSerializerOptions Options = new()
@@ -42,6 +43,7 @@ public static class FlowDefSerializer
 
     // ── Serialize ────────────────────────────────────────────────────────────
 
+    /// <summary>Serializes a flow (definition + layout) to a JSON string.</summary>
     public static string Serialize(IFlow flow)
     {
         var opLayouts  = flow.Layout.Operators.ToDictionary(o => o.OperatorId);
@@ -75,6 +77,7 @@ public static class FlowDefSerializer
 
     // ── Deserialize ──────────────────────────────────────────────────────────
 
+    /// <summary>Deserializes a JSON string produced by <see cref="Serialize"/> back into a <see cref="Flow"/>, using <paramref name="registry"/> to resolve operator types.</summary>
     public static Flow Deserialize(string json, OperatorRegistry registry)
     {
         var dto = JsonSerializer.Deserialize<FlowDto>(json, Options)

@@ -4,11 +4,17 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Detects circles using Hough Circle Transform and outputs them back-projected to original-image coordinates, with optional ROI support.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/dd/d1a/group__imgproc__feature.html#ga47849c3be0d0406ad3ca45db65a25d2d">OpenCV: HoughCircles</seealso>
 public class DetectCirclesOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName  => "DetectCircles";
+    /// <inheritdoc/>
     public string Category  => "Detection";
+    /// <inheritdoc/>
     public string Icon      => "circle";
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",     Label = "Image",              ConnectableType = typeof(Mat) },
@@ -19,8 +25,10 @@ public class DetectCirclesOperator : IOperatorType
         new() { Name = "MaxRadius", Label = "Max Radius",         Type = ParameterType.Int,},
         ..RoiParameters.Schema,
     ];
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Circles", DataType = typeof(CircleSegment[]) }, ..RoiParameters.OutputPorts];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image     = (Mat)parameters["Image"]!;

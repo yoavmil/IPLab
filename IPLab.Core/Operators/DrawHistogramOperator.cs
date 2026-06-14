@@ -4,11 +4,17 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Renders a bar-chart histogram image from a single-channel (grayscale) input image.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/d6/dc7/group__imgproc__hist.html#ga6b2f4b59b8ccc9f8eed1d2f3bae4d94a">OpenCV: calcHist</seealso>
 public class DrawHistogramOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName  => "DrawHistogram";
+    /// <inheritdoc/>
     public string Category  => "Visualization";
+    /// <inheritdoc/>
     public string Icon      => "histogram";
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",  Label = "Image",  ConnectableType = typeof(Mat) },
@@ -17,8 +23,10 @@ public class DrawHistogramOperator : IOperatorType
         new() { Name = "Color",  Label = "Color",  Type = ParameterType.Enum,
                 DefaultValue = "Green", Options = ["White", "Green", "Cyan", "Red", "Yellow"] },
     ];
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image  = (Mat)parameters["Image"]!;

@@ -5,12 +5,18 @@ using OpenCvSharp.XImgProc;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Applies morphological skeleton thinning (Zhang-Suen or Guo-Hall) to reduce binary objects to single-pixel-wide skeletons, with optional ROI support.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/df/d2d/group__ximgproc.html#ga37002c6ca80c978b4d1c3c91694d3cd9">OpenCV ximgproc: thinning</seealso>
 public class ThinningOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName => "Thinning";
+    /// <inheritdoc/>
     public string Category => "Filters";
+    /// <inheritdoc/>
     public string Icon     => "thinning";
 
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",        Label = "Image",         ConnectableType = typeof(Mat) },
@@ -19,8 +25,10 @@ public class ThinningOperator : IOperatorType
         ..RoiParameters.Schema,
     ];
 
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }, ..RoiParameters.OutputPorts];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image        = (Mat)parameters["Image"]!;

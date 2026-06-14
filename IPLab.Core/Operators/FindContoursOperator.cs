@@ -6,12 +6,18 @@ using System.Linq;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Finds contours in a binary image and outputs them as arrays of points in original-image coordinates, with optional ROI and contour filtering support.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#gadf1ad6a0b82947fa1fe3c3d497f260e0">OpenCV: findContours</seealso>
 public class FindContoursOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName  => "FindContours";
+    /// <inheritdoc/>
     public string Category  => "Detection";
+    /// <inheritdoc/>
     public string Icon      => "contour";
 
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",   Label = "Image",    ConnectableType = typeof(Mat) },
@@ -30,8 +36,10 @@ public class FindContoursOperator : IOperatorType
         ..RoiParameters.Schema,
     ];
 
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Contours", DataType = typeof(Point[][]) }, ..RoiParameters.OutputPorts];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image   = (Mat)parameters["Image"]!;

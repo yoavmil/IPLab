@@ -4,12 +4,18 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Applies a morphological operation (erode, dilate, open, close, gradient, top-hat, or black-hat) with a configurable kernel, with optional ROI support.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#ga67493776e3ad1a3df63883829375201f">OpenCV: morphologyEx</seealso>
 public class MorphologyOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName => "Morphology";
+    /// <inheritdoc/>
     public string Category => "Filters";
+    /// <inheritdoc/>
     public string Icon     => "morphology";
 
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",       Label = "Image",        ConnectableType = typeof(Mat) },
@@ -25,8 +31,10 @@ public class MorphologyOperator : IOperatorType
         ..RoiParameters.Schema,
     ];
 
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }, ..RoiParameters.OutputPorts];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image     = (Mat)parameters["Image"]!;

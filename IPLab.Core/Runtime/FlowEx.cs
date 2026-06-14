@@ -4,6 +4,7 @@ using IPLab.Core.Models;
 
 namespace IPLab.Core.Runtime;
 
+/// <summary>Async runtime executor for a processing flow. Resolves parameters, respects dependency order, and optionally caches results.</summary>
 public class FlowEx : IFlowEx
 {
     private readonly ConcurrentDictionary<string, object?> _results = new();
@@ -11,9 +12,13 @@ public class FlowEx : IFlowEx
     private readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, object?>> _paramSnapshot = new();
 
     private IFlowDef _flow;
+    /// <inheritdoc/>
     public IFlowDef Flow => _flow;
     private readonly bool _enableCaching;
 
+    /// <summary>Initializes a new <see cref="FlowEx"/> for the given flow.</summary>
+    /// <param name="flow">The flow to execute.</param>
+    /// <param name="enableCaching">When <see langword="true"/>, skips re-execution when results and parameters are unchanged since the last run.</param>
     public FlowEx(IFlowDef flow, bool enableCaching = false)
     {
         _flow = flow;
@@ -42,11 +47,15 @@ public class FlowEx : IFlowEx
             _statuses.TryAdd(op.Id, OperatorStatus.NotRun);
     }
 
+    /// <inheritdoc/>
     public IReadOnlyDictionary<string, object?> IntermediateResults => _results;
+    /// <inheritdoc/>
     public IReadOnlyDictionary<string, OperatorStatus> Statuses => _statuses;
 
+    /// <inheritdoc/>
     public event Action<string, OperatorStatus, Exception?>? StatusChanged;
 
+    /// <inheritdoc/>
     public async Task RunAllAsync(CancellationToken ct = default)
     {
         var tasks = new Dictionary<string, Task>();
@@ -68,12 +77,14 @@ public class FlowEx : IFlowEx
         await Task.WhenAll(tasks.Values);
     }
 
+    /// <inheritdoc/>
     public async Task RunSingleAsync(string operatorId, CancellationToken ct = default)
     {
         var op = Flow.Operators.First(o => o.Id == operatorId);
         await RunOperatorAsync(op, ct);
     }
 
+    /// <inheritdoc/>
     public void ClearResults()
     {
         _results.Clear();

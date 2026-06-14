@@ -4,11 +4,18 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Enhances contrast using global histogram equalization or CLAHE (Contrast Limited Adaptive Histogram Equalization).</summary>
+/// <seealso href="https://docs.opencv.org/4.x/d6/dc7/group__imgproc__hist.html#ga7e54091f0c937d49bf84152a16f76d6e">OpenCV: equalizeHist</seealso>
+/// <seealso href="https://docs.opencv.org/4.x/d1/d5c/classcv_1_1CLAHE.html">OpenCV: CLAHE</seealso>
 public class HistogramEqualizationOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName  => "HistogramEqualization";
+    /// <inheritdoc/>
     public string Category  => "Filters";
+    /// <inheritdoc/>
     public string Icon      => "histogram";
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",        Label = "Image",          ConnectableType = typeof(Mat) },
@@ -19,8 +26,10 @@ public class HistogramEqualizationOperator : IOperatorType
         new() { Name = "TileGridSize", Label = "Tile Grid Size", Type = ParameterType.Int,DefaultValue = 8,   Min = 1.0, Max = 64.0,
                 ShowWhenParam = "Method", ShowWhenValues = ["CLAHE"] },
     ];
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image        = (Mat)parameters["Image"]!;

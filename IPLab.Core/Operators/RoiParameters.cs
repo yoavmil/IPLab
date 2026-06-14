@@ -3,12 +3,22 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
-// Carries the data needed to back-project crop-local coordinates to original-image coordinates.
-// ClampedX/Y is the crop's top-left corner in the warped-image space (same as image space when Angle=0).
+/// <summary>
+/// Carries the data needed to back-project crop-local coordinates to original-image coordinates.
+/// <see cref="ClampedX"/>/<see cref="ClampedY"/> is the crop's top-left corner in warped-image space
+/// (same as image space when <see cref="AngleRad"/> is zero).
+/// </summary>
+/// <param name="CX">X coordinate of the ROI center in the original image.</param>
+/// <param name="CY">Y coordinate of the ROI center in the original image.</param>
+/// <param name="AngleRad">ROI rotation angle in radians.</param>
+/// <param name="ClampedX">X of the crop's top-left corner in warped-image space.</param>
+/// <param name="ClampedY">Y of the crop's top-left corner in warped-image space.</param>
 public record RoiTransform(double CX, double CY, double AngleRad, int ClampedX, int ClampedY);
 
+/// <summary>Reusable ROI infrastructure shared by all ROI-supporting operators: schema, output ports, cropping, warping, and back-projection helpers.</summary>
 public static class RoiParameters
 {
+    /// <summary>The five ROI parameter descriptors (CX, CY, W, H, Angle) to spread-include in an operator's <see cref="Interfaces.IOperatorType.ParameterSchema"/>.</summary>
     public static IReadOnlyList<ParameterDescriptor> Schema =>
     [
         new() { Name = "RoiCX",    Label = "ROI Center X", Type = ParameterType.Double, ConnectableType = typeof(double), DefaultValue = 0.0 },
@@ -18,8 +28,10 @@ public static class RoiParameters
         new() { Name = "RoiAngle", Label = "ROI Angle (°)",Type = ParameterType.Double, ConnectableType = typeof(double), DefaultValue = 0.0 },
     ];
 
-    // These port descriptors must be included in an operator's OutputPorts when it supports ROI,
-    // so downstream operators can wire their own ROI params to the upstream operator's ROI values.
+    /// <summary>
+    /// The five ROI output port descriptors to spread-include in an operator's <see cref="Interfaces.IOperatorType.OutputPorts"/>
+    /// so downstream operators can wire their own ROI parameters to the upstream ROI values.
+    /// </summary>
     public static IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
         new() { Name = "RoiCX",    DataType = typeof(double) },
@@ -29,7 +41,10 @@ public static class RoiParameters
         new() { Name = "RoiAngle", DataType = typeof(double) },
     ];
 
-    // Returns null when W=0 or H=0 — operator should run on the full image.
+    /// <summary>
+    /// Extracts a <see cref="RoiDef"/> from the parameter dictionary.
+    /// Returns <see langword="null"/> when W=0 or H=0, indicating the operator should run on the full image.
+    /// </summary>
     public static RoiDef? Extract(IReadOnlyDictionary<string, object?> parameters)
     {
         var cx    = Convert.ToDouble(parameters.GetValueOrDefault("RoiCX")    ?? 0.0);
@@ -40,9 +55,10 @@ public static class RoiParameters
         return (w > 0 && h > 0) ? new RoiDef(cx, cy, w, h, angle) : null;
     }
 
-    // Returns the axis-aligned crop rect in warped-image space (same as original-image space
-    // when Angle=0, because WarpAffine preserves image dimensions).
-    // Caller must check Width <= 0 || Height <= 0 (ROI entirely outside the image).
+    /// <summary>
+    /// Converts the ROI to an axis-aligned crop rectangle in warped-image space (same as original-image space when Angle=0).
+    /// The caller must check <c>Width &lt;= 0 || Height &lt;= 0</c> to detect an ROI entirely outside the image.
+    /// </summary>
     public static Rect Clamp(RoiDef roi, int imageWidth, int imageHeight)
     {
         int left   = (int)Math.Round(roi.CX - roi.Width  / 2.0);
@@ -56,16 +72,20 @@ public static class RoiParameters
         return new Rect(cx, cy, cw, ch);
     }
 
-    // Convenience overload: extracts the RoiDef from parameters first.
-    // Returns null when no ROI is set (W=0 or H=0).
+    /// <summary>
+    /// Convenience overload that extracts the <see cref="RoiDef"/> from <paramref name="parameters"/> first.
+    /// Returns <see langword="null"/> when no ROI is set (W=0 or H=0).
+    /// </summary>
     public static Rect? Clamp(IReadOnlyDictionary<string, object?> parameters, int imageWidth, int imageHeight)
     {
         var roi = Extract(parameters);
         return roi is null ? null : Clamp(roi, imageWidth, imageHeight);
     }
 
-    // Rotates the image so the ROI becomes axis-aligned. Rotation is around the ROI center.
-    // Always returns a new Mat (caller owns it).
+    /// <summary>
+    /// Rotates the image so the ROI becomes axis-aligned. Rotation is around the ROI center.
+    /// Always returns a new <see cref="Mat"/> (caller owns it).
+    /// </summary>
     public static Mat WarpForRoi(Mat image, RoiDef roi)
     {
         if (roi.Angle == 0.0) return image.Clone();
@@ -76,13 +96,15 @@ public static class RoiParameters
         return warped;
     }
 
-    // Builds the transform record needed for back-projection.
+    /// <summary>Builds the <see cref="RoiTransform"/> record needed to back-project crop-local coordinates to original-image space.</summary>
     public static RoiTransform BuildTransform(RoiDef roi, Rect clampedRect) =>
         new(roi.CX, roi.CY, roi.Angle * Math.PI / 180.0, clampedRect.X, clampedRect.Y);
 
-    // Back-projects a crop-local position (cropX, cropY) to original-image coordinates.
-    // Convention: WarpAffine was GetRotationMatrix2D(center, -angleDeg, 1.0).
-    // Back-rotation uses +angle: outX = CX + dx*cos + dy*sin, outY = CY - dx*sin + dy*cos.
+    /// <summary>
+    /// Back-projects a crop-local position (<paramref name="cropX"/>, <paramref name="cropY"/>) to original-image coordinates.
+    /// Convention: WarpAffine used <c>GetRotationMatrix2D(center, -angleDeg, 1.0)</c>.
+    /// Back-rotation uses +angle: <c>outX = CX + dx*cos + dy*sin</c>, <c>outY = CY - dx*sin + dy*cos</c>.
+    /// </summary>
     public static Point2f BackProject(double cropX, double cropY, RoiTransform t)
     {
         double cosA = Math.Cos(t.AngleRad);
@@ -94,36 +116,44 @@ public static class RoiParameters
             (float)(t.CY - dx * sinA + dy * cosA));
     }
 
+    /// <summary>Back-projects a <see cref="Point2f"/> from crop space to original-image space.</summary>
     public static Point2f BackProject(Point2f p, RoiTransform t)
         => BackProject(p.X, p.Y, t);
 
+    /// <summary>Back-projects a <see cref="CircleSegment"/> center from crop space to original-image space, preserving the radius.</summary>
     public static CircleSegment BackProject(CircleSegment c, RoiTransform t)
     {
         var r = BackProject(c.Center.X, c.Center.Y, t);
         return new CircleSegment(r, c.Radius);
     }
 
+    /// <summary>Back-projects a <see cref="KeyPoint"/> position from crop space to original-image space, preserving all other fields.</summary>
     public static KeyPoint BackProject(KeyPoint k, RoiTransform t)
     {
         var r = BackProject(k.Pt.X, k.Pt.Y, t);
         return new KeyPoint(r.X, r.Y, k.Size, k.Angle, k.Response, k.Octave, k.ClassId);
     }
 
+    /// <summary>Back-projects an integer <see cref="OpenCvSharp.Point"/> from crop space to original-image space (rounded to nearest pixel).</summary>
     public static OpenCvSharp.Point BackProject(OpenCvSharp.Point p, RoiTransform t)
     {
         var r = BackProject(p.X, p.Y, t);
         return new OpenCvSharp.Point((int)Math.Round(r.X), (int)Math.Round(r.Y));
     }
 
+    /// <summary>Back-projects every point in a contour array from crop space to original-image space.</summary>
     public static OpenCvSharp.Point[] BackProject(OpenCvSharp.Point[] contour, RoiTransform t)
         => contour.Select(p => BackProject(p, t)).ToArray();
 
-    // For filter operators: applies `process` to the (possibly rotated) ROI crop and composites
-    // the result back over a clone of the full image.
-    // • No ROI set           → calls process(fullImage) directly.
-    // • ROI entirely outside → returns image.Clone() unchanged.
-    // • Axis-aligned ROI     → SubMat composite (same as before).
-    // • Rotated ROI          → WarpAffine → crop → filter → paste → WarpAffine back → mask composite.
+    /// <summary>
+    /// Applies <paramref name="process"/> to the (possibly rotated) ROI crop and composites the result back over a clone of the full image.
+    /// <list type="bullet">
+    ///   <item><description>No ROI set — calls <paramref name="process"/> on the full image directly.</description></item>
+    ///   <item><description>ROI entirely outside image — returns a clone of the original unchanged.</description></item>
+    ///   <item><description>Axis-aligned ROI — SubMat crop/paste composite.</description></item>
+    ///   <item><description>Rotated ROI — WarpAffine → crop → filter → paste → WarpAffine back → mask composite.</description></item>
+    /// </list>
+    /// </summary>
     public static Mat ApplyImageFilter(Mat image,
                                        IReadOnlyDictionary<string, object?> parameters,
                                        Func<Mat, Mat> process)
@@ -179,7 +209,7 @@ public static class RoiParameters
         return output2;
     }
 
-    // Copies all five ROI values through to the output dictionary for downstream wiring.
+    /// <summary>Copies all five ROI parameter values through to the output dictionary so downstream operators can wire their own ROI inputs.</summary>
     public static void AddToOutputs(Dictionary<string, object?> outputs,
                                     IReadOnlyDictionary<string, object?> parameters)
     {

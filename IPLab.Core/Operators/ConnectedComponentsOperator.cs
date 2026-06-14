@@ -5,11 +5,17 @@ using System.Runtime.InteropServices;
 
 namespace IPLab.Core.Operators;
 
+/// <summary>Finds connected components in a binary image and outputs label map, bounding-box stats, centroids, and an optional colorized label image, with optional ROI support.</summary>
+/// <seealso href="https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga107a78bf7cd25dec05fb4dfc5c9e765f">OpenCV: connectedComponentsWithStats</seealso>
 public class ConnectedComponentsOperator : IOperatorType
 {
+    /// <inheritdoc/>
     public string TypeName  => "ConnectedComponents";
+    /// <inheritdoc/>
     public string Category  => "Detection";
+    /// <inheritdoc/>
     public string Icon      => "component";
+    /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",            Label = "Image",              ConnectableType = typeof(Mat) },
@@ -19,6 +25,7 @@ public class ConnectedComponentsOperator : IOperatorType
                 DefaultValue = true },
         ..RoiParameters.Schema,
     ];
+    /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
         new() { Name = "Count",      DataType = typeof(int) },
@@ -29,6 +36,7 @@ public class ConnectedComponentsOperator : IOperatorType
         ..RoiParameters.OutputPorts,
     ];
 
+    /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image            = (Mat)parameters["Image"]!;

@@ -5,6 +5,19 @@ See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 
 **Rule: whenever a new operator is added, update the operator table in [README.md](README.md) to keep the NuGet-facing docs in sync.**
 
+## XML documentation rules
+
+**Rule: every public type and member must have an XML doc comment (`///`) — the project has `<GenerateDocumentationFile>true</GenerateDocumentationFile>` and treats CS1591 as a warning. Use these conventions:**
+
+- **Classes/interfaces/records/enums:** `<summary>` one sentence describing what it is and does.
+- **Positional record parameters:** use `<param>` tags on the record declaration (not on the properties).
+- **Interface members:** write the full doc on the interface. Implementing class members use `/// <inheritdoc/>` to inherit it — never duplicate.
+- **Operator classes** (`IOperatorType` implementations): write a class-level `<summary>` that names the operation and notes ROI support if applicable. All six interface members (`TypeName`, `Category`, `Icon`, `ParameterSchema`, `OutputPorts`, `Execute`) use `/// <inheritdoc/>`.
+- **Operators that wrap a single OpenCV function:** add a `<seealso href="https://docs.opencv.org/4.x/...">OpenCV: functionName</seealso>` tag pointing to the OpenCV 4.x documentation for that function. Use the function-specific anchor (the `#ga…` hash) from `docs.opencv.org/4.x`. For operators that implement a custom algorithm rather than wrapping one function, omit the `<seealso>` link.
+- **Utility/static methods that already have summaries:** just ensure the class itself also has a `<summary>`.
+- **Do not** write doc comments on `private` or `internal` members.
+- **Do not** add `<remarks>`, `<param>`, or `<returns>` unless the information is non-obvious from the signature and summary alone.
+
 ## Operator implementation rules
 
 **Rule: whenever a new operator is added to `IPLab.Core.Operators`, add a corresponding entry to [docs/OPERATORS.md](../docs/OPERATORS.md).**
