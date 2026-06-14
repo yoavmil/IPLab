@@ -53,6 +53,7 @@ public partial class InspectorControl : UserControl
         DrawBlobs(state.Blobs);
         DrawContours(state.Contours);
         DrawLines(state.Lines);
+        DrawCrosses(state.Crosses);
         DrawRoi(state.Roi);
     }
 
@@ -91,6 +92,13 @@ public partial class InspectorControl : UserControl
         var rowEnd      = lines.Select(l => (double)l.P2.Y).ToArray();
         var columnEnd   = lines.Select(l => (double)l.P2.X).ToArray();
         ImageViewer.DrawLine(rowBegin, columnBegin, rowEnd, columnEnd, string.Empty, Brushes.Lime, bFilled: false);
+    }
+
+    private void DrawCrosses(Point2f[]? crosses)
+    {
+        if (crosses is null) return;
+        foreach (var pt in crosses)
+            ImageViewer.DrawCross(pt.Y, pt.X, 0, string.Empty, 10, Brushes.Lime);
     }
 
     private void DrawRoi(IPLab.Core.Models.RoiDef? roi)

@@ -87,11 +87,12 @@ public class FlowEx : IFlowEx
         ct.ThrowIfCancellationRequested();
 
         var resolved = ResolveParameters(op);
+        var cacheKey = BuildCacheKey(op, resolved);
 
         if (_enableCaching &&
             _results.ContainsKey(op.Id) &&
             _paramSnapshot.TryGetValue(op.Id, out var snapshot) &&
-            ParamsEqual(resolved, snapshot))
+            ParamsEqual(cacheKey, snapshot))
         {
             SetStatus(op.Id, OperatorStatus.Success, null);
             return;
@@ -101,7 +102,7 @@ public class FlowEx : IFlowEx
         try
         {
             _results[op.Id] = await Task.Run(() => op.Type.Execute(resolved), ct);
-            _paramSnapshot[op.Id] = resolved;
+            _paramSnapshot[op.Id] = cacheKey;
             SetStatus(op.Id, OperatorStatus.Success, null);
         }
         catch (OperationCanceledException)
@@ -113,6 +114,22 @@ public class FlowEx : IFlowEx
         {
             SetStatus(op.Id, OperatorStatus.Failed, ex);
         }
+    }
+
+    // Builds the cache key compared between runs: the resolved parameters, plus any extra tokens an
+    // operator contributes via ICacheInvalidationProvider (e.g. a calibration file's last-write
+    // time). This invalidates the cache when external state changes even though the parameters —
+    // such as the file path — are byte-for-byte identical.
+    private static IReadOnlyDictionary<string, object?> BuildCacheKey(
+        IOperator op, IReadOnlyDictionary<string, object?> resolved)
+    {
+        if (op.Type is not ICacheInvalidationProvider provider)
+            return resolved;
+
+        var key = new Dictionary<string, object?>(resolved);
+        foreach (var (name, value) in provider.GetCacheTokens(resolved))
+            key[name] = value;
+        return key;
     }
 
     private static bool ParamsEqual(IReadOnlyDictionary<string, object?> a, IReadOnlyDictionary<string, object?> b)

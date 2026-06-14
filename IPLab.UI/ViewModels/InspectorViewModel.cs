@@ -127,15 +127,18 @@ public class InspectorViewModel : ViewModelBase
         if (contours is not null)
             return new InspectorState(Image: GetSourceImage(), Contours: contours) with { Roi = CurrentRoi };
 
-        var stripeEdges = Unwrap<LineSegmentPoint[]>(result);
-        if (stripeEdges is not null)
-            return new InspectorState(Image: GetSourceImage(), Lines: stripeEdges) with { Roi = CurrentRoi };
+        // Lines and crosses can co-exist (e.g. DistortionCalibration emits both grid lines and grid
+        // corners), so handle them together rather than returning on the first match. Image falls
+        // back to the wired source when the operator produces no display image (heatmap off).
+        var lines   = Unwrap<LineSegmentPoint[]>(result);
+        var crosses = Unwrap<Point2f[]>(result);
+        if (lines is not null || crosses is not null)
+            return new InspectorState(
+                Image: GetDisplayImage() ?? GetSourceImage(),
+                Lines: lines,
+                Crosses: crosses) with { Roi = CurrentRoi };
 
-        var displayPort = _selectedNode.Operator.Type.OutputPorts.FirstOrDefault(p => p.IsDisplayImage);
-        var image = displayPort is not null
-            ? _precomputedImages.GetValueOrDefault((_selectedNode.Id, displayPort.Name))
-            : null;
-        return new InspectorState(Image: image) with { Roi = CurrentRoi };
+        return new InspectorState(Image: GetDisplayImage()) with { Roi = CurrentRoi };
     }
 
     private static T? Unwrap<T>(object? result) where T : class
@@ -149,6 +152,14 @@ public class InspectorViewModel : ViewModelBase
         if (imageParam is null) return null;
         return _precomputedImages.GetValueOrDefault(
             (imageParam.SelectedSource!.OperatorId, imageParam.SelectedSource.Port));
+    }
+
+    private BitmapSource? GetDisplayImage()
+    {
+        var displayPort = _selectedNode!.Operator.Type.OutputPorts.FirstOrDefault(p => p.IsDisplayImage);
+        return displayPort is not null
+            ? _precomputedImages.GetValueOrDefault((_selectedNode.Id, displayPort.Name))
+            : null;
     }
 
     public async Task PrecomputeAsync(FlowViewModel flow)
