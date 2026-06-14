@@ -60,6 +60,20 @@ See [IPLab.UI/CLAUDE.md](IPLab.UI/CLAUDE.md) for UI-specific rules and Nodify im
 - **Export format:** JSON flow file + compatible runtime executor. No code generation in MVP.
 - **Typed output ports:** `IOperatorType.OutputPorts` is `IReadOnlyList<OutputPortDescriptor>` — each port carries `Name`, `DataType: System.Type`, and `IsDisplayImage: bool`. Set `IsDisplayImage = true` on the port whose rendered bitmap the inspector should show; the inspector takes the first such port. `ParameterDescriptor` carries an optional `ConnectableType: Type?` — the CLR type the parameter accepts when wired; `null` = wildcard. Compatibility is checked by `PortTypeCompat.IsCompatible(ConnectableType, portDataType)`: `typeof(object)` port or `null`/`typeof(object)` param = wildcard; `double` param accepts `int` port (widening); otherwise `IsAssignableFrom`. Wire-only parameters (e.g. Image inputs) omit `Type` (defaults to `ParameterType.Object` = no UI control) and just declare `ConnectableType = typeof(Mat)`. Image ports all use `typeof(Mat)` — grayscale vs. colour is not distinguished at this level.
 
+## Operator Status & Failure
+
+An operator turns **red** (failed) in two distinct situations:
+
+1. **Exception** — `Execute` throws; `FlowEx` catches it and marks the node failed.
+2. **Logical failure** — `Execute` returns successfully but the operator could not complete its primary task. Each operator defines its own failure criterion; it signals this by throwing an `InvalidOperationException` (or another appropriate exception subtype) with a human-readable message **or** by returning a result dictionary where a well-known boolean port (conventionally `"Found"`) is `false`.
+
+> **Resolved:** For detection/calibration operators the canonical signal is a `"Found": false` output port. `FlowEx` (or the UI layer) must check this port and mark the node red when it is `false`, just as it would for an exception. Each operator's `OutputPorts` list should include a `Found` port of type `bool` if it can logically fail without throwing.
+
+**Per-operator failure criteria (examples):**
+- `DistortionCalibrationOperator` — `Found = false` when fewer than the minimum inlier count of corners survive grid inference (image has no recognisable checkerboard, or parameters don't suit the square size).
+- Detection operators in general — `Found = false` (or equivalent empty-output) when nothing was detected.
+- Transform/filter operators — typically can only fail by exception (bad input size, wrong channel count, etc.).
+
 ## Open Questions
 
 1. How should multiple outputs be represented — overlaid on the image, or shown in the textual result panel?
