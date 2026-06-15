@@ -11,4 +11,5 @@ public sealed record InspectorState(
     OpenCvSharp.Point[][]? Contours = null,
     RoiDef?                Roi      = null,
     LineSegmentPoint[]?    Lines    = null,
-    Point2f[]?             Crosses  = null);
+    Point2f[]?             Crosses  = null,
+    Rect[]?                Rectangles = null);

@@ -75,9 +75,22 @@
 
 ## IPLab.Core
 
+- **TemplateMatch: use shared ROI support with angle** — replace the operator's custom
+  `RoiCX`/`RoiCY`/`RoiW`/`RoiH` descriptors with `RoiParameters.Schema`, support rotated
+  search ROIs via `WarpForRoi`, back-project match rectangles to original-image coordinates,
+  and include `RoiParameters.OutputPorts`. Add rotated-ROI and image-edge tests as required
+  for ROI-supporting detection operators.
+
 - **Replace `GaussianBlur` with `NoiseFilter` operator** — retire `GaussianBlurOperator` and replace it with a `NoiseFilterOperator` that exposes a `Method` enum (`Gaussian` / `Median`). Gaussian keeps its existing `KernelSize` and `Sigma` parameters (shown always / shown when Method=Gaussian respectively); Median only needs `KernelSize`. Both support ROI via `ApplyImageFilter`. Existing `.ipl` files that reference type `GaussianBlur` will need migration (sed rename + add `Method=Gaussian`).
 
 ## IPLab.Core (Architecture)
+
+- **Define a shared policy for operator-owned caches** — `TemplateMatchOperator` is currently an
+  exception because it keeps its own decoded-template `Mat` cache in addition to participating in
+  the `FlowEx` result cache. Decide whether file-backed resources should use a shared cache service,
+  remain operator-owned behind a common interface, or be managed by `FlowEx`. The design must cover
+  cache lifetime, thread safety, file-change invalidation, memory limits, and disposal of native
+  resources.
 
 - **Uniform operator return convention** — `Execute` currently returns the value directly for single-output operators and a `Dictionary<string, object?>` for multi-output ones; `FlowEx.ResolveParameters` branches on `OutputPorts.Count` to handle both. This is an implicit convention that's easy to get wrong. Change `IOperatorType.Execute` return type from `object?` to `IReadOnlyDictionary<string, object?>`, update all operators to always return a dictionary keyed by port name, and simplify `ResolveParameters` to always extract by port name — eliminating the count-based branch. The interface change makes the compiler enforce the convention.
 

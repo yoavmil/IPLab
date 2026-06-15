@@ -408,38 +408,27 @@
                             </ItemsControl>
                         </ScrollViewer>
 
-                        <!-- CSharpScript-specific actions (Row 3) -->
-                        <StackPanel Grid.Row="3"
-                                    Orientation="Horizontal"
-                                    Margin="8 4 8 6">
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding DisplayingNode.TypeName}" Value="CSharpScript">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
-                            <Button Content="Browse / Create Script…"
-                                    Command="{Binding DisplayingNode.BrowseScriptCommand}"
-                                    Margin="0 0 6 0"
-                                    Padding="8 4"
-                                    Background="#3F3F46"
-                                    Foreground="#DCDCDC"
-                                    BorderThickness="1"
-                                    BorderBrush="#555558"
-                                    Cursor="Hand" />
-                            <Button Content="Scaffold Debug Project"
-                                    Command="{Binding DisplayingNode.ScaffoldDebugProjectCommand}"
-                                    Padding="8 4"
-                                    Background="#3F3F46"
-                                    Foreground="#DCDCDC"
-                                    BorderThickness="1"
-                                    BorderBrush="#555558"
-                                    Cursor="Hand" />
-                        </StackPanel>
+                        <!-- Operator-specific actions supplied by OperatorEditorRegistry (Row 3) -->
+                        <ItemsControl Grid.Row="3" ItemsSource="{Binding OperatorActions}" Margin="8 4 8 6">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:OperatorActionViewModel}">
+                                    <Button Content="{Binding Label}"
+                                            Command="{Binding Command}"
+                                            Margin="0 0 6 0"
+                                            Padding="8 4"
+                                            Background="#3F3F46"
+                                            Foreground="#DCDCDC"
+                                            BorderThickness="1"
+                                            BorderBrush="#555558"
+                                            Cursor="Hand" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
                     </Grid>
                 </Border>

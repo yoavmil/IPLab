@@ -54,6 +54,7 @@ public partial class InspectorControl : UserControl
         DrawContours(state.Contours);
         DrawLines(state.Lines);
         DrawCrosses(state.Crosses);
+        DrawRectangles(state.Rectangles);
         DrawRoi(state.Roi);
     }
 
@@ -99,6 +100,14 @@ public partial class InspectorControl : UserControl
         if (crosses is null) return;
         foreach (var pt in crosses)
             ImageViewer.DrawCross(pt.Y, pt.X, 0, string.Empty, 10, Brushes.Lime);
+    }
+
+    private void DrawRectangles(OpenCvSharp.Rect[]? rectangles)
+    {
+        if (rectangles is null) return;
+        foreach (var rect in rectangles)
+            ImageViewer.DrawRectangle(rect.Top, rect.Left, rect.Bottom, rect.Right,
+                string.Empty, Brushes.Lime, bFilled: false);
     }
 
     private void DrawRoi(IPLab.Core.Models.RoiDef? roi)

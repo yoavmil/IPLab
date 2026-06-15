@@ -5,9 +5,9 @@ using OpenCvSharp;
 namespace IPLab.Core.Operators;
 
 /// <summary>
-/// Applies lens-distortion correction to an image using a calibration file produced by
-/// <see cref="DistortionCalibrationOperatorOld"/>. The input may be any type/channel count; its
-/// dimensions must match the calibration's image size.
+/// Applies lens-distortion correction using a camera matrix and distortion coefficients loaded
+/// from an <see cref="UndistortCalibrationData"/> JSON file. The input may be any type/channel
+/// count; its dimensions must match the calibration's image size.
 /// </summary>
 /// <remarks>
 /// The undistortion rectify maps are expensive to build, so they are cached and rebuilt only when
@@ -73,14 +73,14 @@ public class UndistortOperator : IOperatorType, ICacheInvalidationProvider
                 _cachedPath == path && _cachedMtime == mtime && _cachedW == width && _cachedH == height)
                 return (_map1, _map2);
 
-            var data = CalibrationHelpers.LoadCalibration(path);
+            var data = UndistortCalibrationFile.Load(path);
             if (data.ImageWidth > 0 && data.ImageHeight > 0 &&
                 (data.ImageWidth != width || data.ImageHeight != height))
                 throw new ArgumentException(
                     $"Image size {width}×{height} does not match calibration size " +
                     $"{data.ImageWidth}×{data.ImageHeight}.");
 
-            using var camera = Mat.FromArray(CalibrationHelpers.JaggedToRect(data.CameraMatrix));
+            using var camera = Mat.FromArray(UndistortCalibrationFile.ToRectangular(data.CameraMatrix));
             using var dist   = Mat.FromArray(data.DistCoeffs);
 
             var map1 = new Mat();

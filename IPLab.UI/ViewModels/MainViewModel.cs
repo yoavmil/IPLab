@@ -35,6 +35,7 @@ public class MainViewModel : ViewModelBase
     private string  _savedJson       = string.Empty;
     private string? _currentFilePath = null;
     private readonly IPLabSettings _settings;
+    private readonly OperatorEditorRegistry _operatorEditors;
 
     private readonly ExecutionService   _execution;
     private readonly InspectorViewModel _inspector;
@@ -100,8 +101,21 @@ public class MainViewModel : ViewModelBase
     public OperatorNodeViewModel? DisplayingNode
     {
         get => _displayingNode;
-        set { _displayingNode = value; RaisePropertyChanged(); }
+        set
+        {
+            _displayingNode = value;
+            RaisePropertyChanged();
+            OperatorActions.Clear();
+            if (value is null || Application.Current.MainWindow is not { } owner) return;
+
+            var context = new OperatorEditorContext(
+                value, name => ResolveNodeParameter(value, name), owner);
+            foreach (var action in _operatorEditors.CreateActions(context))
+                OperatorActions.Add(action);
+        }
     }
+
+    public ObservableCollection<OperatorActionViewModel> OperatorActions { get; } = [];
 
     private bool _isRunningContinuous;
     public bool IsRunningContinuous
@@ -127,6 +141,7 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        _operatorEditors = OperatorEditorRegistry.CreateDefault();
         _execution = new ExecutionService();
         _inspector = new InspectorViewModel(_execution);
         _inspector.PropertyChanged += (_, e) =>
@@ -166,6 +181,20 @@ public class MainViewModel : ViewModelBase
         onSelected:         node => SelectedNode = node,
         onBeforeDeleteNode: node => { if (EditingNode == node) EditingNode = null;
                                       if (SelectedNode == node) SelectedNode = null; });
+
+    private object? ResolveNodeParameter(OperatorNodeViewModel node, string parameterName)
+    {
+        var parameter = node.Parameters.FirstOrDefault(p => p.Name == parameterName);
+        if (parameter is null) return null;
+        if (!parameter.IsWired || parameter.SelectedSource is not { } source)
+            return parameter.ToParameterValue().Value;
+
+        if (!_execution.IntermediateResults.TryGetValue(source.OperatorId, out var raw))
+            return null;
+        if (raw is IReadOnlyDictionary<string, object?> dictionary)
+            return dictionary.GetValueOrDefault(source.Port);
+        return raw;
+    }
 
     private void NewFlow()
     {

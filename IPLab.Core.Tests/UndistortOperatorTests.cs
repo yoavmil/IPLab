@@ -1,4 +1,5 @@
 using System.Text.Json;
+using IPLab.Core.Models;
 using IPLab.Core.Operators;
 using OpenCvSharp;
 
@@ -14,7 +15,7 @@ public class UndistortOperatorTests
 
     private static string WriteCalib(double k1, int w = 64, int h = 48)
     {
-        var data = new CalibrationData
+        var data = new UndistortCalibrationData
         {
             ImageWidth  = w,
             ImageHeight = h,
