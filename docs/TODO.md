@@ -17,6 +17,8 @@
 
 ## IPLab (UI project)
 
+- **Save inspector image to file** — add a "Save image…" button or right-click context menu item in the inspector image panel. Opens a `SaveFileDialog` filtered to JPEG and PNG. Saves the currently displayed `BitmapSource` (the operator's display-image output, without overlay shapes) to the chosen path. The default filename should include the operator display name and a timestamp.
+
 - **FPS counter in status bar during continuous run** — while `IsRunningContinuous` is active, replace or augment the status bar text at the bottom right with a live FPS readout (e.g. "12 fps"). Measure wall-clock time between consecutive `UpdateSelectedImage` calls and display a rolling average. Hide the counter when continuous run stops.
 
 - **Per-operator execution timing** — record how long each operator's `Execute` call takes (wall-clock, excluding queue wait). Display the duration in the bottom-right corner of the operator node (e.g. "14 ms") so the user can spot bottlenecks at a glance. Also surface the timing in the Data tab of the inspector when that operator is selected. Store timings inside `FlowEx` alongside `IntermediateResults`; reset on `ClearResults`.
@@ -75,11 +77,17 @@
 
 ## IPLab.Core
 
+- **`DistortionCalibrationOperator` — auto kernel size and threshold** — when `KernelHalfSize=0` or `MinResponse=0`, derive the value automatically. For kernel size: run an initial pass with a small default (halfSize=7), use K=4 NN median on strict-threshold (0.55) peaks to estimate corner pitch P, then set `halfSize=round(P/2)` and recompute the saddle magnitude. For threshold: use 0.45 as a floor (ranked-threshold approaches caused calibration drift). Main open problem: with `halfSize≈P/2` the saddle blobs of adjacent corners overlap ~50%, weakening some border corners below threshold. An NMS-free approach — find all pixels above threshold, group nearby hits, keep the local max per group — may be more robust. Related: `Undistort_RectifiesCheckerboardToHorizontal` only covers small-tilt images; large-tilt undistortions create wide black borders whose edges generate false saddle responses that confuse InferGrid — auto mode would pick a better threshold adaptively.
+
 - **Replace `GaussianBlur` with `NoiseFilter` operator** — retire `GaussianBlurOperator` and replace it with a `NoiseFilterOperator` that exposes a `Method` enum (`Gaussian` / `Median`). Gaussian keeps its existing `KernelSize` and `Sigma` parameters (shown always / shown when Method=Gaussian respectively); Median only needs `KernelSize`. Both support ROI via `ApplyImageFilter`. Existing `.ipl` files that reference type `GaussianBlur` will need migration (sed rename + add `Method=Gaussian`).
 
 ## IPLab.Core (Architecture)
 
+- **Extract peak-finding into a shared algorithm service** — `TemplateMatchOperator` contains peak-finding logic over a response image (finding the N strongest local maxima above a threshold). Once that branch is merged, evaluate extracting this into a reusable internal helper (e.g. `PeakFinder` in `IPLab.Core.Algorithms`) and wiring it into `DistortionCalibrationOperator` as well, which does the same kind of saddle-response peak extraction. Deduplication also makes it easier to tune NMS radius and threshold strategies in one place.
+
 - **Uniform operator return convention** — `Execute` currently returns the value directly for single-output operators and a `Dictionary<string, object?>` for multi-output ones; `FlowEx.ResolveParameters` branches on `OutputPorts.Count` to handle both. This is an implicit convention that's easy to get wrong. Change `IOperatorType.Execute` return type from `object?` to `IReadOnlyDictionary<string, object?>`, update all operators to always return a dictionary keyed by port name, and simplify `ResolveParameters` to always extract by port name — eliminating the count-based branch. The interface change makes the compiler enforce the convention.
+
+- **Formalize operator success/failure signalling** — currently operators signal failure only by throwing an exception. For detection/calibration operators that "found nothing" this is a logical failure, not an error, but there is no typed contract for it. Consider a convention such as a well-known `bool` port (e.g. `Found`) checked by `FlowEx` to mark the node red without treating it as an unhandled exception, or an `IOperatorResult` wrapper that carries both the outputs and a success flag. Either approach should be decided together with the uniform return convention above so the two land as a single interface change.
 
 - **Multiple LoadImage operators in one flow** — the current design assumes a single `LoadImageOperator` as the flow's image source. When multiple loaders exist (e.g. for a two-image comparison flow), the following are unresolved: which loader's thumbnail strip is shown and where; whether switching the active image on one loader triggers a full re-run or only the sub-graph downstream of that loader; and how `FlowEx` resolves execution order when two independent source nodes both feed the same downstream operator. Define the execution and UI model before adding multi-source flows.
 

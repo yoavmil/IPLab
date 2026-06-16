@@ -1,6 +1,8 @@
 using System.Text.Json;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
+using IPLab.Core.Spatial;
+using IPLab.Core.Utilities;
 using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
@@ -17,14 +19,14 @@ public class DistortionCalibrationOperator : IOperatorType
     /// <inheritdoc/>
     public string Category => "Calibration";
     /// <inheritdoc/>
-    public string Icon     => "calibration";
+    public string Icon => "calibration";
 
     /// <inheritdoc/>
     public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
     [
         new() { Name = "Image",          Label = "Image",                 ConnectableType = typeof(Mat) },
         new() { Name = "KernelHalfSize", Label = "Square Half-Size (px)", Type = ParameterType.Int,    DefaultValue = 7,    Min = 2 },
-        new() { Name = "MinResponse",    Label = "Min Response",          Type = ParameterType.Double, DefaultValue = 0.45, Min = 0.0, Max = 1.0 },
+        new() { Name = "MinResponse",    Label = "Min Response",           Type = ParameterType.Double, DefaultValue = 0.45, Min = 0.0, Max = 1.0 },
         new() { Name = "ShowHeatmap",    Label = "Show Response Heatmap", Type = ParameterType.Bool,   DefaultValue = false },
         new() { Name = "ShowLabels",     Label = "Show Grid Indices",     Type = ParameterType.Bool,   DefaultValue = false },
         new() { Name = "AnchorX",        Label = "Anchor X",              Type = ParameterType.Double, DefaultValue = 0.5,  Min = 0.0, Max = 1.0 },
@@ -43,7 +45,6 @@ public class DistortionCalibrationOperator : IOperatorType
         new() { Name = "Corners",          DataType = typeof(Point2f[]) },
         new() { Name = "ObjectPoints",     DataType = typeof(Point3f[]) },
         new() { Name = "InlierCount",      DataType = typeof(int) },
-        new() { Name = "Found",            DataType = typeof(bool) },
         new() { Name = "RotationAngleDeg", DataType = typeof(double) },
         new() { Name = "CalibFilePath",    DataType = typeof(string) },
     ];
@@ -51,14 +52,14 @@ public class DistortionCalibrationOperator : IOperatorType
     /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
     {
-        var image       = (Mat)parameters["Image"]!;
-        int halfSize    = Math.Max(2, Convert.ToInt32(parameters.GetValueOrDefault("KernelHalfSize") ?? 7));
-        var minResp     = (float)Convert.ToDouble(parameters.GetValueOrDefault("MinResponse") ?? 0.45);
+        var image = (Mat)parameters["Image"]!;
+        int halfSizeParam = Convert.ToInt32(parameters.GetValueOrDefault("KernelHalfSize") ?? 0);
+        var minResp = (float)Convert.ToDouble(parameters.GetValueOrDefault("MinResponse") ?? 0.0);
         bool showHeat   = Convert.ToBoolean(parameters.GetValueOrDefault("ShowHeatmap")  ?? false);
         bool showLabels = Convert.ToBoolean(parameters.GetValueOrDefault("ShowLabels")   ?? false);
-        double anchorX  = Convert.ToDouble(parameters.GetValueOrDefault("AnchorX")       ?? 0.5);
-        double anchorY  = Convert.ToDouble(parameters.GetValueOrDefault("AnchorY")       ?? 0.5);
-        var outPath     = parameters.GetValueOrDefault("OutputFilePath") as string;
+        double anchorX  = Convert.ToDouble(parameters.GetValueOrDefault("AnchorX") ?? 0.5);
+        double anchorY  = Convert.ToDouble(parameters.GetValueOrDefault("AnchorY") ?? 0.5);
+        var outPath = parameters.GetValueOrDefault("OutputFilePath") as string;
 
         if (image.Channels() != 1)
             throw new ArgumentException("DistortionCalibration requires a single-channel (grayscale) image.");
@@ -66,81 +67,100 @@ public class DistortionCalibrationOperator : IOperatorType
         using var imageF = new Mat();
         image.ConvertTo(imageF, MatType.CV_32F);
 
+        int halfSize = Math.Max(2, halfSizeParam);
+
+        // ComputeSaddleMagnitude returns a Mat the caller must dispose.
         // K₀ (axis-aligned) and K₄₅ (diagonal) are orthogonal checkerboard kernels.
         // sqrt(R₀² + R₄₅²) is invariant to checkerboard rotation angle.
+        var mag = ComputeSaddleMagnitude(imageF, halfSize);
+        try
+        {
+            var corners = FindPeaks(mag, minResp);
+
+            if (corners.Length > 0)
+            {
+                int win = Math.Max(2, halfSize / 2);
+                corners = Cv2.CornerSubPix(imageF, corners,
+                    new Size(win, win), new Size(-1, -1),
+                    new TermCriteria(CriteriaTypes.Eps | CriteriaTypes.MaxIter, 40, 0.001));
+            }
+
+            var grid = InferGrid(corners, image.Width, image.Height, halfSize, anchorX, anchorY);
+            if (!grid.Found)
+                throw new InvalidOperationException("Checkerboard grid not found: too few inlier corners.");
+
+            var gridLines = BuildGridLines(grid);
+
+            string? calibPath = null;
+            if (!string.IsNullOrWhiteSpace(outPath))
+            {
+                var calibCorners = new List<CornerRecord>(grid.Cells.Length);
+                for (int k = 0; k < grid.Cells.Length; k++)
+                    calibCorners.Add(new CornerRecord
+                    {
+                        Col  = grid.Cells[k].I,
+                        Row  = grid.Cells[k].J,
+                        ImgX = grid.ImagePoints[k].X,
+                        ImgY = grid.ImagePoints[k].Y,
+                    });
+
+                CalibrationHelpers.Save(new CalibrationData
+                {
+                    ImageWidth       = image.Width,
+                    ImageHeight      = image.Height,
+                    AnchorX          = anchorX,
+                    AnchorY          = anchorY,
+                    RotationAngleDeg = grid.RotationAngleDeg,
+                    Corners          = calibCorners,
+                }, outPath);
+                calibPath = outPath;
+            }
+
+            return new Dictionary<string, object?>
+            {
+                ["Image"]          = showHeat   ? BuildHeatmap(mag)
+                                   : showLabels ? BuildLabelImage(image, grid)
+                                   : null,
+                ["GridCorners"]    = grid.ImagePoints,
+                ["GridLines"]      = gridLines,
+                ["Corners"]        = corners,
+                ["ObjectPoints"]   = grid.ObjectPoints,
+                ["InlierCount"]    = grid.ImagePoints.Length,
+                ["RotationAngleDeg"] = grid.RotationAngleDeg,
+                ["CalibFilePath"]  = calibPath,
+            };
+        }
+        finally
+        {
+            mag.Dispose();
+        }
+    }
+
+    // Returns a new Mat (caller must dispose) containing the saddle-filter magnitude response.
+    static Mat ComputeSaddleMagnitude(Mat imageF, int halfSize)
+    {
         using var k0  = BuildCheckerboardKernel(halfSize, diagonal: false);
         using var k45 = BuildCheckerboardKernel(halfSize, diagonal: true);
-
         using var r0  = new Mat();
         using var r45 = new Mat();
         Cv2.Filter2D(imageF, r0,  MatType.CV_32F, k0);
         Cv2.Filter2D(imageF, r45, MatType.CV_32F, k45);
-
-        using var mag = new Mat();
+        var mag = new Mat();
         Cv2.Magnitude(r0, r45, mag);
-
-        var corners = FindPeaks(mag, halfSize, minResp);
-
-        if (corners.Length > 0)
-        {
-            int win = Math.Max(2, halfSize / 2);
-            corners = Cv2.CornerSubPix(imageF, corners,
-                new Size(win, win), new Size(-1, -1),
-                new TermCriteria(CriteriaTypes.Eps | CriteriaTypes.MaxIter, 40, 0.001));
-        }
-
-        var grid      = InferGrid(corners, image.Width, image.Height, halfSize, anchorX, anchorY);
-        var gridLines = BuildGridLines(grid);
-
-        string? calibPath = null;
-        if (grid.Found && !string.IsNullOrWhiteSpace(outPath))
-        {
-            var calibCorners = new List<CornerRecord>(grid.Cells.Length);
-            for (int k = 0; k < grid.Cells.Length; k++)
-                calibCorners.Add(new CornerRecord
-                {
-                    Col  = grid.Cells[k].I,
-                    Row  = grid.Cells[k].J,
-                    ImgX = grid.ImagePoints[k].X,
-                    ImgY = grid.ImagePoints[k].Y,
-                });
-
-            CalibrationHelpers.Save(new CalibrationData
-            {
-                ImageWidth       = image.Width,
-                ImageHeight      = image.Height,
-                AnchorX          = anchorX,
-                AnchorY          = anchorY,
-                RotationAngleDeg = grid.RotationAngleDeg,
-                Corners          = calibCorners,
-            }, outPath);
-            calibPath = outPath;
-        }
-
-        return new Dictionary<string, object?>
-        {
-            ["Image"]            = showHeat   ? BuildHeatmap(mag)
-                                : showLabels ? BuildLabelImage(image, grid)
-                                :              null,
-            ["GridCorners"]      = grid.ImagePoints,
-            ["GridLines"]        = gridLines,
-            ["Corners"]          = corners,
-            ["ObjectPoints"]     = grid.ObjectPoints,
-            ["InlierCount"]      = grid.ImagePoints.Length,
-            ["Found"]            = grid.Found,
-            ["RotationAngleDeg"] = grid.RotationAngleDeg,
-            ["CalibFilePath"]    = calibPath,
-        };
+        return mag;
     }
 
     // ── constants ────────────────────────────────────────────────────────────
 
-    private const int    MinInliers        = 12;
-    private const double MinFill           = 0.5;
-    private const double LocalTolFraction  = 0.35;
-    private const double OutlierTolFraction = 0.05;
+    private const int    MinInliers           = 12;
+    private const double LocalTolFraction     = 0.35;  // RegionGrow acceptance tolerance
+    private const double LookupRadiusFraction = 0.5;   // RegionGrow search radius; also bucket cellSize (→ 9-bucket lookup)
+    // Cell size used for the raw-corner grid (EstimatePitch + FilterByPitchConsistency).
+    // 64 px matches EstimatePitch's initial search envelope so the first Query ring = 9 buckets.
+    private const double RawGridCellSize = 64.0;
+    private const double OutlierTolFraction   = 0.05;
     // Maximum number of seeds to try; ordered nearest-to-anchor first.
-    private const int    MaxSeeds          = 49;
+    private const int MaxSeeds = 49;
 
     // ── private record types ─────────────────────────────────────────────────
 
@@ -154,18 +174,9 @@ public class DistortionCalibrationOperator : IOperatorType
         public static GridInference Empty { get; } = new(false, [], [], [], 0.0);
     }
 
-    private sealed record CandidateGrid(
-        int InlierCount,
-        double MeanResidual,
-        double Fill,
-        Point2f Origin,
-        CandidateVector AxisA,
-        CandidateVector AxisB,
-        IReadOnlyDictionary<Cell, MatchedCell> Cells);
-
-    private readonly record struct CandidateVector(Point2f Value, double Length);
     private readonly record struct Cell(int I, int J);
-    private readonly record struct MatchedCell(Point2f Point, double Residual);
+    // CornerIdx is stored so replacement logic can correctly update the used set.
+    private readonly record struct MatchedCell(Point2f Point, double Residual, int CornerIdx);
 
     // ── detection ────────────────────────────────────────────────────────────
 
@@ -174,50 +185,52 @@ public class DistortionCalibrationOperator : IOperatorType
     // K₄₅ (diagonal=true): four diagonal sectors — top/bottom ±1, left/right ∓1.
     static Mat BuildCheckerboardKernel(int halfSize, bool diagonal)
     {
-        int ksize   = halfSize * 2;
-        var kernel  = new Mat(ksize, ksize, MatType.CV_32F);
+        int ksize  = halfSize * 2;
+        var kernel = new Mat(ksize, ksize, MatType.CV_32F);
         var indexer = kernel.GetGenericIndexer<float>();
-        int count   = 0;
+        int count = 0;
 
         for (int r = 0; r < ksize; r++)
-        for (int c = 0; c < ksize; c++)
-        {
-            float dr = r - halfSize + 0.5f;
-            float dc = c - halfSize + 0.5f;
-            float val;
-
-            if (diagonal)
+            for (int c = 0; c < ksize; c++)
             {
-                float d = MathF.Abs(dr) - MathF.Abs(dc);
-                val = d > 0f ? 1f : d < 0f ? -1f : 0f;
-            }
-            else
-            {
-                val = (dr < 0f) == (dc < 0f) ? 1f : -1f;
-            }
+                float dr = r - halfSize + 0.5f;
+                float dc = c - halfSize + 0.5f;
+                float val;
 
-            indexer[r, c] = val;
-            if (val != 0f) count++;
-        }
+                if (diagonal)
+                {
+                    float d = MathF.Abs(dr) - MathF.Abs(dc);
+                    val = d > 0f ? 1f : d < 0f ? -1f : 0f;
+                }
+                else
+                {
+                    val = (dr < 0f) == (dc < 0f) ? 1f : -1f;
+                }
+
+                indexer[r, c] = val;
+                if (val != 0f) count++;
+            }
 
         float norm = 1f / count;
         for (int r = 0; r < ksize; r++)
-        for (int c = 0; c < ksize; c++)
-            if (indexer[r, c] != 0f) indexer[r, c] *= norm;
+            for (int c = 0; c < ksize; c++)
+                if (indexer[r, c] != 0f) indexer[r, c] *= norm;
 
         return kernel;
     }
 
-    // Dilation-based NMS, then threshold relative to the global max.
-    static Point2f[] FindPeaks(Mat mag, int suppressionRadius, float relativeThreshold)
+    // 3×3 local maxima (8-connected) above a threshold relative to the global maximum.
+    // Using the immediate neighbourhood instead of a large fixed window means no corner
+    // is suppressed by a stronger adjacent corner — even at the image border, where the
+    // saddle response is slightly weaker due to partial filter support.
+    static Point2f[] FindPeaks(Mat mag, float relativeThreshold)
     {
         Cv2.MinMaxLoc(mag, out _, out double maxVal);
         if (maxVal <= 0) return [];
 
-        int nmsSize = suppressionRadius * 2 + 1;
-        using var se      = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(nmsSize, nmsSize));
+        using var se3 = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(3, 3));
         using var dilated = new Mat();
-        Cv2.Dilate(mag, dilated, se);
+        Cv2.Dilate(mag, dilated, se3, borderType: BorderTypes.Isolated);
 
         using var isLocalMax = new Mat();
         Cv2.Compare(mag, dilated, isLocalMax, CmpTypes.GE);
@@ -230,71 +243,91 @@ public class DistortionCalibrationOperator : IOperatorType
         using var peaks = new Mat();
         Cv2.BitwiseAnd(isLocalMax, aboveThresh, peaks);
 
-        var result  = new List<Point2f>();
-        var pkIndex = peaks.GetGenericIndexer<byte>();
-        for (int r = 0; r < peaks.Rows; r++)
-        for (int c = 0; c < peaks.Cols; c++)
-            if (pkIndex[r, c] != 0)
-                result.Add(new Point2f(c, r));
-        return [.. result];
+        var pts = peaks.FindNonZeroPoints();
+        var result = new Point2f[pts.Length];
+        for (int i = 0; i < pts.Length; i++) result[i] = new Point2f(pts[i].X, pts[i].Y);
+        return result;
+       
     }
 
-    // ── pitch pre-filter ─────────────────────────────────────────────────────
-
-    // Median of K=4 nearest-neighbour distances across all corners.
-    // For a checkerboard the 4 nearest neighbours are the adjacent crossings, all at pitch P.
-    static float EstimatePitch(Point2f[] corners)
+    // K=4 nearest-neighbour distance median using BucketGrid, O(N).
+    // Growing search radius avoids assuming a pitch scale in advance.
+    static float EstimatePitch(BucketGrid rawGrid)
     {
         const int K = 4;
-        var distances = new List<float>(corners.Length * K);
-
-        for (int i = 0; i < corners.Length; i++)
+        var distances = new List<float>(rawGrid.Count * K);
+        for (int i = 0; i < rawGrid.Count; i++)
         {
-            var dists = new List<float>(corners.Length - 1);
-            for (int j = 0; j < corners.Length; j++)
+            var pt = rawGrid[i];
+            for (double r = RawGridCellSize; r <= 4096.0; r *= 2.0)
             {
-                if (j == i) continue;
-                float dx = corners[i].X - corners[j].X;
-                float dy = corners[i].Y - corners[j].Y;
-                dists.Add(MathF.Sqrt(dx * dx + dy * dy));
+                var buf = rawGrid.Query(pt, r);
+                var nearest = buf
+                    .Where(j => j != i)
+                    .Select(j => { double dx = rawGrid[j].X - pt.X, dy = rawGrid[j].Y - pt.Y; return (float)Math.Sqrt(dx * dx + dy * dy); })
+                    .OrderBy(d => d)
+                    .Take(K)
+                    .ToList();
+                if (nearest.Count >= K) { distances.AddRange(nearest); break; }
             }
-            dists.Sort();
-            int take = Math.Min(K, dists.Count);
-            for (int k = 0; k < take; k++)
-                distances.Add(dists[k]);
         }
-
         if (distances.Count == 0) return 1f;
         distances.Sort();
         return distances[distances.Count / 2];
     }
 
-    // Discard corners that have fewer than 2 neighbours within [0.6P, 1.4P].
-    // This removes isolated false positives (no grid-adjacent neighbours at the right distance)
-    // without discarding corners inside the board.
-    static Point2f[] FilterByPitchConsistency(Point2f[] corners, float pitch)
+    // Discard corners with fewer than 2 neighbours in [0.6P, 1.4P] using BucketGrid, O(N).
+    // Removes isolated false positives that have no grid-adjacent neighbours at the right pitch distance.
+    static Point2f[] FilterByPitchConsistency(BucketGrid rawGrid, float pitch)
     {
-        double loSq = (double)(pitch * 0.6f) * (pitch * 0.6f);
-        double hiSq = (double)(pitch * 1.4f) * (pitch * 1.4f);
-
-        var result = new List<Point2f>(corners.Length);
-        for (int i = 0; i < corners.Length; i++)
+        double lo = pitch * 0.6, hi = pitch * 1.4;
+        double loSq = lo * lo, hiSq = hi * hi;
+        var result = new List<Point2f>(rawGrid.Count);
+        for (int i = 0; i < rawGrid.Count; i++)
         {
+            var pt = rawGrid[i];
+            var buf = rawGrid.Query(pt, hi);
             int count = 0;
-            for (int j = 0; j < corners.Length; j++)
+            foreach (int j in buf)
             {
                 if (j == i) continue;
-                double dx = corners[i].X - corners[j].X;
-                double dy = corners[i].Y - corners[j].Y;
+                double dx = rawGrid[j].X - pt.X, dy = rawGrid[j].Y - pt.Y;
                 double dSq = dx * dx + dy * dy;
                 if (dSq >= loSq && dSq <= hiSq && ++count >= 2) break;
             }
-            if (count >= 2) result.Add(corners[i]);
+            if (count >= 2) result.Add(pt);
         }
         return [.. result];
     }
 
-    // ── grid inference ────────────────────────────────────────────────────────
+    // ── grid inference ────────────────────────────────────────────────────────────
+
+    // Swap axes so axisA is the more horizontal vector, then flip each to canonical direction:
+    // axisA points right (positive image X), axisB points upward (negative image Y).
+    static (Point2f axisA, Point2f axisB) CanonicalizeAxes(
+        Point2f va, double lenA, Point2f vb, double lenB)
+    {
+        if (Math.Abs(vb.X) / lenB > Math.Abs(va.X) / lenA)
+            (va, vb) = (vb, va);
+        if (va.X < 0) va = new Point2f(-va.X, -va.Y);
+        if (vb.Y > 0) vb = new Point2f(-vb.X, -vb.Y);
+        return (va, vb);
+    }
+
+
+    // Score = count × fill; higher score favours grids that are both dense and complete.
+    static double ScoreGrid(Dictionary<Cell, MatchedCell> cells)
+    {
+        if (cells.Count < MinInliers) return 0;
+        int minI = int.MaxValue, maxI = int.MinValue, minJ = int.MaxValue, maxJ = int.MinValue;
+        foreach (var c in cells.Keys)
+        {
+            if (c.I < minI) minI = c.I; if (c.I > maxI) maxI = c.I;
+            if (c.J < minJ) minJ = c.J; if (c.J > maxJ) maxJ = c.J;
+        }
+        int cols = maxI - minI + 1, rows = maxJ - minJ + 1;
+        return cells.Count * ((double)cells.Count / (cols * rows));
+    }
 
     static GridInference InferGrid(
         Point2f[] rawCorners, int width, int height, int edgeMargin,
@@ -302,205 +335,132 @@ public class DistortionCalibrationOperator : IOperatorType
     {
         if (rawCorners.Length < MinInliers) return GridInference.Empty;
 
-        // Pre-filter: remove isolated corners that have no pitch-consistent neighbours.
-        float pitch    = EstimatePitch(rawCorners);
-        var   corners  = FilterByPitchConsistency(rawCorners, pitch);
+        var rawGrid = new BucketGrid(rawCorners, RawGridCellSize);
+        float pitch  = EstimatePitch(rawGrid);
+        var corners  = FilterByPitchConsistency(rawGrid, pitch);
         if (corners.Length < MinInliers) return GridInference.Empty;
 
-        // Anchor-first seed ordering: try corners nearest the user's anchor point first so
-        // the winning basis is anchored in the region the user cares about most.
+        double lookupRadius = Math.Max(2.0, pitch * LookupRadiusFraction);
+        var grid = new BucketGrid(corners, lookupRadius);
+
+        double loSq = (double)(pitch * 0.7f) * (pitch * 0.7f);
+        double hiSq = (double)(pitch * 1.3f) * (pitch * 1.3f);
+
         var anchorPt = new Point2f((float)(anchorX * width), (float)(anchorY * height));
-        var orderedSeeds = corners
-            .Select((p, i) => (i, dSq: DistanceSquared(p, anchorPt)))
+        var orderedSeeds = Enumerable.Range(0, grid.Count)
+            .Select(i => (i, dSq: DistSq(grid[i], anchorPt)))
             .OrderBy(x => x.dSq)
             .Take(MaxSeeds)
             .Select(x => x.i)
             .ToArray();
 
-        CandidateGrid? best = null;
-        foreach (int idx in orderedSeeds)
+        Dictionary<Cell, MatchedCell>? best = null;
+        double bestScore = 0;
+        var usedBuf = new bool[grid.Count];
+
+        foreach (int seedIdx in orderedSeeds)
         {
-            var candidate = TryBuildGridFromOrigin(corners, idx, pitch);
-            if (candidate is not null && IsBetter(candidate, best))
-                best = candidate;
+            var origin = grid[seedIdx];
+            var neighborBuf = grid.Query(origin, pitch * 1.3f);
+
+            var neighbors = neighborBuf
+                .Where(i => i != seedIdx)
+                .Select(i => (i, pt: grid[i], dSq: DistSq(grid[i], origin)))
+                .Where(x => x.dSq >= loSq && x.dSq <= hiSq)
+                .Select(x => (x.pt, x.i, len: Math.Sqrt(x.dSq)))
+                .ToArray();
+
+            // After CanonicalizeAxes, all truly-perpendicular pairs from the same checkerboard
+            // produce identical axes — trying every pair is redundant. Pick the single most-
+            // perpendicular pair (minimum |cos|) per seed.
+            int bestAi = -1, bestBi = -1;
+            double bestAbsCos = 0.5; // pairs with |cos| ≥ 0.5 are not perpendicular enough
+            for (int ai = 0; ai < neighbors.Length; ai++)
+            {
+                var va = neighbors[ai].pt - origin;
+                for (int bi = ai + 1; bi < neighbors.Length; bi++)
+                {
+                    var vb = neighbors[bi].pt - origin;
+                    double cos = Math.Abs(va.X * vb.X + va.Y * vb.Y)
+                                 / (neighbors[ai].len * neighbors[bi].len);
+                    if (cos < bestAbsCos) { bestAbsCos = cos; bestAi = ai; bestBi = bi; }
+                }
+            }
+            if (bestAi < 0) continue;
+
+            {
+                var (pa, _, lenA) = neighbors[bestAi];
+                var (pb, _, lenB) = neighbors[bestBi];
+                var (axisA, axisB) = CanonicalizeAxes(pa - origin, lenA, pb - origin, lenB);
+                Array.Clear(usedBuf, 0, usedBuf.Length);
+                var grown = RegionGrow(grid, origin, axisA, axisB, pitch, usedBuf);
+                double score = ScoreGrid(grown);
+                if (score > bestScore) { best = grown; bestScore = score; }
+            }
         }
 
-        if (best is null) return GridInference.Empty;
+        if (best is null || best.Count < MinInliers) return GridInference.Empty;
 
-        // Grow the grid outward from the winner, tracking lens distortion cell-by-cell.
-        var index = new CornerIndex(corners,
-            Math.Max(1.0, Math.Min(best.AxisA.Length, best.AxisB.Length)));
-        var grown = RegionGrow(corners, index, best.Origin, best.AxisA, best.AxisB);
+        RejectOutliers(best, pitch);
+        if (best.Count < MinInliers) return GridInference.Empty;
 
-        RejectOutliers(grown, Math.Min(best.AxisA.Length, best.AxisB.Length));
-        if (grown.Count < MinInliers) return GridInference.Empty;
-
-        // Drop corners within edgeMargin of any border — saddle kernel bias.
+        // Drop corners within edgeMargin of any border — saddle kernel bias near image edges.
         if (edgeMargin > 0)
         {
-            var edgeCells = grown
+            var edgeCells = best
                 .Where(kv =>
                     kv.Value.Point.X < edgeMargin || kv.Value.Point.X >= width  - edgeMargin ||
                     kv.Value.Point.Y < edgeMargin || kv.Value.Point.Y >= height - edgeMargin)
                 .Select(kv => kv.Key)
                 .ToList();
-            foreach (var cell in edgeCells) grown.Remove(cell);
-            if (grown.Count < MinInliers) return GridInference.Empty;
+            foreach (var cell in edgeCells) best.Remove(cell);
+            if (best.Count < MinInliers) return GridInference.Empty;
         }
 
-        // Orient axes: I→right (positive image X), J→up (negative image Y).
-        {
-            double mI = grown.Average(kv => (double)kv.Key.I);
-            double mJ = grown.Average(kv => (double)kv.Key.J);
-            double mX = grown.Average(kv => (double)kv.Value.Point.X);
-            double mY = grown.Average(kv => (double)kv.Value.Point.Y);
-            bool flipI = grown.Sum(kv => (kv.Key.I - mI) * (kv.Value.Point.X - mX)) < 0;
-            bool flipJ = grown.Sum(kv => (kv.Key.J - mJ) * (kv.Value.Point.Y - mY)) > 0;
-            if (flipI || flipJ)
-            {
-                var reoriented = new Dictionary<Cell, MatchedCell>(grown.Count);
-                foreach (var (cell, match) in grown)
-                    reoriented[new Cell(flipI ? -cell.I : cell.I, flipJ ? -cell.J : cell.J)] = match;
-                grown = reoriented;
-            }
-        }
+        double rotAngle = ComputeRotationAngle(best);
 
-        double rotAngle = ComputeRotationAngle(grown);
+        int minI = best.Keys.Min(c => c.I);
+        int minJ = best.Keys.Min(c => c.J);
 
-        int minI = grown.Keys.Min(c => c.I);
-        int minJ = grown.Keys.Min(c => c.J);
-
-        int n            = grown.Count;
+        // Sort by row then column for stable, debuggable output.
+        var sorted = best.OrderBy(kv => kv.Key.J - minJ).ThenBy(kv => kv.Key.I - minI).ToArray();
+        int n = sorted.Length;
         var imagePoints  = new Point2f[n];
         var objectPoints = new Point3f[n];
         var cellList     = new Cell[n];
-        int idx2         = 0;
-        foreach (var (cell, match) in grown)
+        for (int k = 0; k < n; k++)
         {
-            int ni = cell.I - minI;
-            int nj = cell.J - minJ;
-            imagePoints[idx2]  = match.Point;
-            objectPoints[idx2] = new Point3f(ni, nj, 0f);
-            cellList[idx2]     = new Cell(ni, nj);
-            idx2++;
+            var (cell, match) = sorted[k];
+            int ni = cell.I - minI, nj = cell.J - minJ;
+            imagePoints[k]  = match.Point;
+            objectPoints[k] = new Point3f(ni, nj, 0f);
+            cellList[k]     = new Cell(ni, nj);
         }
 
         return new GridInference(true, imagePoints, objectPoints, cellList, rotAngle);
     }
 
-    // Builds a grid hypothesis from the corner at originIndex.
-    // Only considers axis candidates whose distance is within [0.7P, 1.3P] (pitch constraint),
-    // then checks perpendicularity (|cos θ| < 0.5). This replaces the old MaxA/MaxB approach
-    // and eliminates false-positive axes whose pitch is a fraction or multiple of the true pitch.
-    static CandidateGrid? TryBuildGridFromOrigin(Point2f[] corners, int originIndex, float pitch)
-    {
-        var origin = corners[originIndex];
-        double loSq = (double)(pitch * 0.7f) * (pitch * 0.7f);
-        double hiSq = (double)(pitch * 1.3f) * (pitch * 1.3f);
-
-        var neighbors = corners
-            .Select((p, i) => (p, i, dSq: DistanceSquared(p, origin)))
-            .Where(x => x.i != originIndex && x.dSq >= loSq && x.dSq <= hiSq)
-            .OrderBy(x => x.dSq)
-            .Select(x => (x.p, x.i, d: Math.Sqrt(x.dSq)))
-            .ToArray();
-
-        if (neighbors.Length < 2) return null;
-
-        CandidateGrid? best = null;
-
-        for (int ai = 0; ai < neighbors.Length; ai++)
-        {
-            var (pa, _, lenA) = neighbors[ai];
-            var axisA = pa - origin;
-
-            for (int bi = ai + 1; bi < neighbors.Length; bi++)
-            {
-                var (pb, _, lenB) = neighbors[bi];
-                var axisB  = pb - origin;
-                double cos = Math.Abs((double)(axisA.X * axisB.X + axisA.Y * axisB.Y))
-                           / (lenA * lenB);
-                if (cos > 0.5) continue;
-
-                var candidate = ScoreGridCandidate(origin,
-                    new CandidateVector(axisA, lenA),
-                    new CandidateVector(axisB, lenB),
-                    corners);
-                if (candidate is not null && IsBetter(candidate, best))
-                    best = candidate;
-            }
-        }
-
-        return best;
-    }
-
-    static CandidateGrid? ScoreGridCandidate(
-        Point2f origin, CandidateVector axisA, CandidateVector axisB, Point2f[] corners)
-    {
-        double det = Cross(axisA.Value, axisB.Value);
-        if (Math.Abs(det) < 1e-6) return null;
-
-        double tolerance   = Math.Max(2.0, Math.Min(axisA.Length, axisB.Length) * 0.2);
-        double toleranceSq = tolerance * tolerance;
-        var cells          = new Dictionary<Cell, MatchedCell>();
-
-        foreach (var point in corners)
-        {
-            var    rel = point - origin;
-            double fa  = Cross(rel, axisB.Value) / det;
-            double fb  = Cross(axisA.Value, rel) / det;
-            int    i   = (int)Math.Round(fa, MidpointRounding.AwayFromZero);
-            int    j   = (int)Math.Round(fb, MidpointRounding.AwayFromZero);
-
-            var    predicted  = origin + axisA.Value * i + axisB.Value * j;
-            double residualSq = DistanceSquared(point, predicted);
-            if (residualSq > toleranceSq) continue;
-
-            var cell     = new Cell(i, j);
-            var residual = Math.Sqrt(residualSq);
-            if (!cells.TryGetValue(cell, out var existing) || residual < existing.Residual)
-                cells[cell] = new MatchedCell(point, residual);
-        }
-
-        if (cells.Count < MinInliers) return null;
-
-        int minI = cells.Keys.Min(c => c.I), maxI = cells.Keys.Max(c => c.I);
-        int minJ = cells.Keys.Min(c => c.J), maxJ = cells.Keys.Max(c => c.J);
-        int cols = maxI - minI + 1, rows = maxJ - minJ + 1;
-        if (cols < 2 || rows < 2) return null;
-
-        double fill = (double)cells.Count / (cols * rows);
-        if (fill < MinFill) return null;
-
-        double meanResidual = cells.Values.Sum(m => m.Residual) / cells.Count;
-        return new CandidateGrid(cells.Count, meanResidual, fill, origin, axisA, axisB, cells);
-    }
-
-    static bool IsBetter(CandidateGrid candidate, CandidateGrid? best)
-    {
-        if (best is null) return true;
-        double scoreC = candidate.InlierCount * candidate.Fill;
-        double scoreB = best.InlierCount      * best.Fill;
-        if (Math.Abs(scoreC - scoreB) > 1.0) return scoreC > scoreB;
-        return candidate.MeanResidual < best.MeanResidual;
-    }
-
     // ── region grow + outlier rejection ───────────────────────────────────────
 
+    // Grows a grid BFS from origin using axes already canonicalized (axisA→right, axisB→up).
+    // For each predicted cell position, queries all candidates within lookupRadius and picks
+    // the one with the lowest residual — never "first match wins."
+    // Caller must zero-fill usedBuf before each call; it is reused across seeds to avoid allocations.
     static Dictionary<Cell, MatchedCell> RegionGrow(
-        Point2f[] corners, CornerIndex index, Point2f origin,
-        CandidateVector axisA, CandidateVector axisB)
+        BucketGrid grid, Point2f origin, Point2f axisA, Point2f axisB, double pitch, bool[] usedBuf)
     {
-        double pitch     = Math.Min(axisA.Length, axisB.Length);
-        double tolerance = Math.Max(2.0, pitch * LocalTolFraction);
+        double lookupRadius = Math.Max(2.0, pitch * LookupRadiusFraction);
+        double acceptTol    = Math.Max(2.0, pitch * LocalTolFraction);
 
         var cells = new Dictionary<Cell, MatchedCell>();
-        var used  = new HashSet<int>();
 
-        int seedIdx = index.FindNearest(origin, tolerance, used);
+        int seedIdx = grid.FindNearest(origin, lookupRadius, usedBuf);
         if (seedIdx < 0) return cells;
-        cells[new Cell(0, 0)] = new MatchedCell(corners[seedIdx], 0.0);
-        used.Add(seedIdx);
+        double seedRes = Math.Sqrt(DistSq(grid[seedIdx], origin));
+        if (seedRes > acceptTol) return cells;
+
+        cells[new Cell(0, 0)] = new MatchedCell(grid[seedIdx], seedRes, seedIdx);
+        usedBuf[seedIdx] = true;
 
         var queue = new Queue<Cell>();
         queue.Enqueue(new Cell(0, 0));
@@ -520,14 +480,17 @@ public class DistortionCalibrationOperator : IOperatorType
                 if (cells.TryGetValue(prev, out var pm))
                     step = pc - pm.Point;
                 else
-                    step = di != 0 ? axisA.Value * di : axisB.Value * dj;
+                    step = di != 0 ? axisA * di : axisB * dj;
 
                 var predicted = pc + step;
-                int idx       = index.FindNearest(predicted, tolerance, used);
+                int idx = grid.FindNearest(predicted, lookupRadius, usedBuf);
                 if (idx < 0) continue;
 
-                cells[nc] = new MatchedCell(corners[idx], DistanceSquared(corners[idx], predicted));
-                used.Add(idx);
+                double residual = Math.Sqrt(DistSq(grid[idx], predicted));
+                if (residual > acceptTol) continue;
+
+                cells[nc] = new MatchedCell(grid[idx], residual, idx);
+                usedBuf[idx] = true;
                 queue.Enqueue(nc);
             }
         }
@@ -535,22 +498,23 @@ public class DistortionCalibrationOperator : IOperatorType
         return cells;
     }
 
+    // Remove the worst outlier (largest deviation from neighbour-predicted position) until
+    // all remaining cells are within OutlierTolFraction × pitch of their predicted positions.
     static void RejectOutliers(Dictionary<Cell, MatchedCell> cells, double pitch)
     {
-        double tol   = Math.Max(1.5, pitch * OutlierTolFraction);
-        double tolSq = tol * tol;
+        double tol = Math.Max(1.5, pitch * OutlierTolFraction);
 
         while (cells.Count > MinInliers)
         {
-            Cell   worst    = default;
-            double worstDev = tolSq;
-            bool   found    = false;
+            Cell worst   = default;
+            double worstDev = tol;
+            bool found   = false;
 
             foreach (var (cell, match) in cells)
             {
                 if (!TryPredictFromNeighbors(cells, cell, out var predicted)) continue;
-                double devSq = DistanceSquared(match.Point, predicted);
-                if (devSq > worstDev) { worstDev = devSq; worst = cell; found = true; }
+                double dev = Math.Sqrt(DistSq(match.Point, predicted));
+                if (dev > worstDev) { worstDev = dev; worst = cell; found = true; }
             }
 
             if (!found) break;
@@ -599,56 +563,10 @@ public class DistortionCalibrationOperator : IOperatorType
         return false;
     }
 
-    // ── spatial index ─────────────────────────────────────────────────────────
-
-    private sealed class CornerIndex
-    {
-        private readonly Dictionary<(int, int), List<int>> _buckets = [];
-        private readonly Point2f[] _points;
-        private readonly double    _cellSize;
-
-        public CornerIndex(Point2f[] points, double cellSize)
-        {
-            _points   = points;
-            _cellSize = cellSize;
-            for (int i = 0; i < points.Length; i++)
-            {
-                var key = Key(points[i]);
-                if (!_buckets.TryGetValue(key, out var list))
-                    _buckets[key] = list = [];
-                list.Add(i);
-            }
-        }
-
-        private (int, int) Key(Point2f p) =>
-            ((int)Math.Floor(p.X / _cellSize), (int)Math.Floor(p.Y / _cellSize));
-
-        public int FindNearest(Point2f target, double maxDist, HashSet<int> used)
-        {
-            int bx = (int)Math.Floor(target.X / _cellSize);
-            int by = (int)Math.Floor(target.Y / _cellSize);
-            int r  = (int)Math.Ceiling(maxDist / _cellSize);
-
-            double bestSq = maxDist * maxDist;
-            int    best   = -1;
-            for (int gx = bx - r; gx <= bx + r; gx++)
-            for (int gy = by - r; gy <= by + r; gy++)
-            {
-                if (!_buckets.TryGetValue((gx, gy), out var list)) continue;
-                foreach (int i in list)
-                {
-                    if (used.Contains(i)) continue;
-                    double dSq = DistanceSquared(_points[i], target);
-                    if (dSq < bestSq) { bestSq = dSq; best = i; }
-                }
-            }
-            return best;
-        }
-    }
-
     // ── post-processing ───────────────────────────────────────────────────────
 
-    // Mean direction of the I-axis (horizontal) step vectors, in degrees CW from image right.
+    // Mean direction of the I-axis step vectors, normalized to -90..+90°.
+    // After axis canonicalization axisA points right, so the result is near 0° for aligned boards.
     static double ComputeRotationAngle(Dictionary<Cell, MatchedCell> grown)
     {
         double sumCos = 0, sumSin = 0;
@@ -663,7 +581,11 @@ public class DistortionCalibrationOperator : IOperatorType
             sumSin += step.Y / len;
             count++;
         }
-        return count == 0 ? 0.0 : Math.Atan2(sumSin / count, sumCos / count) * 180.0 / Math.PI;
+        if (count == 0) return 0.0;
+        double angle = Math.Atan2(sumSin / count, sumCos / count) * 180.0 / Math.PI;
+        if (angle >  90.0) angle -= 180.0;
+        if (angle < -90.0) angle += 180.0;
+        return angle;
     }
 
     // ── display helpers ───────────────────────────────────────────────────────
@@ -688,12 +610,12 @@ public class DistortionCalibrationOperator : IOperatorType
 
         for (int k = 0; k < grid.ImagePoints.Length; k++)
         {
-            var ctr   = ToPoint(grid.ImagePoints[k]);
-            var obj   = grid.ObjectPoints[k];
+            var ctr = ToPoint(grid.ImagePoints[k]);
+            var obj = grid.ObjectPoints[k];
             var label = $"{(int)Math.Round(obj.X)},{(int)Math.Round(obj.Y)}";
             Cv2.DrawMarker(annotated, ctr, Scalar.Yellow, MarkerTypes.Cross, 10, 1);
-            var textOrg = new Point(ctr.X + 4, ctr.Y - 4);
-            Cv2.PutText(annotated, label, textOrg, HersheyFonts.HersheyPlain, 0.9, Scalar.Black,  2, LineTypes.AntiAlias);
+            var textOrg = new OpenCvSharp.Point(ctr.X + 4, ctr.Y - 4);
+            Cv2.PutText(annotated, label, textOrg, HersheyFonts.HersheyPlain, 0.9, Scalar.Black, 2, LineTypes.AntiAlias);
             Cv2.PutText(annotated, label, textOrg, HersheyFonts.HersheyPlain, 0.9, Scalar.Yellow, 1, LineTypes.AntiAlias);
         }
         return annotated;
@@ -729,9 +651,8 @@ public class DistortionCalibrationOperator : IOperatorType
 
     // ── utilities ─────────────────────────────────────────────────────────────
 
-    static double Cross(Point2f a, Point2f b)           => Point2f.CrossProduct(a, b);
-    static double DistanceSquared(Point2f a, Point2f b) { double dx = a.X - b.X, dy = a.Y - b.Y; return dx * dx + dy * dy; }
-    static Point  ToPoint(Point2f p)                    => new((int)Math.Round(p.X), (int)Math.Round(p.Y));
+    static double DistSq(Point2f a, Point2f b) { double dx = a.X - b.X, dy = a.Y - b.Y; return dx * dx + dy * dy; }
+    static OpenCvSharp.Point ToPoint(Point2f p) => new((int)Math.Round(p.X), (int)Math.Round(p.Y));
 }
 
 // ── public types (also used by UndistortOperator) ────────────────────────────
@@ -743,13 +664,13 @@ public class DistortionCalibrationOperator : IOperatorType
 public class CalibrationData
 {
     /// <summary>Width of the image used during calibration, in pixels.</summary>
-    public int    ImageWidth       { get; set; }
+    public int ImageWidth { get; set; }
     /// <summary>Height of the image used during calibration, in pixels.</summary>
-    public int    ImageHeight      { get; set; }
+    public int ImageHeight { get; set; }
     /// <summary>Normalised horizontal anchor [0,1]: maps to the output pixel column <c>AnchorX × W</c>.</summary>
-    public double AnchorX          { get; set; }
+    public double AnchorX { get; set; }
     /// <summary>Normalised vertical anchor [0,1]: maps to the output pixel row <c>AnchorY × H</c>.</summary>
-    public double AnchorY          { get; set; }
+    public double AnchorY { get; set; }
     /// <summary>Angle of the checkerboard I-axis relative to image horizontal, in degrees clockwise.</summary>
     public double RotationAngleDeg { get; set; }
     /// <summary>Detected corners: integer grid coordinate → sub-pixel image position.</summary>
@@ -760,9 +681,9 @@ public class CalibrationData
 public class CornerRecord
 {
     /// <summary>Grid column index (I axis, increasing rightward).</summary>
-    public int    Col  { get; set; }
+    public int Col { get; set; }
     /// <summary>Grid row index (J axis, increasing upward).</summary>
-    public int    Row  { get; set; }
+    public int Row { get; set; }
     /// <summary>Sub-pixel image X coordinate.</summary>
     public double ImgX { get; set; }
     /// <summary>Sub-pixel image Y coordinate.</summary>
@@ -774,7 +695,7 @@ internal static class CalibrationHelpers
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented        = true,
+        WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
