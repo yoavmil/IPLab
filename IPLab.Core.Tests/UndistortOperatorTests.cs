@@ -1,4 +1,5 @@
 using System.Text.Json;
+using IPLab.Core.Models;
 using IPLab.Core.Operators;
 using OpenCvSharp;
 
@@ -34,6 +35,9 @@ public class UndistortOperatorTests
             AnchorX          = anchorX,
             AnchorY          = anchorY,
             RotationAngleDeg = 0.0,
+            Pitch            = pitch,
+            MeanCol          = 1f,   // average of col indices 0, 1, 2
+            MeanRow          = 1f,   // average of row indices 0, 1, 2
             Corners          = corners,
         };
 
@@ -46,6 +50,8 @@ public class UndistortOperatorTests
         return path;
     }
 
+    // Smoke test: operator runs without error and the output Mat has the same
+    // dimensions and channel count as the input.
     [Fact]
     public void Undistort_ReturnsImageOfSameSizeAndType()
     {
@@ -63,6 +69,8 @@ public class UndistortOperatorTests
         finally { File.Delete(path); }
     }
 
+    // Passing an image whose dimensions don't match the calibration file's recorded size
+    // must be rejected — silently remapping would produce garbage output.
     [Fact]
     public void Undistort_ThrowsOnSizeMismatch()
     {
@@ -76,6 +84,68 @@ public class UndistortOperatorTests
         finally { File.Delete(path); }
     }
 
+    // Fewer than 4 distinct grid corners cannot form even one bilinear cell (needs a 2×2
+    // arrangement). Must throw with a message that names the problem.
+    [Fact]
+    public void Undistort_ThrowsOnTooFewCorners()
+    {
+        var data = new CalibrationData
+        {
+            ImageWidth = 64, ImageHeight = 48, AnchorX = 0.5, AnchorY = 0.5,
+            Corners =
+            [
+                new() { Col = 0, Row = 0, ImgX = 22, ImgY = 14 },
+                new() { Col = 1, Row = 0, ImgX = 32, ImgY = 14 },
+                new() { Col = 0, Row = 1, ImgX = 22, ImgY = 24 },
+            ],
+        };
+        var path = Path.Combine(Path.GetTempPath(), $"iplab_calib_{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(data,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+            using var src = new Mat(48, 64, MatType.CV_8UC1, Scalar.All(128));
+            var ex = Assert.Throws<InvalidDataException>(() => new UndistortOperator().Execute(
+                new Dictionary<string, object?> { ["Image"] = src, ["CalibFilePath"] = path }));
+            Assert.Contains("non-empty", ex.Message);
+        }
+        finally { File.Delete(path); }
+    }
+
+    // Duplicate (col, row) entries in the JSON must throw with a descriptive message rather
+    // than silently discarding one entry and producing a subtly wrong warp map.
+    [Fact]
+    public void Undistort_ThrowsOnDuplicateCornerKeys()
+    {
+        var data = new CalibrationData
+        {
+            ImageWidth = 64, ImageHeight = 48, AnchorX = 0.5, AnchorY = 0.5,
+            Corners =
+            [
+                new() { Col = 0, Row = 0, ImgX = 22, ImgY = 14 },
+                new() { Col = 1, Row = 0, ImgX = 32, ImgY = 14 },
+                new() { Col = 0, Row = 1, ImgX = 22, ImgY = 24 },
+                new() { Col = 1, Row = 1, ImgX = 32, ImgY = 24 },
+                new() { Col = 0, Row = 0, ImgX = 99, ImgY = 99 },   // duplicate key
+            ],
+        };
+        var path = Path.Combine(Path.GetTempPath(), $"iplab_calib_{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(data,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+            using var src = new Mat(48, 64, MatType.CV_8UC1, Scalar.All(128));
+            var ex = Assert.Throws<InvalidDataException>(() => new UndistortOperator().Execute(
+                new Dictionary<string, object?> { ["Image"] = src, ["CalibFilePath"] = path }));
+            Assert.Contains("duplicate", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally { File.Delete(path); }
+    }
+
+    // ICacheInvalidationProvider contract: the token must change when the calibration file
+    // is overwritten so FlowEx re-executes the operator instead of serving stale output.
     [Fact]
     public void CacheToken_ChangesWithFileWriteTime()
     {

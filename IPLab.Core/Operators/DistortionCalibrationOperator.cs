@@ -1,4 +1,3 @@
-using System.Text.Json;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.Core.Spatial;
@@ -94,15 +93,35 @@ public class DistortionCalibrationOperator : IOperatorType
             string? calibPath = null;
             if (!string.IsNullOrWhiteSpace(outPath))
             {
-                var calibCorners = new List<CornerRecord>(grid.Cells.Length);
+                // Build cornerMap from detected corners only (meanCol/Row must reflect
+                // detected corners before gap-filling changes the key set).
+                var cornerMap = new Dictionary<(int Col, int Row), Point2f>(grid.Cells.Length);
                 for (int k = 0; k < grid.Cells.Length; k++)
-                    calibCorners.Add(new CornerRecord
+                    cornerMap[(grid.Cells[k].I, grid.Cells[k].J)] = grid.ImagePoints[k];
+
+                float meanCol = (float)cornerMap.Keys.Average(k => k.Col);
+                float meanRow = (float)cornerMap.Keys.Average(k => k.Row);
+
+                FillGaps(cornerMap);
+                float pitch = ComputePitch(cornerMap);
+
+                float ax = (float)(anchorX * image.Width);
+                float ay = (float)(anchorY * image.Height);
+                int targetColMin = (int)Math.Floor  ((                0 - ax) / pitch + meanCol) - 1;
+                int targetColMax = (int)Math.Ceiling((image.Width  - 1 - ax) / pitch + meanCol) + 1;
+                int targetRowMin = (int)Math.Floor  ((ay - (image.Height - 1)) / pitch + meanRow) - 1;
+                int targetRowMax = (int)Math.Ceiling((ay -                  0) / pitch + meanRow) + 1;
+                ExtendBoundary(cornerMap, targetColMin, targetColMax, targetRowMin, targetRowMax);
+
+                var calibCorners = cornerMap
+                    .Select(kv => new CornerRecord
                     {
-                        Col  = grid.Cells[k].I,
-                        Row  = grid.Cells[k].J,
-                        ImgX = grid.ImagePoints[k].X,
-                        ImgY = grid.ImagePoints[k].Y,
-                    });
+                        Col  = kv.Key.Col,
+                        Row  = kv.Key.Row,
+                        ImgX = kv.Value.X,
+                        ImgY = kv.Value.Y,
+                    })
+                    .ToList();
 
                 CalibrationHelpers.Save(new CalibrationData
                 {
@@ -111,6 +130,9 @@ public class DistortionCalibrationOperator : IOperatorType
                     AnchorX          = anchorX,
                     AnchorY          = anchorY,
                     RotationAngleDeg = grid.RotationAngleDeg,
+                    Pitch            = pitch,
+                    MeanCol          = meanCol,
+                    MeanRow          = meanRow,
                     Corners          = calibCorners,
                 }, outPath);
                 calibPath = outPath;
@@ -653,60 +675,171 @@ public class DistortionCalibrationOperator : IOperatorType
 
     static double DistSq(Point2f a, Point2f b) { double dx = a.X - b.X, dy = a.Y - b.Y; return dx * dx + dy * dy; }
     static OpenCvSharp.Point ToPoint(Point2f p) => new((int)Math.Round(p.X), (int)Math.Round(p.Y));
-}
 
-// ── public types (also used by UndistortOperator) ────────────────────────────
+    // ── grid post-processing (also used when saving calibration files) ────────
 
-/// <summary>
-/// Sparse corner-correspondence calibration data produced by <see cref="DistortionCalibrationOperator"/>
-/// and consumed by <see cref="UndistortOperator"/> to build a dense bilinear warp map.
-/// </summary>
-public class CalibrationData
-{
-    /// <summary>Width of the image used during calibration, in pixels.</summary>
-    public int ImageWidth { get; set; }
-    /// <summary>Height of the image used during calibration, in pixels.</summary>
-    public int ImageHeight { get; set; }
-    /// <summary>Normalised horizontal anchor [0,1]: maps to the output pixel column <c>AnchorX × W</c>.</summary>
-    public double AnchorX { get; set; }
-    /// <summary>Normalised vertical anchor [0,1]: maps to the output pixel row <c>AnchorY × H</c>.</summary>
-    public double AnchorY { get; set; }
-    /// <summary>Angle of the checkerboard I-axis relative to image horizontal, in degrees clockwise.</summary>
-    public double RotationAngleDeg { get; set; }
-    /// <summary>Detected corners: integer grid coordinate → sub-pixel image position.</summary>
-    public List<CornerRecord> Corners { get; set; } = [];
-}
-
-/// <summary>One detected checkerboard corner: its integer grid position and sub-pixel image location.</summary>
-public class CornerRecord
-{
-    /// <summary>Grid column index (I axis, increasing rightward).</summary>
-    public int Col { get; set; }
-    /// <summary>Grid row index (J axis, increasing upward).</summary>
-    public int Row { get; set; }
-    /// <summary>Sub-pixel image X coordinate.</summary>
-    public double ImgX { get; set; }
-    /// <summary>Sub-pixel image Y coordinate.</summary>
-    public double ImgY { get; set; }
-}
-
-/// <summary>Serialisation helpers for <see cref="CalibrationData"/>.</summary>
-internal static class CalibrationHelpers
-{
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    // Fills missing grid cells by interpolation from neighbours.
+    // Only fills within the bounding box of the original detected corners so the loop converges.
+    // Prefers midpoint of opposite neighbours; falls back to constant-velocity extrapolation.
+    // Iterates until no further cells can be filled.
+    static void FillGaps(Dictionary<(int Col, int Row), Point2f> corners)
     {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+        if (corners.Count == 0) return;
 
-    public static void Save(CalibrationData data, string path)
-    {
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-        File.WriteAllText(path, JsonSerializer.Serialize(data, JsonOptions));
+        int minCol = corners.Keys.Min(k => k.Col);
+        int maxCol = corners.Keys.Max(k => k.Col);
+        int minRow = corners.Keys.Min(k => k.Row);
+        int maxRow = corners.Keys.Max(k => k.Row);
+
+        bool anyFilled;
+        do
+        {
+            anyFilled = false;
+            var candidates = new HashSet<(int Col, int Row)>();
+            foreach (var (col, row) in corners.Keys)
+            {
+                if (col + 1 <= maxCol) candidates.Add((col + 1, row));
+                if (col - 1 >= minCol) candidates.Add((col - 1, row));
+                if (row + 1 <= maxRow) candidates.Add((col, row + 1));
+                if (row - 1 >= minRow) candidates.Add((col, row - 1));
+            }
+            candidates.ExceptWith(corners.Keys);
+
+            var toAdd = new Dictionary<(int Col, int Row), Point2f>();
+            foreach (var target in candidates)
+            {
+                if (TryFillCell(corners, target, out var filled))
+                {
+                    toAdd[target] = filled;
+                    anyFilled = true;
+                }
+            }
+            foreach (var (k, v) in toAdd) corners[k] = v;
+        } while (anyFilled);
     }
 
-    public static CalibrationData Load(string path) =>
-        JsonSerializer.Deserialize<CalibrationData>(File.ReadAllText(path), JsonOptions)
-        ?? throw new InvalidDataException($"Failed to parse calibration file: {path}");
+    static bool TryFillCell(
+        Dictionary<(int Col, int Row), Point2f> corners,
+        (int Col, int Row) t, out Point2f result)
+    {
+        (int col, int row) = t;
+        Point2f sum  = default;
+        int     count = 0;
+
+        if (corners.TryGetValue((col - 1, row), out var lft) &&
+            corners.TryGetValue((col + 1, row), out var rgt))
+        { sum += new Point2f((lft.X + rgt.X) * 0.5f, (lft.Y + rgt.Y) * 0.5f); count++; }
+
+        if (corners.TryGetValue((col, row - 1), out var dn) &&
+            corners.TryGetValue((col, row + 1), out var up))
+        { sum += new Point2f((dn.X + up.X) * 0.5f, (dn.Y + up.Y) * 0.5f); count++; }
+
+        if (count > 0)
+        {
+            result = count == 1 ? sum : new Point2f(sum.X * 0.5f, sum.Y * 0.5f);
+            return true;
+        }
+
+        if (corners.TryGetValue((col - 1, row), out lft) && corners.TryGetValue((col - 2, row), out var lft2))
+        { result = lft * 2f - lft2; return true; }
+        if (corners.TryGetValue((col + 1, row), out rgt) && corners.TryGetValue((col + 2, row), out var rgt2))
+        { result = rgt * 2f - rgt2; return true; }
+        if (corners.TryGetValue((col, row - 1), out dn) && corners.TryGetValue((col, row - 2), out var dn2))
+        { result = dn * 2f - dn2; return true; }
+        if (corners.TryGetValue((col, row + 1), out up) && corners.TryGetValue((col, row + 2), out var up2))
+        { result = up * 2f - up2; return true; }
+
+        result = default;
+        return false;
+    }
+
+    // Median of all adjacent corner distances (horizontal and vertical pairs).
+    static float ComputePitch(Dictionary<(int Col, int Row), Point2f> corners)
+    {
+        var dists = new List<float>();
+        foreach (var ((col, row), pt) in corners)
+        {
+            if (corners.TryGetValue((col + 1, row), out var right))
+            {
+                float dx = pt.X - right.X, dy = pt.Y - right.Y;
+                dists.Add(MathF.Sqrt(dx * dx + dy * dy));
+            }
+            if (corners.TryGetValue((col, row + 1), out var up))
+            {
+                float dx = pt.X - up.X, dy = pt.Y - up.Y;
+                dists.Add(MathF.Sqrt(dx * dx + dy * dy));
+            }
+        }
+        if (dists.Count == 0) return 1f;
+        dists.Sort();
+        return dists[dists.Count / 2];
+    }
+
+    // Extrapolates the corner map outward to cover [targetColMin,targetColMax] × [targetRowMin,targetRowMax].
+    // Step 1 extends each detected row horizontally using the two boundary columns for velocity.
+    // Step 2 extends each column (including newly-added ones) vertically.
+    static void ExtendBoundary(
+        Dictionary<(int Col, int Row), Point2f> corners,
+        int targetColMin, int targetColMax,
+        int targetRowMin, int targetRowMax)
+    {
+        foreach (int row in corners.Keys.Select(k => k.Row).Distinct().ToList())
+        {
+            var cols = corners.Keys
+                .Where(k => k.Row == row).Select(k => k.Col).OrderBy(c => c).ToList();
+            if (cols.Count < 2) continue;
+
+            int c0 = cols[0], c1 = cols[1];
+            var p0 = corners[(c0, row)]; var p1 = corners[(c1, row)];
+            float lvelX = (p0.X - p1.X) / (c0 - c1);
+            float lvelY = (p0.Y - p1.Y) / (c0 - c1);
+            var prev = p0;
+            for (int c = c0 - 1; c >= targetColMin; c--)
+            {
+                prev = new Point2f(prev.X + lvelX, prev.Y + lvelY);
+                corners[(c, row)] = prev;
+            }
+
+            int cr0 = cols[^1], cr1 = cols[^2];
+            var pr0 = corners[(cr0, row)]; var pr1 = corners[(cr1, row)];
+            float rvelX = (pr0.X - pr1.X) / (cr0 - cr1);
+            float rvelY = (pr0.Y - pr1.Y) / (cr0 - cr1);
+            prev = pr0;
+            for (int c = cr0 + 1; c <= targetColMax; c++)
+            {
+                prev = new Point2f(prev.X + rvelX, prev.Y + rvelY);
+                corners[(c, row)] = prev;
+            }
+        }
+
+        foreach (int col in corners.Keys.Select(k => k.Col).Distinct().ToList())
+        {
+            var rows = corners.Keys
+                .Where(k => k.Col == col).Select(k => k.Row).OrderBy(r => r).ToList();
+            if (rows.Count < 2) continue;
+
+            int r0 = rows[0], r1 = rows[1];
+            var p0 = corners[(col, r0)]; var p1 = corners[(col, r1)];
+            float dvelX = (p0.X - p1.X) / (r0 - r1);
+            float dvelY = (p0.Y - p1.Y) / (r0 - r1);
+            var prev = p0;
+            for (int r = r0 - 1; r >= targetRowMin; r--)
+            {
+                prev = new Point2f(prev.X + dvelX, prev.Y + dvelY);
+                corners[(col, r)] = prev;
+            }
+
+            int rt0 = rows[^1], rt1 = rows[^2];
+            var pt0 = corners[(col, rt0)]; var pt1 = corners[(col, rt1)];
+            float uvelX = (pt0.X - pt1.X) / (rt0 - rt1);
+            float uvelY = (pt0.Y - pt1.Y) / (rt0 - rt1);
+            prev = pt0;
+            for (int r = rt0 + 1; r <= targetRowMax; r++)
+            {
+                prev = new Point2f(prev.X + uvelX, prev.Y + uvelY);
+                corners[(col, r)] = prev;
+            }
+        }
+    }
 }
+

@@ -67,6 +67,40 @@ public class DistortionCalibrationOperatorTests
         Assert.Equal(objectPoints.Length, objectPoints.Distinct().Count());
     }
 
+    // Undistorting a solid-white image should produce near-zero black pixels — the extended
+    // grid must cover the full frame. Uses CB_1/CB_2 (small tilt) where the source image
+    // covers nearly the whole frame; fewer than 2% black pixels is the acceptance threshold.
+    [Theory]
+    [InlineData("CB_1.jpg")]
+    [InlineData("CB_2.jpg")]
+    public void Undistort_MinimalBlackPixels(string file)
+    {
+        var calibPath = Path.Combine(Path.GetTempPath(), $"iplab_calib_{Guid.NewGuid():N}.json");
+        try
+        {
+            using var src  = Cv2.ImRead(Path.Combine(TestImagesDir, file), ImreadModes.Color);
+            using var gray = new Mat();
+            Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
+            ExecNew(gray, calibPath);
+
+            using var white = new Mat(src.Size(), src.Type(), Scalar.All(255));
+            var result = (Dictionary<string, object?>)new UndistortOperator().Execute(
+                new Dictionary<string, object?> { ["Image"] = white, ["CalibFilePath"] = calibPath })!;
+            using var dst = (Mat)result["Image"]!;
+
+            using var grayDst = new Mat();
+            Cv2.CvtColor(dst, grayDst, ColorConversionCodes.BGR2GRAY);
+            using var blackMask = new Mat();
+            Cv2.Threshold(grayDst, blackMask, 5, 255, ThresholdTypes.BinaryInv);
+            int blackPixels = Cv2.CountNonZero(blackMask);
+            int total       = dst.Width * dst.Height;
+
+            Assert.True(blackPixels < total * 0.02,
+                $"{file}: {blackPixels} black pixels ({100.0 * blackPixels / total:F1}% of {total})");
+        }
+        finally { File.Delete(calibPath); }
+    }
+
     // After undistortion the checkerboard should be rectified so its rows are exactly horizontal.
     // Re-calibrating on the undistorted image measures the residual tilt; it must be within ±1°.
     // Only small-tilt images (CB_1, CB_2) are asserted here — large-tilt undistortions produce
