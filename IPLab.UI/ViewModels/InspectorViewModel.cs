@@ -127,6 +127,10 @@ public class InspectorViewModel : ViewModelBase
         if (contours is not null)
             return new InspectorState(Image: GetSourceImage(), Contours: contours) with { Roi = CurrentRoi };
 
+        var rectangles = Unwrap<Rect[]>(result);
+        if (rectangles is not null)
+            return new InspectorState(Image: GetSourceImage(), Rectangles: rectangles) with { Roi = CurrentRoi };
+
         // Lines and crosses can co-exist (e.g. DistortionCalibration emits both grid lines and grid
         // corners), so handle them together rather than returning on the first match. Image falls
         // back to the wired source when the operator produces no display image (heatmap off).

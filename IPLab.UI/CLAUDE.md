@@ -19,7 +19,7 @@ See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 
 - Both `TabControl` elements use `TabStripPlacement="Bottom"`.
 - The pipeline editor Graph tab hosts the `NodifyEditor`.
-- The Inspector right panel is placeholder for now.
+- The Inspector right panel contains the Image Preview overlay system and a Data tab. Leave the Data tab unchanged for new result visualizations unless the user explicitly requests it.
 
 ## Ribbon / Toolbar (planned)
 
@@ -95,6 +95,8 @@ Anchor tracking flow: `Connector` (UI) computes screen position → writes to `C
 
 The inspector uses `RControls.ImageViewer` (wrapping `RControls.ImageCanvas`) to draw overlays on top of the displayed image. Coordinate system: image pixels, (column=X, row=Y).
 
+**Rule: new operator-specific result visualizations belong in the Image Preview overlay system only. Leave the Inspector Data tab unchanged unless the user explicitly requests Data-tab work.**
+
 **Data flow:**
 1. `InspectorState` — sealed record carrying the current operator's results + overlay data. Because it is a record, `==` does structural comparison: all fields are reference types (arrays, `BitmapSource`) so equality is reference equality per field, except `RoiDef` which is a value record.
 2. `InspectorViewModel.UpdateSelectedImage` — computes a candidate `InspectorState` via `BuildState()`, then **only assigns `State` if `newState != State`**. This prevents unnecessary `RedrawAnnotations` calls when nothing changed.
@@ -103,6 +105,7 @@ The inspector uses `RControls.ImageViewer` (wrapping `RControls.ImageCanvas`) to
 
 **Available draw methods on `ImageViewer`:**
 - `DrawCircle(row, column, radius, name, color, bFilled)` — for circles/blobs
+- `DrawCross(row, column, phi, name, size, color)` — for `Point2f[]` feature/corner overlays
 - `DrawRectangle(row1, col1, row2, col2, name, color, bFilled)` — axis-aligned rectangle (used for ROI)
 - `DrawRectangle2(row, col, phi, length1, length2, name, color, bFilled)` — rotated rectangle; `length1`/`length2` are half-width/half-height; used for stripe region overlay
 - `DrawLine(rowBegin, colBegin, rowEnd, colEnd, name, color, bFilled)` — single line
@@ -120,6 +123,12 @@ The inspector uses `RControls.ImageViewer` (wrapping `RControls.ImageCanvas`) to
 3. If the overlay should react to parameter changes while editing, subscribe in the `EditingNode` setter (see `_roiParamSubscriptions` pattern)
 4. Add a `DrawXxx` private method in `InspectorControl` and call it from `RedrawAnnotations`
 5. Add the corresponding `RemoveRegion` call at the top of `RedrawAnnotations`
+
+## Operator-Specific Editors
+
+Operator-specific settings-panel actions are registered in `OperatorEditorRegistry.CreateDefault()` and rendered from `MainViewModel.OperatorActions`. Keep the generic settings-panel XAML and `OperatorNodeViewModel` free of operator-type checks and dedicated commands.
+
+Each registration receives an `OperatorEditorContext` containing the selected node, owner window, and a resolver that returns either the literal parameter value or the current upstream execution result for wired parameters. `TemplateMatch` -> `TemplateEditorWindow.TryOpen` is the reference example for an editor that needs the resolved input image and writes a saved path back to a parameter.
 
 ## Flicker / CPU rules — do not regress these
 

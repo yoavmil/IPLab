@@ -31,6 +31,7 @@
 - [ConnectedComponents](#connectedcomponents) — label connected regions; outputs Count, Stats (Mat), Centroids (Mat), LabelImage
 - [FindContours](#findcontours) — find contours in a binary image with built-in filter/repair
 - [FindStripeEdges](#findstripeedges) — find N strongest 1D edges along a rotated stripe (caliper-style)
+- [TemplateMatch](#templatematch) — find every occurrence of a selected visual pattern
 
 ## Scripting
 - [CSharpScript](#csharpscipt) — run a user-written C# snippet loaded from a `.cs` file
@@ -353,6 +354,40 @@ Finds the N most prominent edges along a stripe ROI.
 | Polarity    | string[]            | Per-edge polarity: `"DarkToBright"` or `"BrightToDark"`; determined by sign of the raw gradient regardless of the Polarity filter |
 
 All four output arrays share the same index and are always the same length (≤ Max Edges).
+
+---
+
+## TemplateMatch
+
+Finds every occurrence of a selected visual pattern in an image. Use **Edit Template...** in the
+operator settings to draw a box around an example of the pattern. You can also mask rectangular
+areas that should be ignored, which is useful when part of the pattern changes between images.
+
+Each result includes the match location, size, and confidence score. **Minimum Score** controls how
+closely a region must resemble the template. **Maximum Overlap** removes duplicate boxes around the
+same occurrence. An optional ROI limits the search to part of the image.
+
+The current version searches at the template's original size and angle. It does not find rotated or
+scaled versions of the pattern. The input and template channels must match each other.
+
+| Parameter         | Type   | Connectable | Description |
+|-------------------|--------|-------------|-------------|
+| Image             | Object | Yes (Mat)   | Image in which to search for the template |
+| Template          | String | No          | Saved template selected or created with **Edit Template...** |
+| Minimum Score     | Double | No          | Required match confidence from 0 to 1; higher values are stricter (default 0.8) |
+| Maximum Matches   | Int    | No          | Maximum number of results; 0 means unlimited (default 100) |
+| Maximum Overlap   | Double | No          | How much two result boxes may overlap before the weaker one is removed (default 0.3) |
+| ROI Center X/Y    | Double | Yes         | Center of the optional axis-aligned search ROI |
+| ROI Width/Height  | Double | Yes         | Search ROI size; zero disables the ROI |
+
+| Output Port | Type   | Description |
+|-------------|--------|-------------|
+| Matches     | Mat    | One row per result: X, Y, Width, Height, and Score; strongest matches first |
+| Rectangles  | Rect[] | Match boxes in full-image coordinates, displayed in the inspector |
+
+The template editor opens on the operator's current input image. Run the flow first, then select the
+template region, add or delete mask rectangles as needed, and save it. The saved template path is
+assigned to the operator automatically.
 
 ---
 
