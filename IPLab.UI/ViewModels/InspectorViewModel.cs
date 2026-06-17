@@ -1,4 +1,5 @@
 using IPLab.Core.Models;
+using IPLab.Core.Spatial;
 using IPLab.Core.Utilities;
 using IPLab.UI.Services;
 using OpenCvSharp;
@@ -123,24 +124,40 @@ public class InspectorViewModel : ViewModelBase
         if (blobs is not null)
             return new InspectorState(Image: GetSourceImage(), Blobs: blobs) with { Roi = CurrentRoi };
 
-        var contours = Unwrap<OpenCvSharp.Point[][]>(result);
-        if (contours is not null)
-            return new InspectorState(Image: GetSourceImage(), Contours: contours) with { Roi = CurrentRoi };
-
         var rectangles = Unwrap<Rect[]>(result);
         if (rectangles is not null)
             return new InspectorState(Image: GetSourceImage(), Rectangles: rectangles) with { Roi = CurrentRoi };
 
-        // Lines and crosses can co-exist (e.g. DistortionCalibration emits both grid lines and grid
-        // corners), so handle them together rather than returning on the first match. Image falls
-        // back to the wired source when the operator produces no display image (heatmap off).
-        var lines   = Unwrap<LineSegmentPoint[]>(result);
-        var crosses = Unwrap<Point2f[]>(result);
-        if (lines is not null || crosses is not null)
+        // Lines, crosses, and contours can co-exist; collect all before returning.
+        var contoursF = Unwrap<Point2f[][]>(result);
+        var contoursI = Unwrap<OpenCvSharp.Point[][]>(result);
+        var contours  = contoursF
+            ?? contoursI?.Select(c => c.Select(p => new Point2f(p.X, p.Y)).ToArray()).ToArray();
+        var lines    = Unwrap<LineSegment2f[]>(result);
+        var oldLines = Unwrap<LineSegmentPoint[]>(result);
+        var crosses  = Unwrap<Point2f[]>(result);
+
+        if (oldLines is not null)
+        {
+            var convertedOldLines = oldLines
+                .Select(l => new LineSegment2f(
+                    new Point2f(l.P1.X, l.P1.Y),
+                    new Point2f(l.P2.X, l.P2.Y)))
+                .ToArray();
+            lines = lines is null ? convertedOldLines : [.. lines, .. convertedOldLines];
+        }
+
+        if (UnwrapStruct<LineSegment2f>(result) is LineSegment2f seg)
+        {
+            lines = lines is null ? [seg] : [.. lines, seg];
+        }
+
+        if (lines is not null || crosses is not null || contours is not null)
             return new InspectorState(
                 Image: GetDisplayImage() ?? GetSourceImage(),
                 Lines: lines,
-                Crosses: crosses) with { Roi = CurrentRoi };
+                Crosses: crosses,
+                Contours: contours) with { Roi = CurrentRoi };
 
         return new InspectorState(Image: GetDisplayImage()) with { Roi = CurrentRoi };
     }
@@ -148,6 +165,13 @@ public class InspectorViewModel : ViewModelBase
     private static T? Unwrap<T>(object? result) where T : class
         => result as T
            ?? (result as Dictionary<string, object?>)?.Values.OfType<T>().FirstOrDefault();
+
+    private static T? UnwrapStruct<T>(object? result) where T : struct
+    {
+        if (result is T direct) return direct;
+        return (result as Dictionary<string, object?>)?
+            .Values.OfType<T>().Cast<T?>().FirstOrDefault();
+    }
 
     private BitmapSource? GetSourceImage()
     {

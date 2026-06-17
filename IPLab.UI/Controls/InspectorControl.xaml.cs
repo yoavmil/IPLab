@@ -1,4 +1,5 @@
 using IPLab.UI.ViewModels;
+using IPLab.Core.Spatial;
 using OpenCvSharp;
 using RControls;
 using System.ComponentModel;
@@ -74,7 +75,7 @@ public partial class InspectorControl : UserControl
                                    string.Empty, Brushes.Cyan, bFilled: false);
     }
 
-    private void DrawContours(OpenCvSharp.Point[][]? contours)
+    private void DrawContours(Point2f[][]? contours)
     {
         if (contours is null) return;
         var polygons = contours
@@ -85,14 +86,14 @@ public partial class InspectorControl : UserControl
         ImageViewer.DrawPolygons(polygons, string.Empty, Brushes.Yellow);
     }
 
-    private void DrawLines(LineSegmentPoint[]? lines)
+    private void DrawLines(LineSegment2f[]? lines)
     {
         if (lines is null || lines.Length == 0) return;
         var rowBegin    = lines.Select(l => (double)l.P1.Y).ToArray();
         var columnBegin = lines.Select(l => (double)l.P1.X).ToArray();
         var rowEnd      = lines.Select(l => (double)l.P2.Y).ToArray();
         var columnEnd   = lines.Select(l => (double)l.P2.X).ToArray();
-        ImageViewer.DrawLine(rowBegin, columnBegin, rowEnd, columnEnd, string.Empty, Brushes.Lime, bFilled: false);
+        ImageViewer.DrawLine(rowBegin, columnBegin, rowEnd, columnEnd, string.Empty, Brushes.Orange, bFilled: false);
     }
 
     private void DrawCrosses(Point2f[]? crosses)
@@ -122,6 +123,27 @@ public partial class InspectorControl : UserControl
             .Select(p => new System.Windows.Point(p.X, p.Y))
             .ToList();
         ImageViewer.DrawPolygon(pts, "ROI", Brushes.Yellow, bFilled: false);
+
+        // Arrow along the scan axis (W direction): center → right edge, with arrowhead.
+        // Scan direction in image space: (cos θ, −sin θ) for CCW angle θ.
+        double θ      = roi.Angle * Math.PI / 180.0;
+        double dirX   = Math.Cos(θ);
+        double dirY   = -Math.Sin(θ);
+        double tipX   = roi.CX + dirX * roi.Width / 2.0;
+        double tipY   = roi.CY + dirY * roi.Width / 2.0;
+        double headLen = Math.Min(roi.Width * 0.2, 20.0);
+        const double HeadAngle = Math.PI * 5.0 / 6.0; // 150° from forward = 30° opening
+        double w1X = tipX + headLen * Math.Cos(θ + HeadAngle);
+        double w1Y = tipY - headLen * Math.Sin(θ + HeadAngle);
+        double w2X = tipX + headLen * Math.Cos(θ - HeadAngle);
+        double w2Y = tipY - headLen * Math.Sin(θ - HeadAngle);
+
+        ImageViewer.DrawLine(
+            [roi.CY, tipY,  tipY],
+            [roi.CX, tipX,  tipX],
+            [tipY,   w1Y,   w2Y],
+            [tipX,   w1X,   w2X],
+            string.Empty, Brushes.Yellow, bFilled: false);
     }
 
     private void OnImageClicked(System.Windows.Point imagePoint)

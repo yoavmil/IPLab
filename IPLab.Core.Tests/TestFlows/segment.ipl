@@ -1,0 +1,126 @@
+{
+  "operators": [
+    {
+      "id": "O1",
+      "displayName": "LoadImage",
+      "type": "LoadImage",
+      "parameters": [
+        {
+          "name": "FilePaths",
+          "value": [
+            "TestImages\\fiducial.png"
+          ]
+        },
+        {
+          "name": "ActiveIndex",
+          "value": 0
+        }
+      ],
+      "dependencies": [],
+      "x": 35,
+      "y": 23
+    },
+    {
+      "id": "O2",
+      "displayName": "ConvertToGrayscale",
+      "type": "ConvertToGrayscale",
+      "parameters": [
+        {
+          "name": "Image",
+          "source": {
+            "operatorId": "O1",
+            "port": "Image"
+          }
+        },
+        {
+          "name": "Method",
+          "value": "Luminance"
+        }
+      ],
+      "dependencies": [
+        {
+          "dependencyId": "D_O1_O2",
+          "operatorId": "O1",
+          "sourceSide": "bottom",
+          "targetSide": "top"
+        }
+      ],
+      "x": 49,
+      "y": 214
+    },
+    {
+      "id": "O3",
+      "displayName": "DetectSegment (bottom edge)",
+      "type": "DetectSegment",
+      "parameters": [
+        {
+          "name": "Image",
+          "source": {
+            "operatorId": "O2",
+            "port": "Image"
+          }
+        },
+        { "name": "RoiCX",         "value": 40 },
+        { "name": "RoiCY",         "value": 40 },
+        { "name": "RoiW",          "value": 80 },
+        { "name": "RoiH",          "value": 80 },
+        { "name": "RoiAngle",      "value": 270 },
+        { "name": "StripeCount",   "value": 20 },
+        { "name": "StripeWidth",   "value": 10 },
+        { "name": "FilterSize",    "value": 13 },
+        { "name": "Threshold",     "value": "Auto" },
+        { "name": "ThresholdValue","value": 10 },
+        { "name": "Polarity",      "value": "DarkToBright" },
+        { "name": "EdgeSelect",    "value": "Last" },
+        { "name": "MinScore",      "value": 0.5 }
+      ],
+      "dependencies": [
+        {
+          "dependencyId": "D_O2_O3",
+          "operatorId": "O2",
+          "sourceSide": "bottom",
+          "targetSide": "top"
+        }
+      ],
+      "x": 190,
+      "y": 479
+    },
+    {
+      "id": "O4",
+      "displayName": "DetectSegment (left edge)",
+      "type": "DetectSegment",
+      "parameters": [
+        {
+          "name": "Image",
+          "source": {
+            "operatorId": "O2",
+            "port": "Image"
+          }
+        },
+        { "name": "RoiCX",         "value": 40 },
+        { "name": "RoiCY",         "value": 40 },
+        { "name": "RoiW",          "value": 80 },
+        { "name": "RoiH",          "value": 80 },
+        { "name": "RoiAngle",      "value": 180 },
+        { "name": "StripeCount",   "value": 20 },
+        { "name": "StripeWidth",   "value": 10 },
+        { "name": "FilterSize",    "value": 13 },
+        { "name": "Threshold",     "value": "Auto" },
+        { "name": "ThresholdValue","value": 10 },
+        { "name": "Polarity",      "value": "DarkToBright" },
+        { "name": "EdgeSelect",    "value": "Last" },
+        { "name": "MinScore",      "value": 0.5 }
+      ],
+      "dependencies": [
+        {
+          "dependencyId": "D_O2_O4",
+          "operatorId": "O2",
+          "sourceSide": "bottom",
+          "targetSide": "top"
+        }
+      ],
+      "x": -49,
+      "y": 474
+    }
+  ]
+}

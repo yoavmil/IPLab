@@ -31,6 +31,7 @@
 - [ConnectedComponents](#connectedcomponents) — label connected regions; outputs Count, Stats (Mat), Centroids (Mat), LabelImage
 - [FindContours](#findcontours) — find contours in a binary image with built-in filter/repair
 - [FindStripeEdges](#findstripeedges) — find N strongest 1D edges along a rotated stripe (caliper-style)
+- [DetectSegment](#findedgeline) — fit a sub-pixel line to a single prominent edge within a rotated ROI
 - [TemplateMatch](#templatematch) — find every occurrence of a selected visual pattern
 
 ## Scripting
@@ -330,7 +331,9 @@ Raw output commonly contains degenerate contours (zero area, self-intersecting r
 
 ## FindStripeEdges
 
-Finds the N most prominent edges along a stripe ROI.
+Finds the N most prominent sub-pixel edges along a rotated stripe ROI by sampling a 1D profile via bilinear interpolation, applying a box-difference derivative, and locating peaks with parabolic sub-pixel refinement.
+
+Supports [ROI](#roi). All returned coordinates are in full-image space.
 
 | Parameter       | Type   | Connectable | Description |
 |-----------------|--------|-------------|-------------|
@@ -338,22 +341,55 @@ Finds the N most prominent edges along a stripe ROI.
 | Center X        | Double | No          | X coordinate of the stripe center in image pixels |
 | Center Y        | Double | No          | Y coordinate of the stripe center in image pixels |
 | Length          | Double | No          | Length of the stripe along the search axis in pixels |
-| Width           | Double | No          | Height of the stripe perpendicular to the axis; wider stripes average over more rows, reducing noise (default 1) |
-| Angle (°)       | Double | Rotation of the search axis in degrees; 0 = horizontal left-to-right |
-| Filter Size     | Int    | Width of the box-difference derivative kernel (min 2, clamped to at most Length/2); larger = smoother profile, less noise sensitivity |
+| Width           | Double | No          | Height of the stripe perpendicular to the axis; wider stripes average over more rows, reducing noise |
+| Angle (°)       | Double | No          | Rotation of the search axis in degrees; 0 = horizontal left-to-right |
+| Filter Size     | Int    | No          | Width of the box-difference derivative kernel (min 2, clamped to at most Length/2); larger = smoother profile, less noise sensitivity |
 | Threshold       | Enum   | No          | `Manual` (default) — use Threshold Value; `Auto` — Otsu on the gradient response distribution |
 | Threshold Value | Double | No          | Minimum gradient response to consider as an edge candidate; shown only when Threshold = Manual (default 10) |
 | Polarity        | Enum   | No          | `Both` (default) — any transition; `DarkToBright` — rising edges only; `BrightToDark` — falling edges only |
-| Max Edges       | Int    | No          | Maximum number of edges to return, strongest first (default 1) |
+| Max Edges       | Int    | No          | Maximum number of edges to return (default 1) |
 
-| Output Port | Type                | Description |
-|-------------|---------------------|-------------|
-| Points      | Point2f[]           | Edge center points in full-image coordinates; sorted by Score descending |
-| Score       | double[]            | Absolute gradient response at each edge; parallel to Points |
-| Lines       | LineSegmentPoint[]  | One line per edge, perpendicular to the stripe axis, spanning the full stripe Width; endpoints in full-image pixel coordinates (integer-rounded) |
-| Polarity    | string[]            | Per-edge polarity: `"DarkToBright"` or `"BrightToDark"`; determined by sign of the raw gradient regardless of the Polarity filter |
+| Output Port | Type            | Description |
+|-------------|-----------------|-------------|
+| Points      | Point2f[]       | Edge center points in full-image coordinates |
+| Score       | double[]        | Absolute gradient response at each edge; parallel to Points |
+| Lines       | LineSegment2f[] | One line per edge, perpendicular to the stripe axis, spanning the full stripe Width |
+| Polarity    | string[]        | Per-edge polarity: `"DarkToBright"` or `"BrightToDark"`; parallel to Points |
 
 All four output arrays share the same index and are always the same length (≤ Max Edges).
+
+---
+
+## DetectSegment
+
+Fits a sub-pixel line segment to a single prominent edge within a rotated ROI. The ROI is divided into `StripeCount` stripes along its height axis; each stripe calls `FindStripeEdgesOperator` internally to locate one edge candidate. Iterative outlier rejection in the ROI's (s, t) coordinate system fits a line through the surviving positions. Endpoint extent is then refined by splitting the area around the fitted segment into two half-ROIs on opposite perpendicular sides and pooling the strongest edge responses; the two most prominent determine the final segment endpoints.
+
+Supports [ROI](#roi).
+
+| Parameter       | Type   | Connectable | Description |
+|-----------------|--------|-------------|-------------|
+| Image           | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
+| Center X        | Double | Yes         | X coordinate of the ROI center in image pixels |
+| Center Y        | Double | Yes         | Y coordinate of the ROI center in image pixels |
+| Width           | Double | Yes         | ROI extent along the scan direction (perpendicular to the edge) |
+| Height          | Double | Yes         | ROI extent along the edge direction |
+| Angle (°)       | Double | Yes         | ROI rotation; 0 = edge runs vertically, scan direction is horizontal |
+| Stripe Count    | Int    | No          | Number of stripes to split the ROI into; min 2 (default 5) |
+| Stripe Width    | Int    | No          | Height of each stripe in pixels (default 10) |
+| Filter Size     | Int    | No          | Box-difference derivative kernel width; min 2 (default 5) |
+| Threshold       | Enum   | No          | `Manual` (default) or `Auto` (Otsu on the gradient distribution) |
+| Threshold Value | Double | No          | Minimum gradient response; shown when Threshold = Manual (default 10) |
+| Polarity        | Enum   | No          | `DarkToBright` (default) — rising edges only; `BrightToDark` — falling edges only |
+| Edge Select     | Enum   | No          | Which edge to pick per stripe: `Strongest` (default), `First`, `Last` |
+| Min Score       | Double | No          | Minimum fraction [0–1] of stripes that must agree for Found = true (default 0.5) |
+
+| Output Port | Type          | Description |
+|-------------|---------------|-------------|
+| Line        | LineSegment2f | Fitted edge segment with sub-pixel float endpoints in full-image coordinates |
+| Points      | Point2f[]     | Per-stripe inlier edge positions in full-image coordinates _(populated only when internal debug mode is on)_ |
+| Score       | double[]      | Gradient response strength at each inlier stripe; parallel to Points _(populated only when internal debug mode is on)_ |
+| Found       | bool          | True when inlier fraction ≥ Min Score |
+| Contours    | Point2f[][]   | The two endpoint-search half-ROIs as separate four-point polygons _(populated only when internal debug mode is on)_ |
 
 ---
 
