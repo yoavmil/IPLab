@@ -65,7 +65,7 @@ public class FindStripeEdgesOperator : IOperatorType
 
         int w = (int)Math.Round(roi.Width);
 
-        filterSize = Math.Clamp(filterSize, 2, Math.Max(2, w / 2));
+        filterSize = Math.Min(Math.Max(2, w / 2), Math.Max(2, filterSize));
         int half = filterSize / 2;
 
         var angleRad = roi.Angle * Math.PI / 180.0;
@@ -183,7 +183,7 @@ public class FindStripeEdgesOperator : IOperatorType
             double strength = curved ? y1 - (y2 - y0) * (y2 - y0) / (8.0 * denom) : y1;
 
             if (strength <= threshold) continue;
-            peaks.Add((i + Math.Clamp(dx, -0.5, 0.5), strength));
+            peaks.Add((i + Math.Min(0.5, Math.Max(-0.5, dx)), strength));
         }
 
         peaks.Sort((a, b) => b.strength.CompareTo(a.strength));

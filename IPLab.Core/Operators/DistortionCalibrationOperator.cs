@@ -221,7 +221,7 @@ public class DistortionCalibrationOperator : IOperatorType
 
                 if (diagonal)
                 {
-                    float d = MathF.Abs(dr) - MathF.Abs(dc);
+                    float d = Math.Abs(dr) - Math.Abs(dc);
                     val = d > 0f ? 1f : d < 0f ? -1f : 0f;
                 }
                 else
@@ -762,12 +762,12 @@ public class DistortionCalibrationOperator : IOperatorType
             if (corners.TryGetValue((col + 1, row), out var right))
             {
                 float dx = pt.X - right.X, dy = pt.Y - right.Y;
-                dists.Add(MathF.Sqrt(dx * dx + dy * dy));
+                dists.Add((float)Math.Sqrt(dx * dx + dy * dy));
             }
             if (corners.TryGetValue((col, row + 1), out var up))
             {
                 float dx = pt.X - up.X, dy = pt.Y - up.Y;
-                dists.Add(MathF.Sqrt(dx * dx + dy * dy));
+                dists.Add((float)Math.Sqrt(dx * dx + dy * dy));
             }
         }
         if (dists.Count == 0) return 1f;
