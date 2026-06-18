@@ -34,6 +34,10 @@
 - [DetectSegment](#findedgeline) — fit a sub-pixel line to a single prominent edge within a rotated ROI
 - [TemplateMatch](#templatematch) — find every occurrence of a selected visual pattern
 
+## Flow
+- [LoopStart](#loopstart) — choose the collection row/item index for a flat loop body
+- [LoopEnd](#loopend) — collect up to four loop body values
+
 ## Scripting
 - [CSharpScript](#csharpscipt) — run a user-written C# snippet loaded from a `.cs` file
 
@@ -424,6 +428,54 @@ scaled versions of the pattern. The input and template channels must match each 
 The template editor opens on the operator's current input image. Run the flow first, then select the
 template region, add or delete mask rectangles as needed, and save it. The saved template path is
 assigned to the operator automatically.
+
+---
+
+## LoopStart
+
+Marks the start of a flat loop body. In the current MVP it runs one selected row/item at a time:
+choose a `Source`, set `Index`, and wire the `Index` output into operators that need to know which
+entry they are processing. `Count` exposes the number of available rows/items.
+
+`Source` must be a `Mat` or a non-string `IEnumerable`. For a `Mat`, `Index` selects a row. For a
+collection, `Index` selects an item position. `LoopStart` does not expose the selected item directly
+yet; downstream operators can still consume the original source through ordinary upstream wiring.
+
+| Parameter | Type   | Connectable | Description |
+|-----------|--------|-------------|-------------|
+| Source    | Object | Yes         | Mat or non-string collection that defines the loop count |
+| Index     | Int    | No          | Row/item index to run in discrete mode |
+
+| Output Port | Type |
+|-------------|------|
+| Index       | int  |
+| Count       | int  |
+
+---
+
+## LoopEnd
+
+Marks the end of a flat loop body and collects up to four values from the selected iteration.
+In the current MVP each output is an accumulator array. Normal discrete execution uses one slot;
+the executor can also reset the accumulator with a loop count before filling values by index.
+
+`Index` should be wired from the paired `LoopStart.Index`; this identifies which start/end nodes
+belong together.
+
+| Parameter | Type   | Connectable | Description |
+|-----------|--------|-------------|-------------|
+| Index     | Object | Yes (int)   | Index from the paired LoopStart |
+| In 1      | Object | Yes         | First value to collect |
+| In 2      | Object | Yes         | Second value to collect |
+| In 3      | Object | Yes         | Third value to collect |
+| In 4      | Object | Yes         | Fourth value to collect |
+
+| Output Port | Type   |
+|-------------|--------|
+| Out1        | object |
+| Out2        | object |
+| Out3        | object |
+| Out4        | object |
 
 ---
 

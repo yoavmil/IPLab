@@ -58,6 +58,8 @@
 
 - **Open empty .ipl file doesn't show error message** - it doesn't crash the app, but the user doesn't know anything happened. a popup error message is needed here.
 
+- **Load incompatible `.ipl` files permissively** - when opening a saved flow that contains unknown operator types, missing parameters, renamed ports, unsupported values, or other compatibility problems, load as much of the graph as possible instead of failing the whole file. Mark broken nodes/connections clearly in the UI, preserve unknown data for round-trip save when possible, and show a summary of what could not be restored.
+
 - **Inspector overlay layers survive image-selection change** — when the user clicks a different thumbnail in a `LoadImageOperator` and the flow re-runs, the inspector's overlay layers (circle annotations, contour overlays, etc.) reset to their defaults. The active layer selection and any per-layer visibility toggles should be preserved across re-runs so the user doesn't have to re-enable them after every image switch.
 
 - **New flow command** — provide a "New flow" action (toolbar button or File menu) that clears the current graph and starts fresh. If the current flow has unsaved changes, prompt to save first. Complements the existing open/save commands.

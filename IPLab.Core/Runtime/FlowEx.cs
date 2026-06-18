@@ -58,6 +58,8 @@ public class FlowEx : IFlowEx
     /// <inheritdoc/>
     public async Task RunAllAsync(CancellationToken ct = default)
     {
+        ThrowIfCachingLoopFlow();
+
         var tasks = new Dictionary<string, Task>();
         var byId  = Flow.Operators.ToDictionary(o => o.Id);
 
@@ -80,6 +82,8 @@ public class FlowEx : IFlowEx
     /// <inheritdoc/>
     public async Task RunSingleAsync(string operatorId, CancellationToken ct = default)
     {
+        ThrowIfCachingLoopFlow();
+
         var op = Flow.Operators.First(o => o.Id == operatorId);
         await RunOperatorAsync(op, ct);
     }
@@ -112,7 +116,10 @@ public class FlowEx : IFlowEx
         SetStatus(op.Id, OperatorStatus.Running, null);
         try
         {
-            _results[op.Id] = await Task.Run(() => op.Type.Execute(resolved), ct);
+            var result = await Task.Run(() => op.Type.Execute(resolved), ct);
+            _results[op.Id] = result;
+            if (op.Type.TypeName == "LoopStart")
+                ResetPairedLoopEnds(op, result);
             _paramSnapshot[op.Id] = cacheKey;
             SetStatus(op.Id, OperatorStatus.Success, null);
         }
@@ -161,6 +168,42 @@ public class FlowEx : IFlowEx
         if (a is string[] sa && b is string[] sb) return sa.SequenceEqual(sb);
         if (a.GetType().IsValueType || a is string) return a.Equals(b);
         return false; // reference types (Mat, etc.) → already equal only by ReferenceEquals above
+    }
+
+    private void ResetPairedLoopEnds(IOperator op, object? result)
+    {
+        if (result is not IReadOnlyDictionary<string, object?> outputs ||
+            !outputs.TryGetValue("Count", out var countValue))
+            throw new InvalidOperationException($"LoopStart operator '{op.Id}' did not produce a Count output.");
+
+        int count = Convert.ToInt32(countValue);
+        var loopEnds = Flow.Operators.Where(candidate => IsPairedLoopEnd(candidate, op.Id)).ToList();
+        if (loopEnds.Count == 0)
+            throw new InvalidOperationException($"LoopStart operator '{op.Id}' does not have a paired LoopEnd operator.");
+        if (loopEnds.Count > 1)
+            throw new InvalidOperationException($"LoopStart operator '{op.Id}' has more than one paired LoopEnd operator.");
+
+        loopEnds[0].Type.Execute(new Dictionary<string, object?>
+        {
+            ["Reset"] = true,
+            ["Count"] = count,
+        });
+    }
+
+    private static bool IsPairedLoopEnd(IOperator op, string loopStartId) =>
+        op.Type.TypeName == "LoopEnd" &&
+        op.Parameters.Any(param =>
+            param.Name == "Index" &&
+            param.Source?.OperatorId == loopStartId &&
+            param.Source?.Port == "Index");
+
+    private void ThrowIfCachingLoopFlow()
+    {
+        if (!_enableCaching)
+            return;
+
+        if (Flow.Operators.Any(op => op.Type.TypeName is "LoopStart" or "LoopEnd"))
+            throw new NotImplementedException("FlowEx caching is not supported for flows that contain loop operators.");
     }
 
     private void SetStatus(string id, OperatorStatus status, Exception? ex)
