@@ -42,6 +42,7 @@ public class OperatorNodeViewModel : ViewModelBase
     public ConnectorViewModel LeftConnector   { get; } = new("Left",   ConnectionSide.Left);
     public ConnectorViewModel RightConnector  { get; } = new("Right",  ConnectionSide.Right);
 
+    public List<Dependency>                      Dependencies                { get; }
     public IReadOnlyList<ParameterEditViewModel> Parameters                  { get; }
     public ICommand                              OpenSettingsCommand         { get; }
     public ICommand                              DeleteCommand               { get; }
@@ -88,6 +89,7 @@ public class OperatorNodeViewModel : ViewModelBase
     {
         Operator               = op;
         Id                     = op.Id;
+        Dependencies           = op.Dependencies.ToList();
         _displayName           = op.DisplayName;
         TypeName               = op.Type.TypeName;
         _onSelected            = onSelected;

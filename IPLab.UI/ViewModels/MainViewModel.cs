@@ -159,11 +159,13 @@ public class MainViewModel : ViewModelBase
         Toolbox = new ToolboxViewModel(OperatorRegistry.CreateDefault(), type => Flow.AddNode(type));
 
         _settings = SettingsStore.Load<IPLabSettings>();
-        var lastFlow = TryLoadFlowFromPath(_settings.LastFlowPath);
+        var (lastFlow, lastFlowError) = TryLoadFlowFromPath(_settings.LastFlowPath);
         if (lastFlow is not null)
             _currentFilePath = _settings.LastFlowPath;
 
         Flow = CreateFlowViewModel(lastFlow ?? BuildSampleFlow());
+        if (lastFlowError is not null)
+            Status = $"Could not reload last flow: {lastFlowError}";
         _savedJson = SerializeCurrentFlow();
 
         NewFlowCommand       = new RelayCommand(NewFlow);
@@ -420,19 +422,15 @@ public class MainViewModel : ViewModelBase
             Id           = node.Operator.Id,
             DisplayName  = node.DisplayName,
             Type         = node.Operator.Type,
-            Parameters   = node.Parameters.Select(p => p.ToParameterValue()).ToList(),
-            Dependencies = node.Parameters
-                .Where(p => p.IsWired && p.SelectedSource is not null)
-                .GroupBy(p => p.SelectedSource!.OperatorId)
-                .Select(g => new Dependency($"D_{g.Key}_{node.Id}", g.Key))
-                .ToList()
+            Parameters   = [.. node.Parameters.Select(p => p.ToParameterValue())],
+            Dependencies = [.. node.Dependencies]
         }));
 
-    private static IFlow? TryLoadFlowFromPath(string? path)
+    private static (IFlow? Flow, string? Error) TryLoadFlowFromPath(string? path)
     {
-        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
-        try   { return FlowDefSerializer.Deserialize(File.ReadAllText(path), OperatorRegistry.CreateDefault()); }
-        catch { return null; }
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return (null, null);
+        try   { return (FlowDefSerializer.Deserialize(File.ReadAllText(path), OperatorRegistry.CreateDefault()), null); }
+        catch (Exception ex) { return (null, ex.Message); }
     }
 
     private static IFlow BuildSampleFlow()

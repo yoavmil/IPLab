@@ -35,7 +35,7 @@
 - [TemplateMatch](#templatematch) — find every occurrence of a selected visual pattern
 
 ## Flow
-- [LoopStart](#loopstart) — choose the collection row/item index for a flat loop body
+- [LoopStart](#loopstart) — control how a flat loop body executes (Discrete / Serial / Parallel)
 - [LoopEnd](#loopend) — collect up to four loop body values
 
 ## Scripting
@@ -433,18 +433,26 @@ assigned to the operator automatically.
 
 ## LoopStart
 
-Marks the start of a flat loop body. In the current MVP it runs one selected row/item at a time:
-choose a `Source`, set `Index`, and wire the `Index` output into operators that need to know which
-entry they are processing. `Count` exposes the number of available rows/items.
+Marks the start of a flat loop body. `Source` defines the collection being iterated; `Count` is
+derived from it. `Mode` controls execution:
 
-`Source` must be a `Mat` or a non-string `IEnumerable`. For a `Mat`, `Index` selects a row. For a
-collection, `Index` selects an item position. `LoopStart` does not expose the selected item directly
-yet; downstream operators can still consume the original source through ordinary upstream wiring.
+- **Discrete** — runs the body exactly once for the user-set `Index`. Use this for interactive
+  single-item debugging.
+- **Serial** — runs all iterations 0..Count-1 in order. Default.
+- **Parallel** — runs all iterations concurrently.
+
+In all modes, `Index` also controls which iteration's results the inspector displays for body
+operators. `LoopStart` does not expose the selected item directly; downstream operators consume the
+original source plus `Index` through ordinary upstream wiring.
+
+`Source` must be a `Mat` or a non-string `IEnumerable`. For a `Mat`, count is `Rows`. For a
+collection, count is the number of items.
 
 | Parameter | Type   | Connectable | Description |
 |-----------|--------|-------------|-------------|
 | Source    | Object | Yes         | Mat or non-string collection that defines the loop count |
-| Index     | Int    | No          | Row/item index to run in discrete mode |
+| Index     | Int    | No          | Iteration to display in the inspector; the only iteration that runs in Discrete mode |
+| Mode      | Enum   | No          | `Discrete` / `Serial` / `Parallel`; default `Serial` |
 
 | Output Port | Type |
 |-------------|------|
@@ -455,9 +463,9 @@ yet; downstream operators can still consume the original source through ordinary
 
 ## LoopEnd
 
-Marks the end of a flat loop body and collects up to four values from the selected iteration.
-In the current MVP each output is an accumulator array. Normal discrete execution uses one slot;
-the executor can also reset the accumulator with a loop count before filling values by index.
+Marks the end of a flat loop body. `LoopEnd` itself is a stateless pass-through — the runtime
+accumulates its per-iteration values. After all iterations complete, downstream operators receive
+`Out1`–`Out4` as `object?[]` arrays indexed by loop iteration.
 
 `Index` should be wired from the paired `LoopStart.Index`; this identifies which start/end nodes
 belong together.

@@ -80,21 +80,48 @@ public static class FlowDefSerializer
     /// <summary>Deserializes a JSON string produced by <see cref="Serialize"/> back into a <see cref="Flow"/>, using <paramref name="registry"/> to resolve operator types.</summary>
     public static Flow Deserialize(string json, OperatorRegistry registry)
     {
-        var dto = JsonSerializer.Deserialize<FlowDto>(json, Options)
-            ?? throw new JsonException("Failed to deserialize flow.");
-
-        var operators = (dto.Operators ?? []).Select(opDto =>
+        FlowDto dto;
+        try
         {
-            var type   = registry.Resolve(opDto.Type);
+            dto = JsonSerializer.Deserialize<FlowDto>(json, Options)
+                ?? throw new JsonException("Root JSON object is null or empty.");
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException($"Flow JSON is malformed: {ex.Message}", ex);
+        }
+
+        var operators = new List<IOperator>();
+        foreach (var opDto in dto.Operators ?? [])
+        {
+            IOperatorType type;
+            try { type = registry.Resolve(opDto.Type); }
+            catch (KeyNotFoundException)
+            {
+                throw new InvalidOperationException(
+                    $"Unknown operator type '{opDto.Type}' on operator '{opDto.Id}' (\"{opDto.DisplayName}\"). " +
+                    $"Registered types: {string.Join(", ", registry.GetAll().Select(t => t.TypeName))}");
+            }
+
             var schema = type.ParameterSchema.ToDictionary(p => p.Name);
+            var parameters = new List<ParameterValue>();
+            foreach (var p in opDto.Parameters ?? [])
+            {
+                try
+                {
+                    parameters.Add(p.Source is { } src
+                        ? new ParameterValue { Name = p.Name, Source = new SourceRef(src.OperatorId, src.Port) }
+                        : new ParameterValue { Name = p.Name, Value  = CoerceValue(p.Value, schema, p.Name) });
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to deserialize parameter '{p.Name}' (value: {p.Value}) " +
+                        $"on operator '{opDto.Id}' (type '{opDto.Type}'): {ex.Message}", ex);
+                }
+            }
 
-            var parameters = (opDto.Parameters ?? []).Select(p =>
-                p.Source is { } src
-                    ? new ParameterValue { Name = p.Name, Source = new SourceRef(src.OperatorId, src.Port) }
-                    : new ParameterValue { Name = p.Name, Value  = CoerceValue(p.Value, schema, p.Name) }
-            ).ToList();
-
-            return (IOperator)new Operator
+            operators.Add(new Operator
             {
                 Id           = opDto.Id,
                 DisplayName  = opDto.DisplayName,
@@ -102,8 +129,8 @@ public static class FlowDefSerializer
                 Parameters   = parameters,
                 Dependencies = (opDto.Dependencies ?? [])
                     .Select(d => new Dependency(d.DependencyId, d.OperatorId)).ToList()
-            };
-        }).ToList();
+            });
+        }
 
         var opLayouts = (dto.Operators ?? [])
             .Where(o => o.X.HasValue && o.Y.HasValue)
@@ -122,7 +149,18 @@ public static class FlowDefSerializer
     {
         if (element is not { } el) return null;
 
-        var paramType = schema.TryGetValue(name, out var desc) ? desc.Type : ParameterType.String;
+        ParameterType paramType;
+        if (schema.TryGetValue(name, out var desc))
+            paramType = desc.Type;
+        else
+            paramType = el.ValueKind switch          // param removed from schema — infer from JSON
+            {
+                JsonValueKind.True or JsonValueKind.False => ParameterType.Bool,
+                JsonValueKind.Number                      => ParameterType.Double,
+                JsonValueKind.Array                       => ParameterType.StringList,
+                _                                         => ParameterType.String,
+            };
+
         return paramType switch
         {
             ParameterType.Int        => Convert.ToInt32(el.GetDouble()),

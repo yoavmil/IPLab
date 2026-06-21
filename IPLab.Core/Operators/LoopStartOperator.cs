@@ -20,6 +20,9 @@ public class LoopStartOperator : IOperatorType
     [
         new() { Name = "Source", Label = "Source", ConnectableType = typeof(object) },
         new() { Name = "Index",  Label = "Index",  Type = ParameterType.Int, DefaultValue = 0, Min = 0 },
+        new() { Name = "Mode",   Label = "Mode",   Type = ParameterType.Enum,
+                DefaultValue = nameof(LoopMode.Serial),
+                Options = [nameof(LoopMode.Discrete), nameof(LoopMode.Serial), nameof(LoopMode.Parallel)] },
     ];
 
     /// <inheritdoc/>
@@ -39,8 +42,6 @@ public class LoopStartOperator : IOperatorType
 
         if (count <= 0)
             throw new InvalidOperationException("LoopStart Source is empty.");
-        if (index < 0 || index >= count)
-            throw new InvalidOperationException($"LoopStart Index {index} is outside the source range 0..{count - 1}.");
 
         return new Dictionary<string, object?>
         {
