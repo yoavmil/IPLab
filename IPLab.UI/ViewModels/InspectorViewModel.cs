@@ -103,30 +103,31 @@ public class InspectorViewModel : ViewModelBase
 
     public void UpdateSelectedImage(FlowViewModel? flow)
     {
-        var newState = BuildState();
+        var newState = BuildState(flow);
         if (newState != State)
             State = newState;
         UpdateOverlayLayers(flow);
     }
 
-    private InspectorState BuildState()
+    private InspectorState BuildState(FlowViewModel? flow)
     {
         if (_selectedNode is null || !_execution.HasResults)
             return new InspectorState() with { Roi = CurrentRoi };
 
         _execution.IntermediateResults.TryGetValue(_selectedNode.Id, out var result);
+        var contextImage = GetContextImage(flow);
 
         var circles = Unwrap<CircleSegment[]>(result);
         if (circles is not null)
-            return new InspectorState(Image: GetSourceImage(), Circles: circles) with { Roi = CurrentRoi };
+            return new InspectorState(Image: contextImage, Circles: circles) with { Roi = CurrentRoi };
 
         var blobs = Unwrap<KeyPoint[]>(result);
         if (blobs is not null)
-            return new InspectorState(Image: GetSourceImage(), Blobs: blobs) with { Roi = CurrentRoi };
+            return new InspectorState(Image: contextImage, Blobs: blobs) with { Roi = CurrentRoi };
 
         var rectangles = Unwrap<Rect[]>(result);
         if (rectangles is not null)
-            return new InspectorState(Image: GetSourceImage(), Rectangles: rectangles) with { Roi = CurrentRoi };
+            return new InspectorState(Image: contextImage, Rectangles: rectangles) with { Roi = CurrentRoi };
 
         // Lines, crosses, and contours can co-exist; collect all before returning.
         var contoursF = Unwrap<Point2f[][]>(result);
@@ -154,23 +155,61 @@ public class InspectorViewModel : ViewModelBase
 
         if (lines is not null || crosses is not null || contours is not null)
             return new InspectorState(
-                Image: GetDisplayImage() ?? GetSourceImage(),
+                Image: contextImage,
                 Lines: lines,
                 Crosses: crosses,
                 Contours: contours) with { Roi = CurrentRoi };
 
-        return new InspectorState(Image: GetDisplayImage()) with { Roi = CurrentRoi };
+        return new InspectorState(Image: contextImage) with { Roi = CurrentRoi };
     }
 
     private static T? Unwrap<T>(object? result) where T : class
-        => result as T
-           ?? (result as Dictionary<string, object?>)?.Values.OfType<T>().FirstOrDefault();
+    {
+        if (result is T direct)
+            return direct;
+
+        if (result is IReadOnlyDictionary<string, object?> dict)
+        {
+            foreach (var val in dict.Values)
+            {
+                var found = Unwrap<T>(val);
+                if (found is not null) return found;
+            }
+            return null;
+        }
+
+        // LoopEnd accumulator: object?[] where each slot holds one iteration's value.
+        // Each slot may be an array of elementType (flatten it) or a single elementType value (collect it).
+        if (result is object?[] accumulator && typeof(T).IsArray)
+        {
+            var elementType = typeof(T).GetElementType()!;
+            var items = new List<object?>();
+            foreach (var slot in accumulator)
+            {
+                if (slot is null) continue;
+                if (slot is Array arr)
+                    items.AddRange(arr.Cast<object?>().Where(v => v is not null));
+                else if (elementType.IsInstanceOfType(slot))
+                    items.Add(slot);
+            }
+            if (items.Count == 0) return null;
+            var merged = Array.CreateInstance(elementType, items.Count);
+            for (int i = 0; i < items.Count; i++)
+                merged.SetValue(items[i], i);
+            return (T)(object)merged;
+        }
+
+        return null;
+    }
 
     private static T? UnwrapStruct<T>(object? result) where T : struct
     {
         if (result is T direct) return direct;
-        return (result as Dictionary<string, object?>)?
-            .Values.OfType<T>().Cast<T?>().FirstOrDefault();
+        if (result is IReadOnlyDictionary<string, object?> dict)
+            return dict.Values.OfType<T>().Cast<T?>().FirstOrDefault();
+        if (result is object?[] acc)
+            return acc.OfType<T>().Cast<T?>().FirstOrDefault();
+        return null;
     }
 
     private BitmapSource? GetSourceImage()
@@ -188,6 +227,27 @@ public class InspectorViewModel : ViewModelBase
         return displayPort is not null
             ? _precomputedImages.GetValueOrDefault((_selectedNode.Id, displayPort.Name))
             : null;
+    }
+
+    private BitmapSource? GetContextImage(FlowViewModel? flow) =>
+        GetDisplayImage() ?? GetSourceImage() ?? GetNearestAncestorImage(flow);
+
+    private BitmapSource? GetNearestAncestorImage(FlowViewModel? flow)
+    {
+        if (_selectedNode is null || flow is null) return null;
+
+        var edges = ConnectionEdges(flow).ToList();
+        var ancestorIds = FlowGraph.GetAncestors(_selectedNode.Id, edges);
+        var orderedAncestors = FlowGraph.TopologicalSort(ancestorIds, edges)
+            .Reverse()
+            .Select(id => flow.Nodes.FirstOrDefault(n => n.Id == id))
+            .OfType<OperatorNodeViewModel>();
+
+        foreach (var ancestor in orderedAncestors)
+            foreach (var (_, bitmap) in ExtractImageLayers(ancestor.Id, ancestor.Operator.Type.OutputPorts))
+                return bitmap;
+
+        return null;
     }
 
     public async Task PrecomputeAsync(FlowViewModel flow)
@@ -289,12 +349,7 @@ public class InspectorViewModel : ViewModelBase
     {
         var layers = new List<LayerViewModel>();
 
-        var edges = flow.Connections
-            .Select(c => (
-                Source: flow.Nodes.FirstOrDefault(n => n.HasConnector(c.Source))?.Id,
-                Target: flow.Nodes.FirstOrDefault(n => n.HasConnector(c.Target))?.Id))
-            .Where(e => e.Source is not null && e.Target is not null)
-            .Select(e => (e.Source!, e.Target!));
+        var edges = ConnectionEdges(flow);
 
         var ancestorIds = FlowGraph.GetAncestors(node.Id, edges);
         var orderedAncestors = FlowGraph.TopologicalSort(ancestorIds, edges)
@@ -333,9 +388,23 @@ public class InspectorViewModel : ViewModelBase
                 if (inputLayer is not null)
                     inputLayer.IsEnabled = true;
             }
+            else
+            {
+                var fallbackLayer = layers.LastOrDefault(l => !l.IsOwnLayer && l.Image is not null);
+                if (fallbackLayer is not null)
+                    fallbackLayer.IsEnabled = true;
+            }
         }
         return layers;
     }
+
+    private static IEnumerable<(string Source, string Target)> ConnectionEdges(FlowViewModel flow) =>
+        flow.Connections
+            .Select(c => (
+                Source: flow.Nodes.FirstOrDefault(n => n.HasConnector(c.Source))?.Id,
+                Target: flow.Nodes.FirstOrDefault(n => n.HasConnector(c.Target))?.Id))
+            .Where(e => e.Source is not null && e.Target is not null)
+            .Select(e => (e.Source!, e.Target!));
 
     private IEnumerable<(string Port, BitmapSource Bitmap)> ExtractImageLayers(
         string operatorId, IReadOnlyList<OutputPortDescriptor> outputPorts)

@@ -42,6 +42,7 @@ See [`scripts/Waviness/`](../scripts/Waviness/) for a complete example: it defin
 | Filters | Threshold, HistogramEqualization, GaussianBlur, Morphology, Thinning, Bitwise |
 | Visualization | DrawHistogram |
 | Detection | DetectCircles, DetectSimpleBlobs, ConnectedComponents, FindContours, FindStripeEdges, DetectSegment, TemplateMatch |
+| Flow | LoopStart, LoopEnd |
 | Scripting | CSharpScript |
 
 Full documentation: [docs/OPERATORS.md](https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md)

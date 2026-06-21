@@ -77,10 +77,33 @@ public class FlowDef : IFlowDef
             }
         }
 
+        ValidateLoopEndPairs(opById, errors);
+
         if (HasCycle())
             errors.Add("Flow contains circular dependencies.");
 
         return errors.Count == 0 ? ValidationResult.Ok() : ValidationResult.Fail([.. errors]);
+    }
+
+    private void ValidateLoopEndPairs(
+        IReadOnlyDictionary<string, IOperator> opById,
+        List<string> errors)
+    {
+        foreach (var loopEnd in Operators.Where(o => o.Type.TypeName == "LoopEnd"))
+        {
+            var indexParam = loopEnd.Parameters.FirstOrDefault(p => p.Name == "Index");
+            if (indexParam?.Source is not { } source)
+            {
+                errors.Add($"LoopEnd operator '{loopEnd.Id}' must wire its Index parameter from a LoopStart Index output.");
+                continue;
+            }
+
+            if (!opById.TryGetValue(source.OperatorId, out var sourceOp))
+                continue;
+
+            if (sourceOp.Type.TypeName != "LoopStart" || source.Port != "Index")
+                errors.Add($"LoopEnd operator '{loopEnd.Id}' must wire its Index parameter from a LoopStart Index output.");
+        }
     }
 
     private bool HasCycle()

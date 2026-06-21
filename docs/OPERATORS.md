@@ -34,6 +34,10 @@
 - [DetectSegment](#findedgeline) — fit a sub-pixel line to a single prominent edge within a rotated ROI
 - [TemplateMatch](#templatematch) — find every occurrence of a selected visual pattern
 
+## Flow
+- [LoopStart](#loopstart) — control how a flat loop body executes (Discrete / Serial / Parallel)
+- [LoopEnd](#loopend) — collect up to four loop body values
+
 ## Scripting
 - [CSharpScript](#csharpscipt) — run a user-written C# snippet loaded from a `.cs` file
 
@@ -424,6 +428,62 @@ scaled versions of the pattern. The input and template channels must match each 
 The template editor opens on the operator's current input image. Run the flow first, then select the
 template region, add or delete mask rectangles as needed, and save it. The saved template path is
 assigned to the operator automatically.
+
+---
+
+## LoopStart
+
+Marks the start of a flat loop body. `Source` defines the collection being iterated; `Count` is
+derived from it. `Mode` controls execution:
+
+- **Discrete** — runs the body exactly once for the user-set `Index`. Use this for interactive
+  single-item debugging.
+- **Serial** — runs all iterations 0..Count-1 in order. Default.
+- **Parallel** — runs all iterations concurrently.
+
+In all modes, `Index` also controls which iteration's results the inspector displays for body
+operators. `LoopStart` does not expose the selected item directly; downstream operators consume the
+original source plus `Index` through ordinary upstream wiring.
+
+`Source` must be a `Mat` or a non-string `IEnumerable`. For a `Mat`, count is `Rows`. For a
+collection, count is the number of items.
+
+| Parameter | Type   | Connectable | Description |
+|-----------|--------|-------------|-------------|
+| Source    | Object | Yes         | Mat or non-string collection that defines the loop count |
+| Index     | Int    | No          | Iteration to display in the inspector; the only iteration that runs in Discrete mode |
+| Mode      | Enum   | No          | `Discrete` / `Serial` / `Parallel`; default `Serial` |
+
+| Output Port | Type |
+|-------------|------|
+| Index       | int  |
+| Count       | int  |
+
+---
+
+## LoopEnd
+
+Marks the end of a flat loop body. `LoopEnd` itself is a stateless pass-through — the runtime
+accumulates its per-iteration values. After all iterations complete, downstream operators receive
+`Out1`–`Out4` as `object?[]` arrays indexed by loop iteration.
+
+`Index` should be wired from the paired `LoopStart.Index`; this identifies which start/end nodes
+belong together.
+
+| Parameter | Type   | Connectable | Description |
+|-----------|--------|-------------|-------------|
+| Index     | Object | Yes (int)   | Index from the paired LoopStart |
+| In 1      | Object | Yes         | First value to collect |
+| In 2      | Object | Yes         | Second value to collect |
+| In 3      | Object | Yes         | Third value to collect |
+| In 4      | Object | Yes         | Fourth value to collect |
+
+| Output Port | Type   |
+|-------------|--------|
+| Out1        | object |
+| Out2        | object |
+| Out3        | object |
+| Out4        | object |
 
 ---
 

@@ -34,6 +34,17 @@ public enum OperatorStatus
     Disabled
 }
 
+/// <summary>Controls how a <c>LoopStart</c>/<c>LoopEnd</c> pair is executed across all iterations.</summary>
+public enum LoopMode
+{
+    /// <summary>Runs the body exactly once for the user-set <c>Index</c>.</summary>
+    Discrete,
+    /// <summary>Runs all iterations in order, one at a time.</summary>
+    Serial,
+    /// <summary>Runs all iterations concurrently.</summary>
+    Parallel,
+}
+
 /// <summary>Which edge of a node the visual connection wire attaches to.</summary>
 public enum ConnectionSide
 {

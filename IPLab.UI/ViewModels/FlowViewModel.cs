@@ -101,6 +101,8 @@ public class FlowViewModel
 
         var depId = $"D_{sourceNode.Id}_{targetNode.Id}";
         Connections.Add(new ConnectionViewModel(sourceConnector, targetConnector, depId, OnDeleteConnection));
+        if (!targetNode.Dependencies.Any(d => d.DependencyId == depId))
+            targetNode.Dependencies.Add(new Dependency(depId, sourceNode.Id));
 
         // Rebuild available sources for target and all downstream nodes now that the
         // new edge is in place — this adds the full ancestor chain, not just the direct source.
@@ -129,6 +131,9 @@ public class FlowViewModel
         Connections.Remove(conn);
 
         if (targetNode is null) return;
+
+        var dep = targetNode.Dependencies.FirstOrDefault(d => d.DependencyId == conn.DependencyId);
+        if (dep is not null) targetNode.Dependencies.Remove(dep);
 
         // Rebuild sources for the target and every node downstream of it.
         foreach (var node in GetSelfAndDescendants(targetNode))
@@ -184,15 +189,19 @@ public class FlowViewModel
 
         foreach (var param in node.Parameters.Where(p => p.CanBeWired))
         {
+            // Snapshot before Clear(): the ComboBox TwoWay binding will null out
+            // SelectedSource the moment the collection is cleared, losing the reference.
+            var prevSource = param.SelectedSource;
+
             param.AvailableSources.Clear();
             foreach (var src in ordered.Where(s => PortTypeCompat.IsCompatible(param.ConnectableType, s.DataType)))
                 param.AvailableSources.Add(src);
 
             // Re-point SelectedSource at the new instance, or clear stale wiring.
-            if (param.IsWired && param.SelectedSource is not null)
+            if (param.IsWired && prevSource is not null)
             {
                 var match = param.AvailableSources.FirstOrDefault(
-                    s => s.OperatorId == param.SelectedSource.OperatorId && s.Port == param.SelectedSource.Port);
+                    s => s.OperatorId == prevSource.OperatorId && s.Port == prevSource.Port);
                 if (match is not null)
                     param.SelectedSource = match;
                 else
