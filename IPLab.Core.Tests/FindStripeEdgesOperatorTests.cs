@@ -1,4 +1,5 @@
 using IPLab.Core.Operators;
+using IPLab.Core.Spatial;
 using OpenCvSharp;
 
 namespace IPLab.Core.Tests;
@@ -58,7 +59,7 @@ public class FindStripeEdgesOperatorTests
         var result = Run(image, cx, cy, stripeW, stripeH, angleDeg);
 
         var points = (Point2f[])result["Points"]!;
-        var lines  = (LineSegmentPoint[])result["Lines"]!;
+        var lines  = (LineSegment2f[])result["Lines"]!;
 
         Assert.Single(points);
 
@@ -123,7 +124,7 @@ public class FindStripeEdgesOperatorTests
     // y=0..50.  Line endpoints must stay within [0, 50], not extend to y=100.
 
     [Fact]
-    public void LineEndpoints_ClampedToVisibleRegion_WhenRoiPartiallyOutsideTop()
+    public void LineEndpoints_SpanRequestedStripeThickness_WhenRoiPartiallyOutsideTop()
     {
         // 200×200 image: left half dark, right half bright → vertical edge at x=100.
         // Stripe: angle=0, cx=100, cy=0, w=180, h=100.
@@ -134,19 +135,19 @@ public class FindStripeEdgesOperatorTests
         image.SubMat(new Rect(100, 0, 100, 200)).SetTo(new Scalar(200));
 
         var result = Run(image, cx: 100, cy: 0, w: 180, h: 100, angleDeg: 0);
-        var lines  = (LineSegmentPoint[])result["Lines"]!;
+        var lines  = (LineSegment2f[])result["Lines"]!;
 
         Assert.Single(lines);
 
-        int maxY = Math.Max(lines[0].P1.Y, lines[0].P2.Y);
-        int minY = Math.Min(lines[0].P1.Y, lines[0].P2.Y);
+        double maxY = Math.Max(lines[0].P1.Y, lines[0].P2.Y);
+        double minY = Math.Min(lines[0].P1.Y, lines[0].P2.Y);
 
-        Assert.InRange(minY, 0, 5);     // top of line near y=0
-        Assert.InRange(maxY, 45, 55);   // bottom of line near y=50, not y=100
+        Assert.InRange(minY, -55, -45);
+        Assert.InRange(maxY, 45, 55);
     }
 
     [Fact]
-    public void LineEndpoints_ClampedToVisibleRegion_WhenRoiPartiallyOutsideBottom()
+    public void LineEndpoints_SpanRequestedStripeThickness_WhenRoiPartiallyOutsideBottom()
     {
         // Same as the top test but ROI centered at y=200 (bottom edge).
         //   Unclamped crop:  y=150 .. y=250  (height=100)
@@ -156,15 +157,15 @@ public class FindStripeEdgesOperatorTests
         image.SubMat(new Rect(100, 0, 100, 200)).SetTo(new Scalar(200));
 
         var result = Run(image, cx: 100, cy: 200, w: 180, h: 100, angleDeg: 0);
-        var lines  = (LineSegmentPoint[])result["Lines"]!;
+        var lines  = (LineSegment2f[])result["Lines"]!;
 
         Assert.Single(lines);
 
-        int maxY = Math.Max(lines[0].P1.Y, lines[0].P2.Y);
-        int minY = Math.Min(lines[0].P1.Y, lines[0].P2.Y);
+        double maxY = Math.Max(lines[0].P1.Y, lines[0].P2.Y);
+        double minY = Math.Min(lines[0].P1.Y, lines[0].P2.Y);
 
-        Assert.InRange(minY, 145, 155);     // top of line near y=150
-        Assert.InRange(maxY, 195, 200);     // bottom of line near y=200, not y=250
+        Assert.InRange(minY, 145, 155);
+        Assert.InRange(maxY, 245, 255);
     }
 
     // ── ROI clamping with angle=90 ────────────────────────────────────────────────
@@ -179,7 +180,7 @@ public class FindStripeEdgesOperatorTests
     //   CY=200 (bottom): clamped perpendicular X = [50,  100]  (left-of-centre half)
 
     [Fact]
-    public void LineEndpoints_ClampedToVisibleRegion_Angle90_RoiPartiallyOutsideTop()
+    public void LineEndpoints_SpanRequestedStripeThickness_Angle90_RoiPartiallyOutsideTop()
     {
         // Image: horizontal edge at y=30 (dark above, bright below).
         // For angle=90 the profile runs along Y → detects horizontal edges.
@@ -190,19 +191,19 @@ public class FindStripeEdgesOperatorTests
         image.SubMat(new Rect(0, 30, 200, 170)).SetTo(new Scalar(200));
 
         var result = Run(image, cx: 100, cy: 0, w: 100, h: 100, angleDeg: 90);
-        var lines  = (LineSegmentPoint[])result["Lines"]!;
+        var lines  = (LineSegment2f[])result["Lines"]!;
 
         Assert.Single(lines);
 
-        int maxX = Math.Max(lines[0].P1.X, lines[0].P2.X);
-        int minX = Math.Min(lines[0].P1.X, lines[0].P2.X);
+        double maxX = Math.Max(lines[0].P1.X, lines[0].P2.X);
+        double minX = Math.Min(lines[0].P1.X, lines[0].P2.X);
 
-        Assert.InRange(minX, 95, 105);    // left endpoint near x=100
-        Assert.InRange(maxX, 145, 155);   // right endpoint near x=150, NOT x=200
+        Assert.InRange(minX, 45, 55);
+        Assert.InRange(maxX, 145, 155);
     }
 
     [Fact]
-    public void LineEndpoints_ClampedToVisibleRegion_Angle90_RoiPartiallyOutsideBottom()
+    public void LineEndpoints_SpanRequestedStripeThickness_Angle90_RoiPartiallyOutsideBottom()
     {
         // Image: horizontal edge at y=170 (dark above, bright below).
         // ROI: angle=90, cx=100, cy=200, w=100, h=100.
@@ -212,14 +213,63 @@ public class FindStripeEdgesOperatorTests
         image.SubMat(new Rect(0, 170, 200, 30)).SetTo(new Scalar(200));
 
         var result = Run(image, cx: 100, cy: 200, w: 100, h: 100, angleDeg: 90);
-        var lines  = (LineSegmentPoint[])result["Lines"]!;
+        var lines  = (LineSegment2f[])result["Lines"]!;
 
         Assert.Single(lines);
 
-        int maxX = Math.Max(lines[0].P1.X, lines[0].P2.X);
-        int minX = Math.Min(lines[0].P1.X, lines[0].P2.X);
+        double maxX = Math.Max(lines[0].P1.X, lines[0].P2.X);
+        double minX = Math.Min(lines[0].P1.X, lines[0].P2.X);
 
-        Assert.InRange(minX, 45, 55);     // left endpoint near x=50, NOT x=0
-        Assert.InRange(maxX, 95, 105);    // right endpoint near x=100
+        Assert.InRange(minX, 45, 55);
+        Assert.InRange(maxX, 145, 155);
+    }
+
+    [Fact]
+    public void OppositeCardinalAngles_ReturnSameEdgePairsAcrossCenteredSquare()
+    {
+        using var image = new Mat(300, 300, MatType.CV_8UC1, Scalar.White);
+        image.SubMat(new Rect(50, 50, 200, 200)).SetTo(Scalar.Black);
+
+        var angle0 = EdgeCoordinates(image, angleDeg: 0.0, useX: true);
+        var angle180 = EdgeCoordinates(image, angleDeg: 180.0, useX: true);
+        var angle90 = EdgeCoordinates(image, angleDeg: 90.0, useX: false);
+        var angle270 = EdgeCoordinates(image, angleDeg: 270.0, useX: false);
+
+        AssertEdgePairEqual(angle0, angle180);
+        AssertEdgePairEqual(angle90, angle270);
+    }
+
+    private static double[] EdgeCoordinates(Mat image, double angleDeg, bool useX)
+    {
+        var result = (Dictionary<string, object?>)new FindStripeEdgesOperator().Execute(
+            new Dictionary<string, object?>
+            {
+                ["Image"]          = image,
+                ["RoiCX"]          = 150.0,
+                ["RoiCY"]          = 150.0,
+                ["RoiW"]           = 250.0,
+                ["RoiH"]           = 30.0,
+                ["RoiAngle"]       = angleDeg,
+                ["FilterSize"]     = 6,
+                ["Threshold"]      = "Manual",
+                ["ThresholdValue"] = 10.0,
+                ["Polarity"]       = "Both",
+                ["MaxEdges"]       = 2,
+            })!;
+
+        var points = (Point2f[])result["Points"]!;
+        Assert.Equal(2, points.Length);
+
+        return points
+            .Select(p => useX ? (double)p.X : p.Y)
+            .Order()
+            .ToArray();
+    }
+
+    private static void AssertEdgePairEqual(double[] expected, double[] actual)
+    {
+        Assert.Equal(expected.Length, actual.Length);
+        for (int i = 0; i < expected.Length; i++)
+            Assert.Equal(expected[i], actual[i], precision: 3);
     }
 }
