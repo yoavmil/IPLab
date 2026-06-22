@@ -33,7 +33,7 @@ public class LoadImageOperator : IOperatorType
         var filePaths   = parameters["FilePaths"] as string[] ?? [];
         var activeIndex = Convert.ToInt32(parameters.GetValueOrDefault("ActiveIndex") ?? 0);
         if (filePaths.Length == 0) return null;
-        var idx      = Math.Clamp(activeIndex, 0, filePaths.Length - 1);
+        var idx      = Math.Min(filePaths.Length - 1, Math.Max(0, activeIndex));
         var path     = filePaths[idx];
         return new Dictionary<string, object?>
         {

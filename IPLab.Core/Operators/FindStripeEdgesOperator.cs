@@ -93,7 +93,7 @@ public class FindStripeEdgesOperator : IOperatorType
         if (w <= 0 || h <= 0)
             return Array.Empty<FindStripeEdge>();
 
-        filterSize = Math.Clamp(filterSize, 2, Math.Max(2, w / 2));
+        filterSize = Math.Min(Math.Max(2, w / 2), Math.Max(2, filterSize));
         if ((filterSize & 1) == 1)
             filterSize--;
         filterSize = Math.Max(2, filterSize);
@@ -159,7 +159,7 @@ public class FindStripeEdgesOperator : IOperatorType
 
                 if (strength <= thresholdValueToUse) continue;
 
-                double edgeCol = i - 0.5 + Math.Clamp(dx, -0.5, 0.5);
+                double edgeCol = i - 0.5 + Math.Min(0.5, Math.Max(-0.5, dx));
                 peaks.Add((edgeCol, strength, i));
             }
 

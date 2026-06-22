@@ -41,7 +41,7 @@ See [`scripts/Waviness/`](../scripts/Waviness/) for a complete example: it defin
 | Color | ConvertToGrayscale, SplitChannels, InvertImage |
 | Filters | Threshold, HistogramEqualization, GaussianBlur, Morphology, Thinning, Bitwise |
 | Visualization | DrawHistogram |
-| Detection | DetectCircles, DetectSimpleBlobs, ConnectedComponents, FindContours, FindStripeEdges, DetectSegment, TemplateMatch |
+| Detection | DetectCircles, DetectSimpleBlobs, ConnectedComponents, FindContours, FindStripeEdges, DetectLinearEdge, TemplateMatch |
 | Flow | LoopStart, LoopEnd |
 | Scripting | CSharpScript |
 

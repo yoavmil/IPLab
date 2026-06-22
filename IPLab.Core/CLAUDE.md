@@ -34,6 +34,18 @@ See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 
 **Rule: operators with file-backed parameters that affect execution must implement `ICacheInvalidationProvider` and include stable file metadata in their cache tokens. If decoded file content is also cached inside the operator, key it by full path plus modification time and length, and dispose replaced `Mat` instances. `TemplateMatchOperator` is the reference implementation.**
 
+## .NET Framework 4.8 compatibility
+
+`IPLab.Core` targets `net8.0;net48`. All new code must compile for both TFMs. Key rules:
+
+- **No `Math.Clamp`** — use `Math.Min(max, Math.Max(min, x))` instead.
+- **No `float.IsFinite`** — use `!float.IsNaN(x) && !float.IsInfinity(x)` instead.
+- **No `MathF`** — PolySharp generates a file-scoped shadow that breaks access from other files on net48. Use `Math.Abs`, `(float)Math.Sqrt(...)`, etc.
+- **No `Dictionary<K,V>(IReadOnlyDictionary<K,V>)` constructor** — use `.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)` instead.
+- **No `Random.Shuffle`** — the `Polyfill` package provides it as an extension method; the call site is unchanged.
+- Language features (records, `init`, `required`, collection expressions, pattern matching) are handled by `PolySharp` and `Polyfill` source generators — no `#if NETFRAMEWORK` guards needed for language features.
+- When in doubt, check whether the API exists in .NET Standard 2.0; if it does, it's safe.
+
 ## OpenCV usage patterns
 
 ### Prefer bulk OpenCV operations over C# loops

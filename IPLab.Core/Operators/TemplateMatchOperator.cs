@@ -125,7 +125,7 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
         {
             if (peakIndex[row, col] == 0) continue;
             float score = responseIndex[row, col];
-            if (!float.IsFinite(score) || score > 1.0001f) continue;
+            if (float.IsNaN(score) || float.IsInfinity(score) || score > 1.0001f) continue;
             float surrounding = surroundingIndex[row, col];
             double prominence = (score - surrounding) / Math.Max(1e-6, 1.0 - surrounding);
             if (prominence < MinLocalProminence) continue;

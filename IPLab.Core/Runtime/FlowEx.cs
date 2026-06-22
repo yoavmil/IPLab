@@ -374,7 +374,7 @@ public class FlowEx : IFlowEx
         if (op.Type is not ICacheInvalidationProvider provider)
             return resolved;
 
-        var key = new Dictionary<string, object?>(resolved);
+        var key = resolved.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         foreach (var (name, value) in provider.GetCacheTokens(resolved))
             key[name] = value;
         return key;

@@ -6,14 +6,16 @@ using OpenCvSharp;
 namespace IPLab.Core.Operators;
 
 /// <summary>
-/// Detects a sub-pixel line edge within a rotated ROI.
+/// Detects a sub-pixel straight line edge within a rotated ROI.
 /// The ROI is split into <c>StripeCount</c> stripes along the height axis; each stripe is
 /// processed by <see cref="FindStripeEdgesOperator.FindEdges"/> to locate one edge candidate.
+/// Outlier rejection fits a line through the candidates and removes stripes whose residuals
+/// exceed 3 pixels. The <c>Line</c> output spans the full ROI height along the fitted line.
 /// </summary>
-public class DetectSegmentOperator : IOperatorType
+public class DetectLinearEdgeOperator : IOperatorType
 {
     /// <inheritdoc/>
-    public string TypeName => "DetectSegment";
+    public string TypeName => "DetectLinearEdge";
     /// <inheritdoc/>
     public string Category => "Detection";
     /// <inheritdoc/>
@@ -38,15 +40,12 @@ public class DetectSegmentOperator : IOperatorType
     /// <inheritdoc/>
     public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
     [
-        new() { Name = "Line",     DataType = typeof(LineSegment2f) },
-        new() { Name = "Points",   DataType = typeof(Point2f[]) },
-        new() { Name = "Score",    DataType = typeof(double[]) },
-        new() { Name = "Found",    DataType = typeof(bool) },
-        new() { Name = "Contours", DataType = typeof(Point2f[][]) },
+        new() { Name = "Line",   DataType = typeof(LineSegment2f) },
+        new() { Name = "Points", DataType = typeof(Point2f[]) },
+        new() { Name = "Score",  DataType = typeof(double[]) },
+        new() { Name = "Found",  DataType = typeof(bool) },
         ..RoiParameters.OutputPorts,
     ];
-
-    bool debug = false;
 
     /// <inheritdoc/>
     public object? Execute(IReadOnlyDictionary<string, object?> parameters)
@@ -61,17 +60,16 @@ public class DetectSegmentOperator : IOperatorType
         var edgeSelect  = (string?)parameters.GetValueOrDefault("EdgeSelect")                        ?? "Strongest";
 
         if (image.Channels() != 1)
-            throw new InvalidOperationException("DetectSegment requires a single-channel (grayscale) image.");
+            throw new InvalidOperationException("DetectLinearEdge requires a single-channel (grayscale) image.");
 
         Dictionary<string, object?> MakeEmpty()
         {
             var d = new Dictionary<string, object?>
             {
-                ["Line"]     = default(LineSegment2f),
-                ["Points"]   = Array.Empty<Point2f>(),
-                ["Score"]    = Array.Empty<double>(),
-                ["Found"]    = false,
-                ["Contours"] = null,
+                ["Line"]   = default(LineSegment2f),
+                ["Points"] = Array.Empty<Point2f>(),
+                ["Score"]  = Array.Empty<double>(),
+                ["Found"]  = false,
             };
             RoiParameters.AddToOutputs(d, parameters);
             return d;
@@ -141,17 +139,14 @@ public class DetectSegmentOperator : IOperatorType
 
         bool found = inliers.Count >= 2 && (double)inliers.Count / stripeCount >= minScore;
 
-        // ── Segment from inlier span ──────────────────────────────────────────────
+        // ── Segment spanning full ROI height ──────────────────────────────────────
 
         LineSegment2f segment = default;
-        Point2f[][]? searchContour = null;
 
         if (found)
         {
             // Line fit on all inliers: scan pos s = lineA*t + lineB
             double lineA = 0, lineB = 0;
-            double tMin = inliers.Min(h => h.t);
-            double tMax = inliers.Max(h => h.t);
             {
                 int n = inliers.Count;
                 double sumT = 0, sumS = 0, sumTT = 0, sumTS = 0;
@@ -161,77 +156,39 @@ public class DetectSegmentOperator : IOperatorType
                 lineB = (sumS - lineA * sumT) / n;
             }
 
-            // Endpoints at the extreme inlier t values, projected onto the fitted line.
+            // Endpoints clamped to the ROI rectangle in (s, t) space.
+            // t is the coordinate along the height axis; s = lineA*t + lineB along the scan axis.
+            // Clip the t-extent so that s also stays within [sCenter ± W/2].
             Point2f LinePoint(double t) => new(
                 (float)((lineA * t + lineB) * ux + t * vx),
                 (float)((lineA * t + lineB) * uy + t * vy));
 
-            segment = new LineSegment2f(LinePoint(tMin), LinePoint(tMax));
+            double tCenter = roi.CX * vx + roi.CY * vy;
+            double sCenter = roi.CX * ux + roi.CY * uy;
+            double tLo = tCenter - roi.Height / 2.0;
+            double tHi = tCenter + roi.Height / 2.0;
 
-            // Fitted line direction (normalized) and its perpendicular.
-            double lineNorm = Math.Sqrt(lineA * lineA + 1.0);
-            double lux = (lineA * ux + vx) / lineNorm;
-            double luy = (lineA * uy + vy) / lineNorm;
-            // perpendicular: (-luy, lux)
-
-            double f = filterSize;
-            var p1 = segment.P1;
-            var p2 = segment.P2;
-
-            // Split the full extent ROI into two halves on opposite perpendicular sides of the segment.
-            double segLen   = Math.Sqrt(Math.Pow(p2.X - p1.X, 2) + Math.Pow(p2.Y - p1.Y, 2));
-            double extAngle = Math.Atan2(-luy, lux) * 180.0 / Math.PI;
-            double roiW     = segLen + 2.0 * f;
-            double cx = (p1.X + p2.X) / 2.0;
-            double cy = (p1.Y + p2.Y) / 2.0;
-            // Perpendicular to fitted line: (-luy, lux)
-            var roi1 = new RoiDef(cx - luy * f / 2.0, cy + lux * f / 2.0, roiW, f, extAngle);
-            var roi2 = new RoiDef(cx + luy * f / 2.0, cy - lux * f / 2.0, roiW, f, extAngle);
-
-            // Debug: show the corners of both extent half-ROIs.
-            if (debug)
+            if (Math.Abs(lineA) > 1e-10)
             {
-                Point2f[] RoiCorners(double rcx, double rcy, double w, double h)
-                {
-                    double hw = w / 2.0, hh = h / 2.0;
-                    return [
-                        new((float)(rcx + lux*hw - luy*hh), (float)(rcy + luy*hw + lux*hh)),
-                        new((float)(rcx + lux*hw + luy*hh), (float)(rcy + luy*hw - lux*hh)),
-                        new((float)(rcx - lux*hw + luy*hh), (float)(rcy - luy*hw - lux*hh)),
-                        new((float)(rcx - lux*hw - luy*hh), (float)(rcy - luy*hw + lux*hh)),
-                    ];
-                }
-                searchContour = [
-                    RoiCorners(roi1.CX, roi1.CY, roiW, f),
-                    RoiCorners(roi2.CX, roi2.CY, roiW, f),
-                ];
+                double tAtSlo = (sCenter - roi.Width / 2.0 - lineB) / lineA;
+                double tAtShi = (sCenter + roi.Width / 2.0 - lineB) / lineA;
+                if (tAtSlo > tAtShi) { double tmp = tAtSlo; tAtSlo = tAtShi; tAtShi = tmp; }
+                tLo = Math.Max(tLo, tAtSlo);
+                tHi = Math.Min(tHi, tAtShi);
             }
 
-            var edges1 = FindStripeEdgesOperator.FindEdges(image, roi1, filterSize, threshMode, threshVal, "Both", maxEdges: 2);
-            var edges2 = FindStripeEdgesOperator.FindEdges(image, roi2, filterSize, threshMode, threshVal, "Both", maxEdges: 2);
-
-            // Pick the 2 most prominent from both sides, project onto the fitted line.
-            var top2 = edges1.Concat(edges2)
-                .OrderByDescending(e => e.Score)
-                .Take(2)
-                .OrderBy(e => e.Point.X * vx + e.Point.Y * vy)
-                .ToArray();
-
-            if (top2.Length == 2)
-            {
-                segment = new LineSegment2f(
-                    LinePoint(top2[0].Point.X * vx + top2[0].Point.Y * vy),
-                    LinePoint(top2[1].Point.X * vx + top2[1].Point.Y * vy));
-            }
+            segment = new LineSegment2f(LinePoint(tLo), LinePoint(tHi));
         }
+
+        // Sort inliers by t so Points[0]..Points[N-1] run from one end of the ROI to the other.
+        inliers.Sort((a, b) => a.t.CompareTo(b.t));
 
         var outputs = new Dictionary<string, object?>
         {
-            ["Line"]     = segment,
-            ["Points"]   = debug?inliers.Select(h => h.point).ToArray() : [],
-            ["Score"]    = inliers.Select(h => h.score).ToArray(),
-            ["Found"]    = found,
-            ["Contours"] = searchContour,
+            ["Line"]   = segment,
+            ["Points"] = inliers.Select(h => h.point).ToArray(),
+            ["Score"]  = inliers.Select(h => h.score).ToArray(),
+            ["Found"]  = found,
         };
         RoiParameters.AddToOutputs(outputs, parameters);
         return outputs;
