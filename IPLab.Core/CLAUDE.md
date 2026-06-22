@@ -38,6 +38,10 @@ See the root [CLAUDE.md](../CLAUDE.md) for project-level context.
 
 `IPLab.Core` targets `net8.0;net48`. All new code must compile for both TFMs. Key rules:
 
+**Rule: always build and test with `-c Release` so both TFMs are compiled.** Debug builds may only build one TFM and miss net48 errors. Use:
+- `dotnet build IPLab.Core\IPLab.Core.csproj -c Release`
+- `dotnet test IPLab.Core.Tests\IPLab.Core.Tests.csproj -c Release`
+
 - **No `Math.Clamp`** — use `Math.Min(max, Math.Max(min, x))` instead.
 - **No `float.IsFinite`** — use `!float.IsNaN(x) && !float.IsInfinity(x)` instead.
 - **No `MathF`** — PolySharp generates a file-scoped shadow that breaks access from other files on net48. Use `Math.Abs`, `(float)Math.Sqrt(...)`, etc.

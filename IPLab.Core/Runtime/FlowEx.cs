@@ -188,7 +188,10 @@ public class FlowEx : IFlowEx
         var baseParams = ResolveParameters(ctx.Start);
 
         // Probe the loop count by executing LoopStart with Index=0 (validates source is non-empty).
-        var probeParams = new Dictionary<string, object?>(baseParams) { ["Index"] = 0 };
+        // Use ToDictionary rather than new Dictionary<K,V>(IReadOnlyDictionary) — the latter overload
+        // doesn't exist on .NET Framework 4.8 (only IDictionary is accepted there).
+        var probeParams = baseParams.ToDictionary(kv => kv.Key, kv => kv.Value);
+        probeParams["Index"] = 0;
         SetStatus(ctx.Start.Id, OperatorStatus.Running, null);
         object? probeResult;
         try { probeResult = ctx.Start.Type.Execute(probeParams); }
