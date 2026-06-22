@@ -31,7 +31,7 @@
 - [ConnectedComponents](#connectedcomponents) — label connected regions; outputs Count, Stats (Mat), Centroids (Mat), LabelImage
 - [FindContours](#findcontours) — find contours in a binary image with built-in filter/repair
 - [FindStripeEdges](#findstripeedges) — find N strongest 1D edges along a rotated stripe (caliper-style)
-- [DetectSegment](#findedgeline) — fit a sub-pixel line to a single prominent edge within a rotated ROI
+- [DetectLinearEdge](#detectlinearedge) — fit a sub-pixel straight line to a single prominent edge within a rotated ROI
 - [TemplateMatch](#templatematch) — find every occurrence of a selected visual pattern
 
 ## Scripting
@@ -360,9 +360,10 @@ All four output arrays share the same index and are always the same length (≤ 
 
 ---
 
-## DetectSegment
+## DetectLinearEdge
 
-Fits a sub-pixel line segment to a single prominent edge within a rotated ROI. The ROI is divided into `StripeCount` stripes along its height axis; each stripe calls `FindStripeEdgesOperator` internally to locate one edge candidate. Iterative outlier rejection in the ROI's (s, t) coordinate system fits a line through the surviving positions. Endpoint extent is then refined by splitting the area around the fitted segment into two half-ROIs on opposite perpendicular sides and pooling the strongest edge responses; the two most prominent determine the final segment endpoints.
+Fits a sub-pixel straight line to a single prominent edge within a rotated ROI. The ROI is divided into `StripeCount` stripes along its height axis; each stripe calls `FindStripeEdgesOperator` internally to locate one edge candidate. Iterative outlier rejection in the ROI's (s, t) coordinate system fits a line through the surviving positions. The `Line` output spans the full ROI height along the fitted line. Inlier `Points` and `Score` are sorted from one end of the ROI to the other so `Points[0]`…`Points[N-1]` form an ordered polyline.
+
 
 Supports [ROI](#roi).
 
@@ -385,11 +386,10 @@ Supports [ROI](#roi).
 
 | Output Port | Type          | Description |
 |-------------|---------------|-------------|
-| Line        | LineSegment2f | Fitted edge segment with sub-pixel float endpoints in full-image coordinates |
-| Points      | Point2f[]     | Per-stripe inlier edge positions in full-image coordinates _(populated only when internal debug mode is on)_ |
-| Score       | double[]      | Gradient response strength at each inlier stripe; parallel to Points _(populated only when internal debug mode is on)_ |
+| Line        | LineSegment2f | Fitted edge line clipped to the ROI rectangle — full height extent, bounded by ROI width — with sub-pixel float endpoints in full-image coordinates |
+| Points      | Point2f[]     | Per-stripe inlier edge positions sorted from one end of the ROI to the other |
+| Score       | double[]      | Gradient response strength at each inlier stripe; parallel to Points |
 | Found       | bool          | True when inlier fraction ≥ Min Score |
-| Contours    | Point2f[][]   | The two endpoint-search half-ROIs as separate four-point polygons _(populated only when internal debug mode is on)_ |
 
 ---
 
@@ -434,6 +434,8 @@ Operators that support ROI expose four extra connectable Int parameters: **ROI X
 **Image-output operators** (Morphology, Threshold, InvertImage): the effect is confined to the ROI rectangle; pixels outside it are copied unchanged from the input.
 
 **Detection operators** (DetectCircles, ConnectedComponents, FindContours, DetectSimpleBlobs): detection runs only within the ROI region, and all returned coordinates are expressed in full-image space.
+
+**Rotated-ROI detection operators** (FindStripeEdges, DetectLinearEdge): support an additional `Angle (°)` ROI parameter; the ROI is sampled directly in image space using bilinear interpolation, and all output coordinates are in full-image space.
 
 In both cases, if the rectangle lies entirely outside the image bounds after clamping, image-output operators return the input unchanged and detection operators return an empty result.
 

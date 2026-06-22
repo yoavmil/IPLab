@@ -4,14 +4,14 @@ using OpenCvSharp;
 
 namespace IPLab.Core.Tests;
 
-public class DetectSegmentOperatorTests
+public class DetectLinearEdgeOperatorTests
 {
     private static Dictionary<string, object?> Run(Mat image,
         double cx, double cy, double w, double h, double angleDeg,
         int stripeCount = 5, int stripeWidth = 10,
         string polarity = "DarkToBright", double threshVal = 10.0, double minScore = 0.5,
         string edgeSelect = "Strongest") =>
-        (Dictionary<string, object?>)new DetectSegmentOperator().Execute(
+        (Dictionary<string, object?>)new DetectLinearEdgeOperator().Execute(
             new Dictionary<string, object?>
             {
                 ["Image"]          = image,
@@ -48,6 +48,19 @@ public class DetectSegmentOperatorTests
         return mat;
     }
 
+    // Step edge along the 45° diagonal x = y: dark above/left, bright below/right.
+    private static Mat MakeDiagonalEdgeImage(int size = 300)
+    {
+        var mat = new Mat(size, size, MatType.CV_8UC1, Scalar.Black);
+        for (int row = 0; row < size; row++)
+        {
+            int edgeX = row;
+            if (edgeX < size)
+                mat.SubMat(new Rect(edgeX, row, size - edgeX, 1)).SetTo(new Scalar(200));
+        }
+        return mat;
+    }
+
     // ── Found / not-found ────────────────────────────────────────────────────────
 
     [Fact]
@@ -69,29 +82,19 @@ public class DetectSegmentOperatorTests
     [Fact]
     public void NotFound_WhenInlierFractionBelowMinScore()
     {
-        // Edge is only in the bottom half of the ROI; top stripes see uniform black.
         using var image = MakeVerticalEdgeImage(edgeX: 100);
-        // Use high minScore so partial coverage fails.
         var result = Run(image, cx: 100, cy: 100, w: 80, h: 100, angleDeg: 0,
                          stripeCount: 4, minScore: 1.0);
-        // With minScore=1.0 all stripes must hit; some may miss at the border → Found=false possible,
-        // but for a full-height edge all stripes should hit → actually should be Found=true.
-        // Replace with a genuinely partial edge: move the edge partially outside the ROI height.
-        // This test checks the score calculation logic; verify it doesn't throw.
         Assert.IsType<bool>(result["Found"]!);
     }
 
     [Fact]
     public void Found_UsesInlierFractionThreshold()
     {
-        // Build an image that has the edge present in only 2 of 5 stripes by making
-        // the bright region occupy only the bottom 40% of the ROI.
-        // ROI: cy=100, h=100 → covers y=[50,150]. Bright region: y=[110,150].
+        // Edge only in the bottom 40% of the ROI (y=[110,200] within ROI y=[50,150]).
         using var image = new Mat(200, 200, MatType.CV_8UC1, Scalar.Black);
         image.SubMat(new Rect(100, 110, 100, 90)).SetTo(new Scalar(200));
 
-        // StripeCount=5, stripes at row centers 10,30,50,70,90 of a 100-px crop.
-        // Bright starts at crop-row 60 → stripes 3 and 4 hit → 2/5 = 0.4 inlier fraction.
         var resultLow  = Run(image, cx: 100, cy: 100, w: 80, h: 100, angleDeg: 0,
                              stripeCount: 5, minScore: 0.3);
         var resultHigh = Run(image, cx: 100, cy: 100, w: 80, h: 100, angleDeg: 0,
@@ -118,7 +121,6 @@ public class DetectSegmentOperatorTests
         Assert.True((bool)result["Found"]!);
         var line = (LineSegment2f)result["Line"]!;
 
-        // The midpoint of the line segment should be near the edge center (cx, cy).
         double midX = (line.P1.X + line.P2.X) / 2.0;
         double midY = (line.P1.Y + line.P2.Y) / 2.0;
         Assert.InRange(midX, cx - 3, cx + 3);
@@ -148,8 +150,6 @@ public class DetectSegmentOperatorTests
     [Fact]
     public void RotatedRoi_LineMiddleNearEdge()
     {
-        // Vertical edge at x=100. ROI rotated 45° around (100,100).
-        // After rotation the edge is still detected; the line midpoint should be near (100,100).
         using var image = MakeVerticalEdgeImage(edgeX: 100);
         var result = Run(image, cx: 100, cy: 100, w: 80, h: 60, angleDeg: 45.0);
 
@@ -161,41 +161,67 @@ public class DetectSegmentOperatorTests
         Assert.InRange(midY, 97, 103);
     }
 
-    // ── Extent detection ──────────────────────────────────────────────────────────
+    // ── Line extent ───────────────────────────────────────────────────────────────
 
     [Fact]
-    public void LineEndpoints_ClampToRoi_WhenEdgeRunsFullHeight()
+    public void Line_SpansFullRoiHeight_WhenEdgeRunsFullHeight()
     {
-        // Edge spans the full ROI height → 0 extent corners found → endpoints = ROI top and bottom.
+        // Full-height edge: all stripes detect the edge.
+        // ROI cy=100, h=60 → full extent y=70..130.
         using var image = MakeVerticalEdgeImage(edgeX: 100);
-        // ROI: cy=100, h=60 → crop covers y=[70,130]; edge runs full height.
         var result = Run(image, cx: 100, cy: 100, w: 80, h: 60, angleDeg: 0);
 
         Assert.True((bool)result["Found"]!);
         var line = (LineSegment2f)result["Line"]!;
         double minY = Math.Min(line.P1.Y, line.P2.Y);
         double maxY = Math.Max(line.P1.Y, line.P2.Y);
-        // Endpoints should span the visible ROI height (~70..130).
-        Assert.InRange(minY, 65, 80);
-        Assert.InRange(maxY, 120, 135);
+        Assert.InRange(minY, 65, 75);   // ≈ cy - h/2 = 70
+        Assert.InRange(maxY, 125, 135); // ≈ cy + h/2 = 130
     }
 
     [Fact]
-    public void LineEndpoints_FindCorners_WhenRectangleVisible()
+    public void Line_SpansFullRoiHeight_NotInlierSpan()
     {
-        // White rect from y=80 to y=180, left edge at x=100.
-        // ROI covers y=[50,230] so both corners are visible.
-        using var image = MakeRectEdgeImage(rectX: 100, rectY: 80, rectW: 100, rectH: 100,
-                                            imgW: 300, imgH: 300);
-        var result = Run(image, cx: 100, cy: 140, w: 80, h: 180, angleDeg: 0,
-                         stripeCount: 9, stripeWidth: 10);
+        // Edge only in the middle of the ROI (y=80..120 within ROI y=50..150).
+        // Inlier t-span is ~40 px; full ROI height is 100 px.
+        // The Line endpoint span must equal the ROI height, not the inlier span.
+        const double h = 100;
+        using var image = new Mat(200, 200, MatType.CV_8UC1, Scalar.Black);
+        image.SubMat(new Rect(100, 80, 100, 40)).SetTo(new Scalar(200));
+
+        var result = Run(image, cx: 100, cy: 100, w: 80, h: h, angleDeg: 0,
+                         stripeCount: 10, stripeWidth: 8, minScore: 0.3);
 
         Assert.True((bool)result["Found"]!);
         var line = (LineSegment2f)result["Line"]!;
-        double minY = Math.Min(line.P1.Y, line.P2.Y);
-        double maxY = Math.Max(line.P1.Y, line.P2.Y);
-        Assert.InRange(minY, 70, 95);    // top corner near y=80
-        Assert.InRange(maxY, 165, 195);  // bottom corner near y=180
+        double lineLen = Math.Sqrt(
+            Math.Pow(line.P2.X - line.P1.X, 2) + Math.Pow(line.P2.Y - line.P1.Y, 2));
+        Assert.InRange(lineLen, h * 0.95, h * 1.05);
+    }
+
+    [Fact]
+    public void Line_ClampedToRoiWidth_WhenEdgeIsSlanted()
+    {
+        // 45° diagonal edge: x = y. ROI at cx=150, cy=150, W=60, H=80.
+        // lineA ≈ 1 → without s-clamping the unclipped endpoints would be at x=110 and x=190,
+        // both outside the ROI width [120, 180].
+        // After clamping both endpoints must lie within [cx − W/2, cx + W/2].
+        const double cx = 150, cy = 150, w = 60, h = 80;
+        using var image = MakeDiagonalEdgeImage();
+        var result = Run(image, cx: cx, cy: cy, w: w, h: h, angleDeg: 0,
+                         stripeCount: 8, stripeWidth: 5, minScore: 0.4);
+
+        Assert.True((bool)result["Found"]!);
+        var line = (LineSegment2f)result["Line"]!;
+
+        double sLo = cx - w / 2.0;  // 120
+        double sHi = cx + w / 2.0;  // 180
+        Assert.InRange((double)line.P1.X, sLo - 2, sHi + 2);
+        Assert.InRange((double)line.P2.X, sLo - 2, sHi + 2);
+
+        // The segment must still have meaningful length (not collapsed to a point).
+        double len = Math.Sqrt(Math.Pow(line.P2.X - line.P1.X, 2) + Math.Pow(line.P2.Y - line.P1.Y, 2));
+        Assert.True(len > w * 0.5, $"Line too short after clamping: {len:F1}");
     }
 
     // ── Polarity ──────────────────────────────────────────────────────────────────
@@ -203,7 +229,6 @@ public class DetectSegmentOperatorTests
     [Fact]
     public void Polarity_BrightToDark_FindsRightEdge()
     {
-        // White rect, right edge at x=150 (BrightToDark transition).
         using var image = MakeRectEdgeImage(rectX: 50, rectY: 0, rectW: 100, rectH: 200);
         var result = Run(image, cx: 150, cy: 100, w: 80, h: 100, angleDeg: 0,
                          polarity: "BrightToDark");
@@ -215,27 +240,49 @@ public class DetectSegmentOperatorTests
     }
 
     // ── 180° symmetry ────────────────────────────────────────────────────────────
-    // Rotating the ROI 180° and flipping polarity must produce the same edge X.
-    // angle=0  DarkToBright + angle=180 BrightToDark should land on identical pixel.
 
     [Theory]
     [InlineData(100, 0,   "DarkToBright", "First")]
-    [InlineData(100, 180, "BrightToDark", "Last")]   // equivalent: "Last" at 180° = "First" at 0°
+    [InlineData(100, 180, "BrightToDark", "Last")]
     [InlineData(100, 0,   "DarkToBright", "Last")]
     [InlineData(100, 180, "BrightToDark", "First")]
     public void Symmetry_Angle0Vs180_SameEdgeX(int edgeX, double angle, string polarity, string edgeSelect)
     {
         using var image = MakeVerticalEdgeImage(edgeX: edgeX);
-        // Edge is at x=100, ROI centered on it, 200×200 image.
         var result = Run(image, cx: 100, cy: 100, w: 80, h: 80, angleDeg: angle,
                          polarity: polarity, edgeSelect: edgeSelect);
 
         Assert.True((bool)result["Found"]!);
         var line  = (LineSegment2f)result["Line"]!;
         double midX = (line.P1.X + line.P2.X) / 2.0;
-        // After the -0.5 kernel-center correction, the sub-pixel position is edgeX-0.5
-        // (midpoint between the last dark pixel and the first bright pixel).
         Assert.InRange(midX, edgeX - 1.1, edgeX + 0.1);
+    }
+
+    // ── Points ordering ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Points_SortedByStripeOrder()
+    {
+        // For angle=0 the stripe axis is Y; ascending t = ascending Y.
+        using var image = MakeVerticalEdgeImage(edgeX: 100);
+        var result = Run(image, cx: 100, cy: 100, w: 80, h: 80, angleDeg: 0, stripeCount: 5);
+
+        var points = (Point2f[])result["Points"]!;
+        Assert.True(points.Length >= 2);
+        for (int i = 1; i < points.Length; i++)
+            Assert.True(points[i].Y >= points[i - 1].Y - 0.01f,
+                $"Points[{i}].Y={points[i].Y} < Points[{i-1}].Y={points[i-1].Y}");
+    }
+
+    [Fact]
+    public void Points_AndScore_HaveSameLength()
+    {
+        using var image = MakeVerticalEdgeImage(edgeX: 100);
+        var result = Run(image, cx: 100, cy: 100, w: 80, h: 80, angleDeg: 0);
+
+        var points = (Point2f[])result["Points"]!;
+        var scores = (double[])result["Score"]!;
+        Assert.Equal(points.Length, scores.Length);
     }
 
     // ── No ROI ────────────────────────────────────────────────────────────────────
