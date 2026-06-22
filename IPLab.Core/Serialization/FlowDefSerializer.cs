@@ -91,16 +91,16 @@ public static class FlowDefSerializer
             throw new InvalidOperationException($"Flow JSON is malformed: {ex.Message}", ex);
         }
 
-        var operators = new List<IOperator>();
+        var skippedIds = new HashSet<string>();
+        var operators  = new List<IOperator>();
         foreach (var opDto in dto.Operators ?? [])
         {
             IOperatorType type;
             try { type = registry.Resolve(opDto.Type); }
             catch (KeyNotFoundException)
             {
-                throw new InvalidOperationException(
-                    $"Unknown operator type '{opDto.Type}' on operator '{opDto.Id}' (\"{opDto.DisplayName}\"). " +
-                    $"Registered types: {string.Join(", ", registry.GetAll().Select(t => t.TypeName))}");
+                skippedIds.Add(opDto.Id);
+                continue;
             }
 
             var schema = type.ParameterSchema.ToDictionary(p => p.Name);
@@ -128,17 +128,42 @@ public static class FlowDefSerializer
                 Type         = type,
                 Parameters   = parameters,
                 Dependencies = (opDto.Dependencies ?? [])
+                    .Where(d => !skippedIds.Contains(d.OperatorId))
                     .Select(d => new Dependency(d.DependencyId, d.OperatorId)).ToList()
             });
         }
 
+        // Remove parameter source refs that pointed at skipped operators.
+        if (skippedIds.Count > 0)
+            for (int i = 0; i < operators.Count; i++)
+            {
+                var op = operators[i];
+                if (!op.Parameters.Any(p => p.Source is { } s && skippedIds.Contains(s.OperatorId)))
+                    continue;
+                operators[i] = new Operator
+                {
+                    Id           = op.Id,
+                    DisplayName  = op.DisplayName,
+                    Type         = op.Type,
+                    Parameters   = op.Parameters
+                        .Select(p => p.Source is { } s && skippedIds.Contains(s.OperatorId)
+                            ? p with { Source = null }
+                            : p)
+                        .ToList(),
+                    Dependencies = op.Dependencies
+                };
+            }
+
+        var validOpIds = operators.Select(o => o.Id).ToHashSet();
+
         var opLayouts = (dto.Operators ?? [])
-            .Where(o => o.X.HasValue && o.Y.HasValue)
+            .Where(o => o.X.HasValue && o.Y.HasValue && validOpIds.Contains(o.Id))
             .Select(o => new OperatorLayout(o.Id, new LayoutPoint(o.X!.Value, o.Y!.Value)));
 
         var depLayouts = (dto.Operators ?? [])
+            .Where(o => validOpIds.Contains(o.Id))
             .SelectMany(o => o.Dependencies ?? [])
-            .Where(d => d.SourceSide.HasValue && d.TargetSide.HasValue)
+            .Where(d => d.SourceSide.HasValue && d.TargetSide.HasValue && !skippedIds.Contains(d.OperatorId))
             .Select(d => new DependencyLayout(d.DependencyId, d.SourceSide!.Value, d.TargetSide!.Value));
 
         return new Flow(new FlowDef(operators), new FlowLayout(opLayouts, depLayouts));
