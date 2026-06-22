@@ -8,6 +8,43 @@ namespace IPLab.Core.Tests;
 public class BasicFlowTests
 {
     [Fact]
+    public async Task LoadImage_OutputPorts_ReflectImageDimensions()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "iplab-test-loadimage-ports.png");
+        using (var mat = new Mat(60, 80, MatType.CV_8UC3, Scalar.All(128)))
+            Cv2.ImWrite(path, mat);
+
+        try
+        {
+            var flow = new FlowDef(
+            [
+                new Operator
+                {
+                    Id           = "O1",
+                    DisplayName  = "Input",
+                    Type         = new LoadImageOperator(),
+                    Parameters   = [new ParameterValue { Name = "FilePaths", Value = new string[] { path } }],
+                    Dependencies = []
+                }
+            ]);
+
+            var executor = new FlowEx(flow);
+            await executor.RunAllAsync();
+
+            var result = executor.IntermediateResults["O1"] as Dictionary<string, object?>;
+            Assert.NotNull(result);
+            Assert.Equal(80,   result["Width"]);
+            Assert.Equal(60,   result["Height"]);
+            Assert.Equal(3,    result["Channels"]);
+            Assert.Equal("U8", result["Depth"]);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task LoadColorImage_ConvertToGrayscale_Save_OutputIsGrayscale()
     {
         var inputPath  = Path.Combine(Path.GetTempPath(), "iplab-test-input.jpg");

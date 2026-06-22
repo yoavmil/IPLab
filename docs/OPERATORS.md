@@ -56,10 +56,14 @@ Loads a color image from disk. Supports a list of images; the active one is dete
 | FilePaths   | StringList | No          | Ordered list of image file paths               |
 | ActiveIndex | Int        | No          | Zero-based index of the currently active image |
 
-| Output Port | Type   |
-|-------------|--------|
-| Image       | Mat    |
-| FilePath    | string |
+| Output Port | Type   | Description |
+|-------------|--------|-------------|
+| Image       | Mat    | Loaded color image |
+| FilePath    | string | Full path of the active file |
+| Width       | int    | Image width in pixels |
+| Height      | int    | Image height in pixels |
+| Channels    | int    | Number of channels (1 = grayscale, 3 = BGR, 4 = BGRA) |
+| Depth       | string | Element type: `U8`, `S8`, `U16`, `S16`, `S32`, `F32`, `F64` |
 
 ---
 
