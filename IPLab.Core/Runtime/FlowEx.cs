@@ -150,21 +150,23 @@ public class FlowEx : IFlowEx
     {
         ct.ThrowIfCancellationRequested();
 
-        var resolved = ResolveParameters(op);
-        var cacheKey = BuildCacheKey(op, resolved);
-
-        if (_enableCaching &&
-            _results.ContainsKey(op.Id) &&
-            _paramSnapshot.TryGetValue(op.Id, out var snapshot) &&
-            ParamsEqual(cacheKey, snapshot))
-        {
-            SetStatus(op.Id, OperatorStatus.Success, null);
-            return _results[op.Id];
-        }
-
-        SetStatus(op.Id, OperatorStatus.Running, null);
+        // ResolveParameters is inside the try so that a missing upstream result (because a
+        // predecessor failed) marks this op Failed rather than faulting the whole task graph.
         try
         {
+            var resolved = ResolveParameters(op);
+            var cacheKey = BuildCacheKey(op, resolved);
+
+            if (_enableCaching &&
+                _results.ContainsKey(op.Id) &&
+                _paramSnapshot.TryGetValue(op.Id, out var snapshot) &&
+                ParamsEqual(cacheKey, snapshot))
+            {
+                SetStatus(op.Id, OperatorStatus.Success, null);
+                return _results[op.Id];
+            }
+
+            SetStatus(op.Id, OperatorStatus.Running, null);
             var result = await Task.Run(() => op.Type.Execute(resolved), ct);
             _results[op.Id] = result;
             _paramSnapshot[op.Id] = cacheKey;
@@ -286,7 +288,6 @@ public class FlowEx : IFlowEx
 
         int representativeIndex = mode == LoopMode.Discrete ? startIndex : count - 1;
         _results[ctx.Start.Id] = new Dictionary<string, object?> { ["Index"] = representativeIndex, ["Count"] = count };
-        SetStatus(ctx.Start.Id, OperatorStatus.Success, null);
 
         // Propagate per-body-op statuses from the sub-flow.
         static OperatorStatus WorstStatus(string origId, int iterations, FlowEx sub)
@@ -301,17 +302,24 @@ public class FlowEx : IFlowEx
             return worst;
         }
 
+        var anyFailed = false;
         foreach (var bodyOp in ctx.Body)
         {
             var st = WorstStatus(bodyOp.Id, n, subFlow);
             bodyExceptions.TryGetValue(bodyOp.Id, out var bex);
             SetStatus(bodyOp.Id, st, st == OperatorStatus.Failed ? bex : null);
+            if (st == OperatorStatus.Failed) anyFailed = true;
         }
         {
             var st = WorstStatus(ctx.End.Id, n, subFlow);
             bodyExceptions.TryGetValue(ctx.End.Id, out var eex);
             SetStatus(ctx.End.Id, st, st == OperatorStatus.Failed ? eex : null);
+            if (st == OperatorStatus.Failed) anyFailed = true;
         }
+
+        SetStatus(ctx.Start.Id,
+            anyFailed ? OperatorStatus.Failed : OperatorStatus.Success,
+            anyFailed ? new InvalidOperationException("One or more loop body operators failed.") : null);
     }
 
     private static FlowDef BuildBodyFlowDef(LoopContext ctx, int n, LoopMode mode)

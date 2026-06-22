@@ -153,6 +153,46 @@ public class FlowExLoopTests
         Assert.True(log.ContainsKey(index));
     }
 
+    // ---- Failure propagation ----
+
+    private sealed class AlwaysFailsOp : IOperatorType
+    {
+        public string TypeName => "AlwaysFails";
+        public string Category => "Test";
+        public string Icon     => "";
+        public IReadOnlyList<ParameterDescriptor> ParameterSchema =>
+            [new() { Name = "Index", Label = "Index", ConnectableType = typeof(int) }];
+        public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
+            [new() { Name = "Out", DataType = typeof(int) }];
+
+        public object? Execute(IReadOnlyDictionary<string, object?> _) =>
+            throw new InvalidOperationException("body op failed on purpose");
+    }
+
+    /// <summary>LoopStart must turn Failed when a body operator throws.</summary>
+    [Fact]
+    public async Task Serial_BodyOpFails_LoopStartStatusIsFailed()
+    {
+        var flow = BuildLoopFlow(nameof(LoopMode.Serial), 3, new AlwaysFailsOp());
+        var ex   = new FlowEx(flow);
+
+        await ex.RunAllAsync();
+
+        Assert.Equal(OperatorStatus.Failed, ex.Statuses["O2"]); // O2 = LoopStart
+    }
+
+    /// <summary>LoopStart must turn Failed in Discrete mode when the body operator throws.</summary>
+    [Fact]
+    public async Task Discrete_BodyOpFails_LoopStartStatusIsFailed()
+    {
+        var flow = BuildLoopFlow(nameof(LoopMode.Discrete), 3, new AlwaysFailsOp());
+        var ex   = new FlowEx(flow);
+
+        await ex.RunAllAsync();
+
+        Assert.Equal(OperatorStatus.Failed, ex.Statuses["O2"]);
+    }
+
     // ---- Parallel ----
 
     /// <summary>Parallel mode must run all iterations concurrently and produce correct results in index order.</summary>
