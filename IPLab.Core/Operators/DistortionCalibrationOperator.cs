@@ -8,8 +8,10 @@ namespace IPLab.Core.Operators;
 
 /// <summary>
 /// Detects checkerboard corner features using a rotation-invariant saddle filter and builds a
-/// sparse corner-correspondence calibration file for use with <see cref="UndistortOperator"/>.
-/// The output image is the saddle-filter heatmap or an annotated label overlay.
+/// sparse corner-correspondence calibration file (<see cref="CalibrationData"/>) for use with
+/// <see cref="UndistortOperator"/>. The output image is the saddle-filter heatmap or an annotated
+/// label overlay. When the <c>CalibFilePath</c> output is set, the file written to it is a
+/// JSON-serialised <see cref="CalibrationData"/>.
 /// </summary>
 public class DistortionCalibrationOperator : IOperatorType
 {
@@ -30,6 +32,9 @@ public class DistortionCalibrationOperator : IOperatorType
         new() { Name = "ShowLabels",     Label = "Show Grid Indices",     Type = ParameterType.Bool,   DefaultValue = false },
         new() { Name = "AnchorX",        Label = "Anchor X",              Type = ParameterType.Double, DefaultValue = 0.5,  Min = 0.0, Max = 1.0 },
         new() { Name = "AnchorY",        Label = "Anchor Y",              Type = ParameterType.Double, DefaultValue = 0.5,  Min = 0.0, Max = 1.0 },
+        // Optional: when > 0, the physical edge length of one checkerboard square (mm) is divided
+        // by the measured pixel pitch to emit the MmPerPixel scale output.
+        new() { Name = "SquareSizeMm",   Label = "Square Size (mm)",      Type = ParameterType.Double, DefaultValue = 0.0,  Min = 0.0 },
         new() { Name = "OutputFilePath", Label = "Output File Path",      Type = ParameterType.String },
     ];
 
@@ -42,9 +47,9 @@ public class DistortionCalibrationOperator : IOperatorType
         new() { Name = "GridCorners",      DataType = typeof(Point2f[]) },
         new() { Name = "GridLines",        DataType = typeof(LineSegmentPoint[]) },
         new() { Name = "Corners",          DataType = typeof(Point2f[]) },
-        new() { Name = "ObjectPoints",     DataType = typeof(Point3f[]) },
         new() { Name = "InlierCount",      DataType = typeof(int) },
         new() { Name = "RotationAngleDeg", DataType = typeof(double) },
+        new() { Name = "MmPerPixel",       DataType = typeof(double) },
         new() { Name = "CalibFilePath",    DataType = typeof(string) },
     ];
 
@@ -58,6 +63,7 @@ public class DistortionCalibrationOperator : IOperatorType
         bool showLabels = Convert.ToBoolean(parameters.GetValueOrDefault("ShowLabels")   ?? false);
         double anchorX  = Convert.ToDouble(parameters.GetValueOrDefault("AnchorX") ?? 0.5);
         double anchorY  = Convert.ToDouble(parameters.GetValueOrDefault("AnchorY") ?? 0.5);
+        double squareSizeMm = Convert.ToDouble(parameters.GetValueOrDefault("SquareSizeMm") ?? 0.0);
         var outPath = parameters.GetValueOrDefault("OutputFilePath") as string;
 
         if (image.Channels() != 1)
@@ -89,6 +95,15 @@ public class DistortionCalibrationOperator : IOperatorType
                 throw new InvalidOperationException("Checkerboard grid not found: too few inlier corners.");
 
             var gridLines = BuildGridLines(grid);
+
+            // mm/pixel = physical square edge length / measured pixel pitch. Only meaningful
+            // when the user supplies a positive square size; otherwise the scale is unknown.
+            double? mmPerPixel = null;
+            if (squareSizeMm > 0)
+            {
+                float pixelPitch = ComputeGridPitch(grid);
+                if (pixelPitch > 0) mmPerPixel = squareSizeMm / pixelPitch;
+            }
 
             string? calibPath = null;
             if (!string.IsNullOrWhiteSpace(outPath))
@@ -146,9 +161,9 @@ public class DistortionCalibrationOperator : IOperatorType
                 ["GridCorners"]    = grid.ImagePoints,
                 ["GridLines"]      = gridLines,
                 ["Corners"]        = corners,
-                ["ObjectPoints"]   = grid.ObjectPoints,
                 ["InlierCount"]    = grid.ImagePoints.Length,
                 ["RotationAngleDeg"] = grid.RotationAngleDeg,
+                ["MmPerPixel"]     = mmPerPixel,
                 ["CalibFilePath"]  = calibPath,
             };
         }
@@ -189,11 +204,10 @@ public class DistortionCalibrationOperator : IOperatorType
     private sealed record GridInference(
         bool Found,
         Point2f[] ImagePoints,
-        Point3f[] ObjectPoints,
         Cell[] Cells,
         double RotationAngleDeg)
     {
-        public static GridInference Empty { get; } = new(false, [], [], [], 0.0);
+        public static GridInference Empty { get; } = new(false, [], [], 0.0);
     }
 
     private readonly record struct Cell(int I, int J);
@@ -448,18 +462,16 @@ public class DistortionCalibrationOperator : IOperatorType
         var sorted = best.OrderBy(kv => kv.Key.J - minJ).ThenBy(kv => kv.Key.I - minI).ToArray();
         int n = sorted.Length;
         var imagePoints  = new Point2f[n];
-        var objectPoints = new Point3f[n];
         var cellList     = new Cell[n];
         for (int k = 0; k < n; k++)
         {
             var (cell, match) = sorted[k];
             int ni = cell.I - minI, nj = cell.J - minJ;
             imagePoints[k]  = match.Point;
-            objectPoints[k] = new Point3f(ni, nj, 0f);
             cellList[k]     = new Cell(ni, nj);
         }
 
-        return new GridInference(true, imagePoints, objectPoints, cellList, rotAngle);
+        return new GridInference(true, imagePoints, cellList, rotAngle);
     }
 
     // ── region grow + outlier rejection ───────────────────────────────────────
@@ -618,23 +630,23 @@ public class DistortionCalibrationOperator : IOperatorType
         Cv2.CvtColor(grayImage, annotated, ColorConversionCodes.GRAY2BGR);
         if (!grid.Found) return annotated;
 
-        var byCell = new Dictionary<Cell, (Point2f ImgPt, Point3f ObjPt)>(grid.Cells.Length);
+        var byCell = new Dictionary<Cell, Point2f>(grid.Cells.Length);
         for (int k = 0; k < grid.Cells.Length; k++)
-            byCell[grid.Cells[k]] = (grid.ImagePoints[k], grid.ObjectPoints[k]);
+            byCell[grid.Cells[k]] = grid.ImagePoints[k];
 
-        foreach (var (cell, (imgPt, _)) in byCell)
+        foreach (var (cell, imgPt) in byCell)
         {
             if (byCell.TryGetValue(new Cell(cell.I + 1, cell.J), out var r))
-                Cv2.Line(annotated, ToPoint(imgPt), ToPoint(r.ImgPt), Scalar.LimeGreen, 1);
+                Cv2.Line(annotated, ToPoint(imgPt), ToPoint(r), Scalar.LimeGreen, 1);
             if (byCell.TryGetValue(new Cell(cell.I, cell.J + 1), out var d))
-                Cv2.Line(annotated, ToPoint(imgPt), ToPoint(d.ImgPt), Scalar.LimeGreen, 1);
+                Cv2.Line(annotated, ToPoint(imgPt), ToPoint(d), Scalar.LimeGreen, 1);
         }
 
         for (int k = 0; k < grid.ImagePoints.Length; k++)
         {
             var ctr = ToPoint(grid.ImagePoints[k]);
-            var obj = grid.ObjectPoints[k];
-            var label = $"{(int)Math.Round(obj.X)},{(int)Math.Round(obj.Y)}";
+            var cell = grid.Cells[k];
+            var label = $"{cell.I},{cell.J}";
             Cv2.DrawMarker(annotated, ctr, Scalar.Yellow, MarkerTypes.Cross, 10, 1);
             var textOrg = new OpenCvSharp.Point(ctr.X + 4, ctr.Y - 4);
             Cv2.PutText(annotated, label, textOrg, HersheyFonts.HersheyPlain, 0.9, Scalar.Black, 2, LineTypes.AntiAlias);
@@ -751,6 +763,16 @@ public class DistortionCalibrationOperator : IOperatorType
 
         result = default;
         return false;
+    }
+
+    // Median adjacent-corner spacing (pixels) of an inferred grid, used to convert a physical
+    // square size into a mm/pixel scale. Reuses ComputePitch over the grid's matched cells.
+    static float ComputeGridPitch(GridInference grid)
+    {
+        var corners = new Dictionary<(int Col, int Row), Point2f>(grid.Cells.Length);
+        for (int k = 0; k < grid.Cells.Length; k++)
+            corners[(grid.Cells[k].I, grid.Cells[k].J)] = grid.ImagePoints[k];
+        return ComputePitch(corners);
     }
 
     // Median of all adjacent corner distances (horizontal and vertical pairs).

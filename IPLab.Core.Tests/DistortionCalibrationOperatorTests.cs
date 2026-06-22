@@ -47,24 +47,18 @@ public class DistortionCalibrationOperatorTests
     [InlineData("CB_2.jpg")]
     [InlineData("CB_3.jpg")]
     [InlineData("CB_4.jpg")]
-    public void Correspondences_ImageAndObjectPointsAlign(string file)
+    public void Correspondences_GridCornersMatchInlierCount(string file)
     {
         using var src  = Cv2.ImRead(Path.Combine(TestImagesDir, file), ImreadModes.Color);
         using var gray = new Mat();
         Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
 
-        var result       = ExecNew(gray);
-        var imagePoints  = (Point2f[])result["GridCorners"]!;
-        var objectPoints = (Point3f[])result["ObjectPoints"]!;
-        var inlierCount  = (int)result["InlierCount"]!;
+        var result      = ExecNew(gray);
+        var imagePoints = (Point2f[])result["GridCorners"]!;
+        var inlierCount = (int)result["InlierCount"]!;
 
         Assert.Equal(inlierCount, imagePoints.Length);
-        Assert.Equal(inlierCount, objectPoints.Length);
-
-        Assert.All(objectPoints, p => Assert.Equal(0f, p.Z));
-        Assert.Equal(0, objectPoints.Min(p => p.X));
-        Assert.Equal(0, objectPoints.Min(p => p.Y));
-        Assert.Equal(objectPoints.Length, objectPoints.Distinct().Count());
+        Assert.True(inlierCount >= 12);
     }
 
     // Undistorting a solid-white image should produce near-zero black pixels — the extended

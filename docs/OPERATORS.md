@@ -34,6 +34,10 @@
 - [DetectLinearEdge](#detectlinearedge) — fit a sub-pixel straight line to a single prominent edge within a rotated ROI
 - [TemplateMatch](#templatematch) — find every occurrence of a selected visual pattern
 
+## Calibration
+- [DistortionCalibration](#distortioncalibration) — detect a checkerboard and build a sparse corner-correspondence calibration file
+- [Undistort](#undistort) — bilinear-warp correct an image using a calibration file
+
 ## Flow
 - [LoopStart](#loopstart) — control how a flat loop body executes (Discrete / Serial / Parallel)
 - [LoopEnd](#loopend) — collect up to four loop body values
@@ -428,6 +432,64 @@ scaled versions of the pattern. The input and template channels must match each 
 The template editor opens on the operator's current input image. Run the flow first, then select the
 template region, add or delete mask rectangles as needed, and save it. The saved template path is
 assigned to the operator automatically.
+
+---
+
+## DistortionCalibration
+
+Detects checkerboard corners using a rotation-invariant saddle filter, infers the grid topology, and (optionally) writes a sparse corner-correspondence calibration file for use with the `Undistort` operator. Requires a single-channel (grayscale) input. The display image is the saddle-response heatmap or a grid-index label overlay, depending on `ShowHeatmap` / `ShowLabels`.
+
+Fails when too few inlier corners survive grid inference — i.e. no recognisable checkerboard, or parameters that don't suit the square size.
+
+When **Square Size (mm)** is greater than 0, the physical edge length of one checkerboard square is divided by the measured pixel pitch to emit the `MmPerPixel` scale output; otherwise the scale is unknown and `MmPerPixel` is null.
+
+The schema of the resulting calibration data file can be found at [IPLab.Core/Models/CalibrationData.cs](../IPLab.Core/Models/CalibrationData.cs).
+
+| Parameter        | Type   | Connectable | Description |
+|------------------|--------|-------------|-------------|
+| Image            | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
+| Square Half-Size (px) | Int  | No     | Half the checkerboard square edge in pixels; sets the saddle kernel size (default 7, min 2) |
+| Min Response     | Double | No          | Minimum relative saddle response for a corner peak, 0–1 (default 0.45) |
+| Show Response Heatmap | Bool | No       | When `true`, the display image is the saddle-response heatmap (default false) |
+| Show Grid Indices | Bool  | No          | When `true`, the display image is the input annotated with grid (col,row) labels (default false) |
+| Anchor X         | Double | No          | Normalized X (0–1) of the grid origin anchor; seeds grid inference and indexing (default 0.5) |
+| Anchor Y         | Double | No          | Normalized Y (0–1) of the grid origin anchor (default 0.5) |
+| Square Size (mm) | Double | No          | Physical edge length of one square in mm; when > 0 enables the `MmPerPixel` output (default 0 = disabled) |
+| Output File Path | String | No          | When set, the calibration data is written to this path; left blank to skip saving |
+
+| Output Port      | Type                | Description |
+|------------------|---------------------|-------------|
+| Image            | Mat                 | Saddle heatmap or grid-index label overlay (per Show* flags); null when both are off |
+| GridCorners      | Point2f[]           | Matched grid-crossing corners (the calibration correspondences) |
+| GridLines        | LineSegmentPoint[]  | Line segments connecting adjacent matched corners |
+| Corners          | Point2f[]           | All raw sub-pixel corner peaks before grid matching |
+| InlierCount      | int                 | Number of matched grid corners |
+| RotationAngleDeg | double              | Estimated board rotation, −90..+90° |
+| MmPerPixel       | double              | mm-per-pixel scale (Square Size ÷ pixel pitch); null when Square Size (mm) ≤ 0 |
+| CalibFilePath    | string              | Path the calibration file was written to; null when Output File Path is blank |
+
+Does not support ROI.
+
+---
+
+## Undistort
+
+Corrects geometric distortion by applying a dense bilinear warp built from a corner-correspondence calibration file produced by `DistortionCalibration`. For each output pixel the operator finds the enclosing grid cell and bilinear-blends the four corner source positions, then remaps via `Cv2.Remap`. The output is rotated so the checkerboard axes align with the image axes; areas with no calibration coverage are filled black.
+
+The input image size must match the size recorded in the calibration file. The dense warp maps are expensive to build, so they are cached and rebuilt only when the calibration file (path or last-write time) or the input image size changes.
+
+Fails when the input is empty, the calibration file is missing/blank, the image size disagrees with the file, or the file has fewer than 4 distinct corners or no precomputed pitch (regenerate it by re-running `DistortionCalibration`).
+
+| Parameter        | Type   | Connectable | Description |
+|------------------|--------|-------------|-------------|
+| Image            | Object | Yes (Mat)   | Input Mat to undistort |
+| Calibration File | String | Yes (string)| Path to a calibration file written by `DistortionCalibration` |
+
+| Output Port | Type | Description |
+|-------------|------|-------------|
+| Image       | Mat  | Warp-corrected, axis-aligned image with black fill outside calibration coverage |
+
+Does not support ROI.
 
 ---
 
