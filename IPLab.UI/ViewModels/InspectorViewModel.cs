@@ -25,6 +25,7 @@ public class InspectorViewModel : ViewModelBase
     public  ObservableCollection<LayerViewModel>    OverlayLayers => _overlayLayers;
 
     public ObservableCollection<DataNodeViewModel> DataNodes { get; } = [];
+    private readonly HashSet<string> _expandedPaths = [];
 
     private readonly Dictionary<string, List<LayerViewModel>> _layersCache = new();
     private Dictionary<(string Id, string Port), BitmapSource> _precomputedImages = new();
@@ -122,8 +123,10 @@ public class InspectorViewModel : ViewModelBase
 
         foreach (var port in ports)
         {
-            var value = ResultUnwrapper.GetPortValue(result, port.Name);
-            DataNodes.Add(DataNodeBuilder.Build(port.Name, value, port.IsDisplayImage));
+            var value    = ResultUnwrapper.GetPortValue(result, port.Name);
+            var rootPath = $"{_selectedNode.Id}/{port.Name}";
+            DataNodes.Add(DataNodeBuilder.Build(port.Name, value, port.IsDisplayImage,
+                path: rootPath, expandedPaths: _expandedPaths));
         }
     }
 
@@ -396,6 +399,7 @@ public class InspectorViewModel : ViewModelBase
         _precomputedImages = new();
         _precomputedMats   = new();
         DataNodes.Clear();
+        _expandedPaths.Clear();
         State = new InspectorState();
     }
 

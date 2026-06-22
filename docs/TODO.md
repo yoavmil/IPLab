@@ -23,11 +23,6 @@
 
 - **Per-operator execution timing** — record how long each operator's `Execute` call takes (wall-clock, excluding queue wait). Display the duration in the bottom-right corner of the operator node (e.g. "14 ms") so the user can spot bottlenecks at a glance. Also surface the timing in the Data tab of the inspector when that operator is selected. Store timings inside `FlowEx` alongside `IntermediateResults`; reset on `ClearResults`.
 
-- **Split `MainViewModel` into focused classes** — at ~780 lines `MainViewModel.cs` handles too many concerns. Suggested split:
-  - `ExecutionService` — owns `FlowEx`, `RunAllAsync`, `Stop`, `CancellationTokenSource`, `OnOperatorStatusChanged`, and `BuildExecutionFlow`; exposes `Run`, `Stop`, `ClearResults`, `IntermediateResults`, and a `StatusChanged` event so callers never touch `FlowEx` directly.
-  - `InspectorViewModel` — owns `State`, `OverlayLayers`, `_layersCache`, `_precomputedImages`, `UpdateSelectedImage`, `PrecomputeImagesAsync`, `BuildLayersForNode`, `RefreshCachedLayerImages`, and the ROI/stripe parameter subscriptions; depends on `ExecutionService` for result lookup.
-  - `MainViewModel` becomes a thin coordinator: holds `Flow`, `Toolbox`, `ThumbnailStrip`, commands, and the settings-panel state (`EditingNode`, `DisplayingNode`); delegates execution to `ExecutionService` and inspection to `InspectorViewModel`.
-
 - **Application settings dialog** — a modal settings window (accessible from a toolbar button or Tools menu) that stores preferences in a small JSON file next to the executable (or in `%AppData%\IPLab\settings.json`). Initial settings to expose:
   - **Inspector overlay colors** — one color-picker per overlay type: ROI rectangle, stripe region, circles/blobs, contours, line segments. Defaults match the current hard-coded colors in `InspectorControl`. Changes take effect immediately (live preview while the picker is open). Colors are passed into `InspectorControl.RedrawAnnotations` instead of being hard-coded there. call it legend.
 
@@ -49,7 +44,7 @@
 
 - **Introduce a DI container and service layer for inter-ViewModel communication** — currently, callbacks like `onOpenSettings` and `onSelected` are threaded through `MainViewModel → FlowViewModel → BuildNodes → OperatorNodeViewModel` constructors. Replace with an `INodeInteractionService` (or similar) that ViewModels take as a constructor dependency, removing the callback parameters from the chain. This also makes it easier to add new cross-ViewModel interactions without touching intermediate classes.
 
-- **Abstract the executor result store behind an interface** — `MainViewModel.ResolveRoiParam` directly accesses `_executor.IntermediateResults` and casts values out of a raw `Dictionary<string, object?>`, coupling the ViewModel to the executor's internal storage layout. Introduce an `IExecutionResults` interface on `FlowEx` (e.g. `bool TryGetPortValue(string operatorId, string port, out object? value)`) so the ViewModel only depends on the interface, not on the concrete dict structure. This makes the ROI overlay (and any similar feature that needs to read runtime values from the ViewModel) testable without a real executor instance. Pairs naturally with the DI/service-layer item above.
+- **Abstract the executor result store behind an interface** — `InspectorViewModel.ResolveParamAsDouble` directly accesses `ExecutionService.IntermediateResults` and casts values out of a raw `Dictionary<string, object?>`, coupling the ViewModel to the executor's internal storage layout. Introduce an `IExecutionResults` interface on `FlowEx` (e.g. `bool TryGetPortValue(string operatorId, string port, out object? value)`) so the ViewModel only depends on the interface, not on the concrete dict structure. This makes the ROI overlay (and any similar feature that needs to read runtime values from the ViewModel) testable without a real executor instance. Pairs naturally with the DI/service-layer item above.
 
 
 - **Output display settings per operator** — let the user configure how detection results are visualised in the inspector. For annotation color, offer three modes: a single fixed color (color-picker), a random-per-entity color (stable hash of entity index so colors don't shuffle on re-run), and a heatmap (map a scalar — e.g. circle radius or blob response — to a gradient). Store the chosen mode and parameters inside the operator's display metadata so settings persist with the saved flow. Start with circle/blob annotations; apply the same system to any future operator that produces non-image output.
@@ -59,10 +54,6 @@
 - **Open empty .ipl file doesn't show error message** - it doesn't crash the app, but the user doesn't know anything happened. a popup error message is needed here.
 
 - **Inspector overlay layers survive image-selection change** — when the user clicks a different thumbnail in a `LoadImageOperator` and the flow re-runs, the inspector's overlay layers (circle annotations, contour overlays, etc.) reset to their defaults. The active layer selection and any per-layer visibility toggles should be preserved across re-runs so the user doesn't have to re-enable them after every image switch.
-
-- **New flow command** — provide a "New flow" action (toolbar button or File menu) that clears the current graph and starts fresh. If the current flow has unsaved changes, prompt to save first. Complements the existing open/save commands.
-
-- **Reopen last flow on startup** — on launch, if a flow was open at the end of the previous session, automatically reload it instead of showing the default sample flow. Persist the last-used file path in user settings (e.g. `Properties.Settings` or a small JSON settings file next to the executable). If the file no longer exists, silently fall back to the sample flow.
 
 
 ## Project
@@ -133,14 +124,3 @@ A **loop group** is a visual `GroupingNode` (Nodify's built-in resizable contain
 
 - **Serialization** — `FlowDef` represents a loop group as a node of type `LoopGroup` containing a nested `FlowDef` for the inner sub-graph, the collection source port reference, and the designated output operator ID. Round-trip JSON serialization must preserve the nested structure.
 
-- **C# script operator**
-  Add a `CSharpScriptOperator` that accepts a user-written C# snippet (via
-  `Microsoft.CodeAnalysis.CSharp.Scripting` / Roslyn) and executes it at runtime.
-  The script receives the operator's input ports as named variables (e.g.
-  `Mat image`, `CircleSegment[] circles`) and must assign a value to a predefined
-  `result` variable that becomes the operator's output. Parameters are the script
-  text itself plus any named constants the script references. The parameter editor
-  shows a code editor control with syntax highlighting and inline error squiggles
-  (compile errors surfaced as operator status). Serialization stores the raw script
-  text in the JSON flow file. Security note: scripts run in full trust inside the
-  desktop process — no sandboxing in MVP, but document this clearly.

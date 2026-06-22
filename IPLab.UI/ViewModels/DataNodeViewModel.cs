@@ -6,24 +6,36 @@ public class DataNodeViewModel : ViewModelBase
 {
     private Func<IEnumerable<DataNodeViewModel>>? _childFactory;
 
+    private readonly string        _path;
+    private readonly ISet<string>? _expandedPaths; // null for Placeholder sentinel
+    private bool                   _isExpanded;    // fallback when _expandedPaths is null
+
     public string Name      { get; }
     public string ValueText { get; }
     public string TypeText  { get; }
 
     public ObservableCollection<DataNodeViewModel> Children { get; } = [];
 
-    // True when this node can be expanded (has a factory or already-built children).
-    // Stored at construction so context menu visibility is stable.
     public bool HasChildren { get; }
 
-    private bool _isExpanded;
     public bool IsExpanded
     {
-        get => _isExpanded;
+        get => _expandedPaths is not null ? _expandedPaths.Contains(_path) : _isExpanded;
         set
         {
-            if (_isExpanded == value) return;
-            _isExpanded = value;
+            bool current = _expandedPaths is not null ? _expandedPaths.Contains(_path) : _isExpanded;
+            if (current == value) return;
+
+            if (_expandedPaths is not null)
+            {
+                if (value) _expandedPaths.Add(_path);
+                else       _expandedPaths.Remove(_path);
+            }
+            else
+            {
+                _isExpanded = value;
+            }
+
             if (value && _childFactory is not null)
             {
                 Children.Clear(); // remove placeholder
@@ -43,20 +55,34 @@ public class DataNodeViewModel : ViewModelBase
     }
 
     public DataNodeViewModel(string name, string valueText, string typeText,
-        Func<IEnumerable<DataNodeViewModel>>? childFactory = null)
+        Func<IEnumerable<DataNodeViewModel>>? childFactory = null,
+        string path = "",
+        ISet<string>? expandedPaths = null)
     {
-        Name          = name;
-        ValueText     = valueText;
-        TypeText      = typeText;
-        _childFactory = childFactory;
-        HasChildren   = childFactory is not null;
+        Name           = name;
+        ValueText      = valueText;
+        TypeText       = typeText;
+        _childFactory  = childFactory;
+        _path          = path;
+        _expandedPaths = expandedPaths;
+        HasChildren    = childFactory is not null;
 
-        // Placeholder child: makes WPF show the expand arrow for lazy nodes
-        // without building real children yet. Replaced on first expand.
         if (_childFactory is not null)
-            Children.Add(Placeholder);
+        {
+            if (_expandedPaths is not null && _path.Length > 0 && _expandedPaths.Contains(_path))
+            {
+                // Auto-restore: path was previously expanded — materialise immediately so the
+                // WPF TreeViewItem sees IsExpanded=true with real children already present.
+                foreach (var child in _childFactory())
+                    Children.Add(child);
+                _childFactory = null;
+            }
+            else
+            {
+                Children.Add(Placeholder);
+            }
+        }
     }
 
-    // Shared sentinel — never rendered (empty strings, never selected).
     internal static readonly DataNodeViewModel Placeholder = new("", "", "");
 }
