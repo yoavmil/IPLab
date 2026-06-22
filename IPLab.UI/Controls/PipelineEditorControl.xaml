@@ -26,7 +26,9 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type nodify:Connector}">
-                        <Border Background="Transparent" Height="3">
+                        <!-- Transparent padding enlarges the grab area; the visible 3px pill
+                             stays pinned to the edge via VerticalContentAlignment. -->
+                        <Border Background="Transparent" Height="12">
                             <Border x:Name="PART_Connector"
                                     Background="{TemplateBinding Background}"
                                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -44,7 +46,9 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type nodify:Connector}">
-                        <Border Background="Transparent" Width="3">
+                        <!-- Transparent padding enlarges the grab area; the visible 3px pill
+                             stays pinned to the edge via HorizontalContentAlignment. -->
+                        <Border Background="Transparent" Width="12">
                             <Border x:Name="PART_Connector"
                                     Background="{TemplateBinding Background}"
                                     HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
