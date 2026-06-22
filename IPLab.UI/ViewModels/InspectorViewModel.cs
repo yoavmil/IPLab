@@ -163,54 +163,11 @@ public class InspectorViewModel : ViewModelBase
         return new InspectorState(Image: contextImage) with { Roi = CurrentRoi };
     }
 
-    private static T? Unwrap<T>(object? result) where T : class
-    {
-        if (result is T direct)
-            return direct;
+    private static T? Unwrap<T>(object? result) where T : class =>
+        ResultUnwrapper.Unwrap<T>(result);
 
-        if (result is IReadOnlyDictionary<string, object?> dict)
-        {
-            foreach (var val in dict.Values)
-            {
-                var found = Unwrap<T>(val);
-                if (found is not null) return found;
-            }
-            return null;
-        }
-
-        // LoopEnd accumulator: object?[] where each slot holds one iteration's value.
-        // Each slot may be an array of elementType (flatten it) or a single elementType value (collect it).
-        if (result is object?[] accumulator && typeof(T).IsArray)
-        {
-            var elementType = typeof(T).GetElementType()!;
-            var items = new List<object?>();
-            foreach (var slot in accumulator)
-            {
-                if (slot is null) continue;
-                if (slot is Array arr)
-                    items.AddRange(arr.Cast<object?>().Where(v => v is not null));
-                else if (elementType.IsInstanceOfType(slot))
-                    items.Add(slot);
-            }
-            if (items.Count == 0) return null;
-            var merged = Array.CreateInstance(elementType, items.Count);
-            for (int i = 0; i < items.Count; i++)
-                merged.SetValue(items[i], i);
-            return (T)(object)merged;
-        }
-
-        return null;
-    }
-
-    private static T? UnwrapStruct<T>(object? result) where T : struct
-    {
-        if (result is T direct) return direct;
-        if (result is IReadOnlyDictionary<string, object?> dict)
-            return dict.Values.OfType<T>().Cast<T?>().FirstOrDefault();
-        if (result is object?[] acc)
-            return acc.OfType<T>().Cast<T?>().FirstOrDefault();
-        return null;
-    }
+    private static T? UnwrapStruct<T>(object? result) where T : struct =>
+        ResultUnwrapper.UnwrapStruct<T>(result);
 
     private BitmapSource? GetSourceImage()
     {
