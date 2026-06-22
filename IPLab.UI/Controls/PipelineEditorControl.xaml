@@ -202,6 +202,7 @@
                                 Target="{Binding Target.Anchor}"
                                 SourcePosition="{Binding SourcePosition}"
                                 TargetPosition="{Binding TargetPosition}"
+                                Spacing="10"
                                 Stroke="#888888"
                                 StrokeThickness="2"
                                 ArrowEnds="End"

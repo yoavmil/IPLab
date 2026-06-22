@@ -49,7 +49,7 @@ Key rules:
 - The connector's `ControlTemplate` must contain `<Border x:Name="PART_Connector" …/>` — that named part is what `Connector.OnApplyTemplate()` looks for.
 - `ItemContainer.Location` must be bound **TwoWay** so dragging updates the VM.
 - Set `NodifyEditor.AutoRegisterConnectionsLayer = false` in `MainWindow`'s **static constructor** before `InitializeComponent()`.
-- **Use `nodify:StepConnection`** with `SourcePosition="{Binding SourcePosition}"` and `TargetPosition="{Binding TargetPosition}"` (both `ConnectorPosition` enum). `StepConnection` auto-coerces `Direction`/`SourceOrientation`/`TargetOrientation` internally and correctly handles all connector combinations: opposite sides (standard S), same side (U-loop), and mixed (L-bend). Built-in arrowheads via `ArrowEnds`/`ArrowSize`. Do NOT use `nodify:Connection` (bezier), `nodify:LineConnection` (can't handle same-side), or manual `Path`/`StreamGeometry`.
+- **Use `nodify:StepConnection`** with `SourcePosition="{Binding SourcePosition}"` and `TargetPosition="{Binding TargetPosition}"` (both `ConnectorPosition` enum), and `Spacing="10"`. `StepConnection` auto-coerces `Direction`/`SourceOrientation`/`TargetOrientation` internally and correctly handles all connector combinations: opposite sides (standard S), same side (U-loop), and mixed (L-bend). Built-in arrowheads via `ArrowEnds`/`ArrowSize`. Do NOT use `nodify:LineConnection` (can't handle same-side) or manual `Path`/`StreamGeometry`.
 - `NodifyEditor.ConnectionCompletedCommand` receives a **`ValueTuple<object, object?>`** (not `Tuple<T,U>`). Use `RelayCommand<(object, object?)>` — if you use the class `Tuple`, the cast silently fails and the handler is never called.
 
 ## Node connector layout
@@ -69,7 +69,7 @@ In XAML, each is bound with `DataContext="{Binding TopConnector}"` (etc.) so tha
 
 - **Default sides**: source exits `Bottom`, target enters `Top`. This produces top-to-bottom vertical S-curves for a standard pipeline flow.
 - **Per-dependency overrides**: `IFlowLayout.Dependencies` carries a `DependencyLayout` per dependency ID. `FlowViewModel` builds a lookup at construction; unrecognised IDs fall back to `(Bottom, Top)`.
-- **Bezier geometry**: `ConnectionViewModel.BezierGeometry` is a `StreamGeometry` bezier computed from `Source.Anchor`/`Target.Anchor`. Control points are offset along the connector's declared `Side` by `ControlOffset = 80` pixels. It re-evaluates whenever either anchor raises `PropertyChanged`.
+- **Connection routing**: `ConnectionViewModel` exposes `SourcePosition` and `TargetPosition` (`ConnectorPosition` enum) derived from `Source.Side`/`Target.Side`. `nodify:StepConnection` uses these to route the line correctly per connector combination.
 - **One connection per node pair**: at most one visual connection may exist between any (sourceNode, targetNode) pair. Drawing a new connection between a pair that already has one removes the old first.
 - **Dependency ID format**: `D_{sourceOperatorId}_{targetOperatorId}` (e.g. `D_O2_O3`). Connections carry this ID so the serializer can match visual connector sides to the correct `DependencyLayout`.
 - **Parameter wiring**: `OnConnect` wires the **first `CanBeWired` parameter** of the target node to the **first output port** of the source node. The `ParameterEditViewModel` updates `IsWired = true` and `SelectedSource`. `OnConnect` also adds a `Dependency` to `OperatorNodeViewModel.Dependencies`; `OnDeleteConnection` removes it. `BuildExecutionFlow` reads `node.Dependencies` directly — it does **not** recompute them from parameter wiring. `IOperator.Dependencies` (immutable, from load) is copied into the mutable `OperatorNodeViewModel.Dependencies` at construction.
@@ -81,7 +81,7 @@ In XAML, each is bound with `DataContext="{Binding TopConnector}"` (etc.) so tha
 |---|---|
 | `ConnectorViewModel` | `Name: string`, `Side: ConnectionSide`, `Anchor: Point` (INPC) |
 | `OperatorNodeViewModel` | `TopConnector`, `BottomConnector`, `LeftConnector`, `RightConnector` (fixed, always present), `Parameters`, `Location: Point` (INPC) |
-| `ConnectionViewModel` | `Source: ConnectorViewModel`, `Target: ConnectorViewModel`, `SourceOrientation`, `TargetOrientation` (derived from `Side`) |
+| `ConnectionViewModel` | `Source: ConnectorViewModel`, `Target: ConnectorViewModel`, `SourcePosition`, `TargetPosition` (derived from `Side`) |
 | `FlowViewModel` | `Nodes`, `Connections`, `Json`, `ConnectCommand` |
 | `MainViewModel` | `Flow: FlowViewModel`, `Status: string` |
 
