@@ -106,6 +106,8 @@
 
 ## IPLab.Core
 
+- **`RoiDef` as a single connectable port** — currently ROI parameters (XC, YC, Width, Height, Angle) are passed as five separate `object?` outputs between operators (e.g. a `CSharpScript` that builds a ROI from a detected line). Add `RoiDef` as a first-class connectable type: declare one `OutputPortDescriptor` with `DataType = typeof(RoiDef)` and let downstream operators accept it via a single `ConnectableType = typeof(RoiDef)` input parameter. `RoiParameters` should grow a convenience overload that reads the `RoiDef` directly from a wired parameter instead of requiring the five scalar parameters to be spread into `ParameterSchema`. This also allows scripts to output a fully-formed `RoiDef` on a single port rather than spreading it across Out1–Out5.
+
 - **Serialization: handle array parameter values**
   `FlowDefSerializer.CoerceValue` currently handles scalar types only (int, double, bool, string).
   If a parameter value is an array (e.g. a list of points or thresholds passed as a literal),

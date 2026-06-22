@@ -36,6 +36,7 @@ public class CSharpScriptOperator : IOperatorType
         new() { Name = "Out2",  DataType = typeof(object) },
         new() { Name = "Out3",  DataType = typeof(object) },
         new() { Name = "Out4",  DataType = typeof(object) },
+        new() { Name = "Out5",  DataType = typeof(object) },
     ];
 
     private readonly ConcurrentDictionary<string, (DateTime ModTime, Script<object?> Compiled)> _cache = new();
@@ -63,7 +64,7 @@ public class CSharpScriptOperator : IOperatorType
 
         var emptyResult = new Dictionary<string, object?>
         {
-            ["Image"] = null, ["Out1"] = null, ["Out2"] = null, ["Out3"] = null, ["Out4"] = null,
+            ["Image"] = null, ["Out1"] = null, ["Out2"] = null, ["Out3"] = null, ["Out4"] = null, ["Out5"] = null,
         };
 
         if (string.IsNullOrWhiteSpace(path))
@@ -88,6 +89,7 @@ public class CSharpScriptOperator : IOperatorType
             ["Out2"]  = globals.Out2,
             ["Out3"]  = globals.Out3,
             ["Out4"]  = globals.Out4,
+            ["Out5"]  = globals.Out5,
         };
     }
 

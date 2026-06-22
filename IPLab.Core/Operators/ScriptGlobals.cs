@@ -4,7 +4,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>
 /// Globals host for <see cref="CSharpScriptOperator"/>. Public fields are visible as top-level variables inside the user's C# script.
-/// The script reads from <see cref="In1"/>–<see cref="In4"/> and writes to <see cref="Image"/> and <see cref="Out1"/>–<see cref="Out4"/>.
+/// The script reads from <see cref="In1"/>–<see cref="In4"/> and writes to <see cref="Image"/> and <see cref="Out1"/>–<see cref="Out5"/>.
 /// </summary>
 public class ScriptGlobals
 {
@@ -27,4 +27,6 @@ public class ScriptGlobals
     public object? Out3;
     /// <summary>Fourth extra output, available on the operator's <c>Out4</c> port.</summary>
     public object? Out4;
+    /// <summary>Fifth extra output, available on the operator's <c>Out5</c> port.</summary>
+    public object? Out5;
 }
