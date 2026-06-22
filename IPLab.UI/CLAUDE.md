@@ -124,6 +124,11 @@ The inspector uses `RControls.ImageViewer` (wrapping `RControls.ImageCanvas`) to
 4. Add a `DrawXxx` private method in `InspectorControl` and call it from `RedrawAnnotations`
 5. Add the corresponding `RemoveRegion` call at the top of `RedrawAnnotations`
 
+**Pattern for adding a new output type to the Data tab tree (`DataNodeBuilder`):**
+New output port types are handled automatically — unknown types fall through to the reflection fallback in `DataNodeBuilder.Build` and are rendered as an expandable node whose children are the type's public properties and fields. No change to `DataNodeBuilder` is needed for most new types.
+
+Add an entry to `DataNodeBuilder.TryFormatKnownStruct` only when the type is a small, frequently seen struct where a compact one-liner is worth it (e.g. `Point2f`, `CircleSegment`, `LineSegment2f`). The switch already covers all current OpenCV and IPLab geometry types. For richer objects (classes, records with nested data) the reflection fallback is preferable.
+
 ## Operator-Specific Editors
 
 Operator-specific settings-panel actions are registered in `OperatorEditorRegistry.CreateDefault()` and rendered from `MainViewModel.OperatorActions`. Keep the generic settings-panel XAML and `OperatorNodeViewModel` free of operator-type checks and dedicated commands.

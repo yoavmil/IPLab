@@ -77,18 +77,7 @@
             </Grid>
         </TabItem>
         <TabItem Header="Data">
-            <Border Background="#1E1E1E" Padding="10">
-                <TextBox Text="{Binding SelectedNode.ErrorMessage, Mode=OneWay}"
-                         TextWrapping="Wrap"
-                         Foreground="#FF6666"
-                         FontFamily="Consolas"
-                         FontSize="12"
-                         VerticalAlignment="Top"
-                         IsReadOnly="True"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         FocusVisualStyle="{x:Null}" />
-            </Border>
+            <controls:DataInspectorControl />
         </TabItem>
     </TabControl>
 </UserControl>

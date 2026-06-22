@@ -21,8 +21,10 @@ public class InspectorViewModel : ViewModelBase
         private set { _state = value; RaisePropertyChanged(); }
     }
 
-    private readonly ObservableCollection<LayerViewModel> _overlayLayers = [];
-    public ObservableCollection<LayerViewModel> OverlayLayers => _overlayLayers;
+    private readonly ObservableCollection<LayerViewModel>    _overlayLayers = [];
+    public  ObservableCollection<LayerViewModel>    OverlayLayers => _overlayLayers;
+
+    public ObservableCollection<DataNodeViewModel> DataNodes { get; } = [];
 
     private readonly Dictionary<string, List<LayerViewModel>> _layersCache = new();
     private Dictionary<(string Id, string Port), BitmapSource> _precomputedImages = new();
@@ -107,6 +109,22 @@ public class InspectorViewModel : ViewModelBase
         if (newState != State)
             State = newState;
         UpdateOverlayLayers(flow);
+        RebuildDataNodes();
+    }
+
+    private void RebuildDataNodes()
+    {
+        DataNodes.Clear();
+        if (_selectedNode is null || !_execution.HasResults) return;
+
+        _execution.IntermediateResults.TryGetValue(_selectedNode.Id, out var result);
+        var ports = _selectedNode.Operator.Type.OutputPorts;
+
+        foreach (var port in ports)
+        {
+            var value = ResultUnwrapper.GetPortValue(result, port.Name);
+            DataNodes.Add(DataNodeBuilder.Build(port.Name, value, port.IsDisplayImage));
+        }
     }
 
     private InspectorState BuildState(FlowViewModel? flow)
@@ -377,6 +395,7 @@ public class InspectorViewModel : ViewModelBase
         _layersCache.Clear();
         _precomputedImages = new();
         _precomputedMats   = new();
+        DataNodes.Clear();
         State = new InspectorState();
     }
 

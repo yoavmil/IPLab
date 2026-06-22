@@ -40,8 +40,9 @@ public class MainViewModel : ViewModelBase
     private readonly ExecutionService   _execution;
     private readonly InspectorViewModel _inspector;
 
-    public InspectorState                      State        => _inspector.State;
-    public ObservableCollection<LayerViewModel> OverlayLayers => _inspector.OverlayLayers;
+    public InspectorState                          State         => _inspector.State;
+    public ObservableCollection<LayerViewModel>    OverlayLayers => _inspector.OverlayLayers;
+    public ObservableCollection<DataNodeViewModel> DataNodes     => _inspector.DataNodes;
 
     public bool ConfirmNavigateAway()
     {
