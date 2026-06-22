@@ -5,6 +5,8 @@ namespace IPLab.Core.Operators;
 /// <summary>
 /// Globals host for <see cref="CSharpScriptOperator"/>. Public fields are visible as top-level variables inside the user's C# script.
 /// The script reads from <see cref="In1"/>–<see cref="In4"/> and writes to <see cref="Image"/> and <see cref="Out1"/>–<see cref="Out5"/>.
+/// Auto-imported namespaces: <c>System</c>, <c>System.Linq</c>, <c>System.Collections.Generic</c>,
+/// <c>OpenCvSharp</c>, <c>OpenCvSharp.Features2D</c>, <c>IPLab.Core.Models</c>, <c>IPLab.Core.Spatial</c>.
 /// </summary>
 public class ScriptGlobals
 {

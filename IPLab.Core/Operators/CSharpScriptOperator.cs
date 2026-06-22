@@ -48,7 +48,8 @@ public class CSharpScriptOperator : IOperatorType
             "System.Collections.Generic",
             "OpenCvSharp",
             "OpenCvSharp.Features2D",
-            "IPLab.Core.Models"
+            "IPLab.Core.Models",
+            "IPLab.Core.Spatial"
         )
         .AddReferences(
             typeof(object).Assembly,        // System.Private.CoreLib
