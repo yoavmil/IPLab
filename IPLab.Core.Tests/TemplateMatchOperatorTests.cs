@@ -156,6 +156,99 @@ public class TemplateMatchOperatorTests
     }
 
     [Fact]
+    public void Execute_FindsMatchesAtDifferentScales()
+    {
+        // Places the template once at its original size (scale 1.0, top-left 5,5) and once at 2×
+        // (scale 2.0, top-left 35,20). The scaled copy is built with Linear interpolation to match
+        // what the operator uses internally, so CCorrNormed reaches ≈1.0 at the true scale.
+        //
+        // ScaleSteps=4 over [0.5, 2.0] generates exactly {0.5, 1.0, 1.5, 2.0} — arithmetic is
+        // intentional so the coarse sweep lands precisely on both true scales without relying on
+        // refinement to rescue a missed level. MinScore=0.99 is required: lower thresholds let
+        // cross-scale false positives through (e.g. the 9×7 template matching a subregion of the
+        // 2× copy scores ≈0.8 at scale 1.0), which would inflate the result count.
+        using var template = CreatePattern(); // 9×7 (width×height)
+        int scaledW = (int)Math.Round(template.Width * 2.0);
+        int scaledH = (int)Math.Round(template.Height * 2.0);
+        using var scaledCopy = new Mat();
+        Cv2.Resize(template, scaledCopy, new Size(scaledW, scaledH), interpolation: InterpolationFlags.Linear);
+
+        using var source = new Mat(60, 60, MatType.CV_8UC3, Scalar.Black);
+        CopyTemplate(template, source, 5, 5);
+        CopyTemplate(scaledCopy, source, 35, 20);
+        var path = WriteTemplate(template);
+        try
+        {
+            var result = Execute(source, path, minScore: 0.99, new Dictionary<string, object?>
+            {
+                ["MaxMatches"] = 0,
+                ["MinScale"] = 0.5,
+                ["MaxScale"] = 2.0,
+                ["ScaleSteps"] = 4,
+            });
+            var rectangles = (Rect[])result["Rectangles"]!;
+            var scales = (double[])result["Scales"]!;
+
+            Assert.Equal(2, rectangles.Length);
+            Assert.Equal(rectangles.Length, scales.Length);
+
+            var i1 = Array.FindIndex(rectangles, r => Math.Abs(r.X - 5) <= 1 && Math.Abs(r.Y - 5) <= 1);
+            Assert.True(i1 >= 0, "Expected a match near (5, 5)");
+            Assert.InRange(scales[i1], 0.9, 1.1);
+            Assert.Equal(template.Width, rectangles[i1].Width);
+            Assert.Equal(template.Height, rectangles[i1].Height);
+
+            var i2 = Array.FindIndex(rectangles, r => Math.Abs(r.X - 35) <= 2 && Math.Abs(r.Y - 20) <= 2);
+            Assert.True(i2 >= 0, "Expected a match near (35, 20)");
+            Assert.InRange(scales[i2], 1.8, 2.2);
+            Assert.Equal(scaledW, rectangles[i2].Width);
+            Assert.Equal(scaledH, rectangles[i2].Height);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Execute_ScaleRefinementConvergesToTrueScaleWhenCoarseGridMisses()
+    {
+        // The coarse sweep tests only {0.8, 1.2} (ScaleSteps=2) — neither landing on the true
+        // scale of 1.0. The scale-0.8 hit (template smaller than copy, fits inside) scores well
+        // enough on the black background to surface a candidate. Refinement then searches within
+        // [0.4, 1.2] and converges to scale≈1.0. This verifies that the golden-section search,
+        // not the coarse grid, produces the accurate final scale.
+        // MinScore=0.7 instead of 0.99: the coarse candidate at scale 0.8 scores ≈0.85 — below
+        // what a perfectly-scaled match achieves, but above what false positives reach on a
+        // black background (all-black regions produce NaN, filtered by FindLocalMaxima).
+        using var template = CreatePattern(); // 9×7
+        using var source = new Mat(60, 60, MatType.CV_8UC3, Scalar.Black);
+        CopyTemplate(template, source, 25, 20);
+        var path = WriteTemplate(template);
+        try
+        {
+            var result = Execute(source, path, minScore: 0.7, new Dictionary<string, object?>
+            {
+                ["MaxMatches"] = 0,
+                ["MinScale"] = 0.8,
+                ["MaxScale"] = 1.2,
+                ["ScaleSteps"] = 2,
+            });
+            var rectangles = (Rect[])result["Rectangles"]!;
+            var scales = (double[])result["Scales"]!;
+
+            Assert.Single(rectangles);
+            Assert.Equal(rectangles.Length, scales.Length);
+            // The coarse grid only hit 0.8 and 1.2. The template-size discretization plateau
+            // (round(9×s)=9 for s∈(0.944,1.056)) is the tightest bound achievable with this
+            // 9×7 template — if refinement is working the scale must land inside it.
+            Assert.InRange(scales[0], 0.944, 1.056);
+            Assert.Equal(template.Width, rectangles[0].Width);
+            Assert.Equal(template.Height, rectangles[0].Height);
+            Assert.InRange(rectangles[0].X, 23, 27);
+            Assert.InRange(rectangles[0].Y, 18, 22);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public void Execute_ThrowsWhenInputTypeDoesNotMatchTemplate()
     {
         using var template = CreatePattern();

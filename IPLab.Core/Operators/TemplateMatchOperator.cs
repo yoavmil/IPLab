@@ -1,10 +1,11 @@
+using System.Collections.Concurrent;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
 
 namespace IPLab.Core.Operators;
 
-/// <summary>Finds multiple fixed-scale, fixed-orientation template occurrences using masked normalized cross-correlation and an optional axis-aligned ROI.</summary>
+/// <summary>Finds multiple fixed-orientation template occurrences across an optional scale range using masked normalized cross-correlation and an optional axis-aligned ROI.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/df/dfb/group__imgproc__object.html#ga586ebfb0a7fb604b35a23d85391329be">OpenCV: matchTemplate</seealso>
 /// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#templatematch">Operator reference</seealso>
 public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
@@ -24,6 +25,9 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
         new() { Name = "MinScore", Label = "Minimum Score", Type = ParameterType.Double, DefaultValue = 0.8, Min = 0.0, Max = 1.0 },
         new() { Name = "MaxMatches", Label = "Maximum Matches", Type = ParameterType.Int, ConnectableType = typeof(int), DefaultValue = 100, Min = 0 },
         new() { Name = "OverlapThreshold", Label = "Maximum Overlap", Type = ParameterType.Double, DefaultValue = 0.3, Min = 0.0, Max = 1.0 },
+        new() { Name = "MinScale", Label = "Minimum Scale", Type = ParameterType.Double, ConnectableType = typeof(double), DefaultValue = 1.0, Min = 0.01 },
+        new() { Name = "MaxScale", Label = "Maximum Scale", Type = ParameterType.Double, ConnectableType = typeof(double), DefaultValue = 1.0, Min = 0.01 },
+        new() { Name = "ScaleSteps", Label = "Scale Steps", Type = ParameterType.Int, ConnectableType = typeof(int), DefaultValue = 10, Min = 1 },
         new() { Name = "RoiCX", Label = "ROI Center X", Type = ParameterType.Double, ConnectableType = typeof(double), DefaultValue = 0.0 },
         new() { Name = "RoiCY", Label = "ROI Center Y", Type = ParameterType.Double, ConnectableType = typeof(double), DefaultValue = 0.0 },
         new() { Name = "RoiW", Label = "ROI Width", Type = ParameterType.Double, ConnectableType = typeof(double), DefaultValue = 0.0, Min = 0.0 },
@@ -35,6 +39,7 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
     [
         new() { Name = "Matches", DataType = typeof(Mat) },
         new() { Name = "Rectangles", DataType = typeof(Rect[]) },
+        new() { Name = "Scales", DataType = typeof(double[]) },
     ];
 
     private sealed record CachedTemplate(
@@ -55,6 +60,9 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
         double minScore = Convert.ToDouble(parameters.GetValueOrDefault("MinScore") ?? 0.8);
         int maxMatches = Convert.ToInt32(parameters.GetValueOrDefault("MaxMatches") ?? 100);
         double overlapThreshold = Convert.ToDouble(parameters.GetValueOrDefault("OverlapThreshold") ?? 0.3);
+        double minScale = Convert.ToDouble(parameters.GetValueOrDefault("MinScale") ?? 1.0);
+        double maxScale = Convert.ToDouble(parameters.GetValueOrDefault("MaxScale") ?? 1.0);
+        int scaleSteps = Convert.ToInt32(parameters.GetValueOrDefault("ScaleSteps") ?? 10);
 
         if (minScore is < 0.0 or > 1.0)
             throw new ArgumentOutOfRangeException(nameof(parameters), "Minimum Score must be between 0 and 1.");
@@ -62,6 +70,12 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
             throw new ArgumentOutOfRangeException(nameof(parameters), "Maximum Matches cannot be negative.");
         if (overlapThreshold is < 0.0 or > 1.0)
             throw new ArgumentOutOfRangeException(nameof(parameters), "Maximum Overlap must be between 0 and 1.");
+        if (minScale <= 0.0 || maxScale <= 0.0)
+            throw new ArgumentOutOfRangeException(nameof(parameters), "Scale values must be positive.");
+        if (minScale > maxScale)
+            throw new ArgumentOutOfRangeException(nameof(parameters), "Minimum Scale cannot exceed Maximum Scale.");
+        if (scaleSteps < 1)
+            throw new ArgumentOutOfRangeException(nameof(parameters), "Scale Steps must be at least 1.");
 
         using var templateData = LoadTemplate(path!, image.Channels());
         if (image.Depth() != templateData.Image.Depth() || image.Channels() != templateData.Image.Channels())
@@ -76,24 +90,51 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
 
         if (searchRect.Width <= 0 || searchRect.Height <= 0)
             return EmptyOutputs();
-        if (templateData.Image.Width > searchRect.Width || templateData.Image.Height > searchRect.Height)
-            throw new ArgumentException(
-                $"Template size {templateData.Image.Width}x{templateData.Image.Height} exceeds " +
-                $"search area size {searchRect.Width}x{searchRect.Height}.");
 
         using var searchImage = new Mat(image, searchRect);
-        using var response = new Mat();
+        var bagOfCandidates = new ConcurrentBag<Candidate>();
+
         // The template editor stores ignored pixels in the PNG alpha channel. CCorrNormed accepts
         // that alpha-derived mask while keeping scores normalized to the user-facing 0..1 range.
-        Cv2.MatchTemplate(searchImage, templateData.Image, response,
-            TemplateMatchModes.CCorrNormed, templateData.Mask);
+        // Each scale iteration is independent (all Mats are local), so the loop runs in parallel.
+        Parallel.ForEach(GenerateScales(minScale, maxScale, scaleSteps), scale =>
+        {
+            int scaledW = Math.Max(1, (int)Math.Round(templateData.Image.Width * scale));
+            int scaledH = Math.Max(1, (int)Math.Round(templateData.Image.Height * scale));
+            if (scaledW > searchRect.Width || scaledH > searchRect.Height)
+                return;
 
-        var candidates = FindLocalMaxima(response, templateData.Image.Size(), searchRect, minScore);
-        var accepted = SuppressOverlaps(candidates, overlapThreshold, maxMatches);
+            using var scaledTemplate = ResizeMat(templateData.Image, scaledW, scaledH);
+            using var scaledMask = ResizeMask(templateData.Mask, scaledW, scaledH);
+            using var response = new Mat();
+            Cv2.MatchTemplate(searchImage, scaledTemplate, response,
+                TemplateMatchModes.CCorrNormed, scaledMask);
+
+            foreach (var candidate in FindLocalMaxima(response, scaledTemplate.Size(), searchRect, minScore))
+                bagOfCandidates.Add(candidate with { Scale = scale });
+        });
+
+        var allCandidates = bagOfCandidates.OrderByDescending(c => c.Score).ToList();
+        var accepted = SuppressOverlaps(allCandidates, overlapThreshold, maxMatches);
+
+        if (RefineScale && Math.Abs(maxScale - minScale) >= 1e-9)
+        {
+            double stepSize = scaleSteps > 1
+                ? (maxScale - minScale) / (scaleSteps - 1)
+                : maxScale - minScale;
+            accepted = accepted
+                .AsParallel()
+                .Select(c => RefineCandidate(c, searchImage, searchRect, templateData.Image, templateData.Mask, stepSize))
+                .OrderByDescending(c => c.Score)
+                .ToList();
+        }
+
         return BuildOutputs(accepted);
     }
 
-    private sealed record Candidate(Rect Rectangle, double Score);
+    private sealed record Candidate(Rect Rectangle, double Score, double Scale);
+
+    private const bool RefineScale = true;
 
     // A 3x3 local-maximum test alone leaves thousands of small response ripples on repetitive
     // images. Require each peak to rise above a template-scale surrounding ring as well. This is
@@ -132,7 +173,7 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
             if (prominence < MinLocalProminence) continue;
             candidates.Add(new Candidate(
                 new Rect(searchRect.X + col, searchRect.Y + row, templateSize.Width, templateSize.Height),
-                score));
+                score, Scale: 0.0));
         }
 
         return candidates.OrderByDescending(c => c.Score).ToList();
@@ -180,6 +221,58 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
         return intersection / (double)(a.Width * a.Height + b.Width * b.Height - intersection);
     }
 
+    private static Candidate RefineCandidate(
+        Candidate candidate, Mat searchImage, Rect searchRect,
+        Mat templateImage, Mat templateMask, double stepSize)
+    {
+        int origW = templateImage.Width;
+        int origH = templateImage.Height;
+        int cxImg = candidate.Rectangle.X + candidate.Rectangle.Width / 2;
+        int cyImg = candidate.Rectangle.Y + candidate.Rectangle.Height / 2;
+        int cxSearch = cxImg - searchRect.X;
+        int cySearch = cyImg - searchRect.Y;
+
+        double ScoreAt(double scale)
+        {
+            int w = Math.Max(1, (int)Math.Round(origW * scale));
+            int h = Math.Max(1, (int)Math.Round(origH * scale));
+            int left = cxSearch - w / 2;
+            int top = cySearch - h / 2;
+            if (left < 0 || top < 0 || left + w > searchImage.Width || top + h > searchImage.Height)
+                return 0.0;
+            using var crop = new Mat(searchImage, new Rect(left, top, w, h));
+            using var scaledTemplate = ResizeMat(templateImage, w, h);
+            using var scaledMask = ResizeMask(templateMask, w, h);
+            using var response = new Mat();
+            Cv2.MatchTemplate(crop, scaledTemplate, response, TemplateMatchModes.CCorrNormed, scaledMask);
+            float score = response.At<float>(0, 0);
+            return !float.IsNaN(score) && !float.IsInfinity(score) ? score : 0.0;
+        }
+
+        // Golden section search — score vs. scale is unimodal, converges in ~20 iterations.
+        const double Phi = 0.6180339887498949;
+        double lo = Math.Max(0.01, candidate.Scale - stepSize);
+        double hi = candidate.Scale + stepSize;
+        double x1 = hi - Phi * (hi - lo);
+        double x2 = lo + Phi * (hi - lo);
+        double f1 = ScoreAt(x1);
+        double f2 = ScoreAt(x2);
+        for (int i = 0; i < 20; i++)
+        {
+            if (f1 < f2) { lo = x1; x1 = x2; f1 = f2; x2 = lo + Phi * (hi - lo); f2 = ScoreAt(x2); }
+            else         { hi = x2; x2 = x1; f2 = f1; x1 = hi - Phi * (hi - lo); f1 = ScoreAt(x1); }
+        }
+
+        double bestScale = f1 >= f2 ? x1 : x2;
+        double bestScore = Math.Max(f1, f2);
+        if (bestScore <= candidate.Score)
+            return candidate;
+
+        int bestW = Math.Max(1, (int)Math.Round(origW * bestScale));
+        int bestH = Math.Max(1, (int)Math.Round(origH * bestScale));
+        return new Candidate(new Rect(cxImg - bestW / 2, cyImg - bestH / 2, bestW, bestH), bestScore, bestScale);
+    }
+
     private static Dictionary<string, object?> BuildOutputs(IReadOnlyList<Candidate> matches)
     {
         var matrix = new Mat(matches.Count, 5, MatType.CV_64F);
@@ -198,6 +291,7 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
         {
             ["Matches"] = matrix,
             ["Rectangles"] = matches.Select(m => m.Rectangle).ToArray(),
+            ["Scales"] = matches.Select(m => m.Scale).ToArray(),
         };
     }
 
@@ -205,7 +299,34 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
     {
         ["Matches"] = new Mat(0, 5, MatType.CV_64F),
         ["Rectangles"] = Array.Empty<Rect>(),
+        ["Scales"] = Array.Empty<double>(),
     };
+
+    private static IEnumerable<double> GenerateScales(double min, double max, int steps)
+    {
+        if (steps == 1 || Math.Abs(max - min) < 1e-9)
+        {
+            yield return min;
+            yield break;
+        }
+        for (int i = 0; i < steps; i++)
+            yield return min + (max - min) * i / (steps - 1);
+    }
+
+    private static Mat ResizeMat(Mat src, int width, int height)
+    {
+        var dst = new Mat();
+        Cv2.Resize(src, dst, new Size(width, height),
+            interpolation: width < src.Width ? InterpolationFlags.Area : InterpolationFlags.Linear);
+        return dst;
+    }
+
+    private static Mat ResizeMask(Mat mask, int width, int height)
+    {
+        var dst = new Mat();
+        Cv2.Resize(mask, dst, new Size(width, height), interpolation: InterpolationFlags.Nearest);
+        return dst;
+    }
 
     private sealed class TemplateLease(Mat image, Mat mask) : IDisposable
     {

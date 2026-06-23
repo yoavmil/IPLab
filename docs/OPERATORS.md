@@ -415,8 +415,9 @@ Each result includes the match location, size, and confidence score. **Minimum S
 closely a region must resemble the template. **Maximum Overlap** removes duplicate boxes around the
 same occurrence. An optional ROI limits the search to part of the image.
 
-The current version searches at the template's original size and angle. It does not find rotated or
-scaled versions of the pattern. The input and template channels must match each other.
+Scaling is supported: set **Minimum Scale** and **Maximum Scale** to a range and choose how many
+**Scale Steps** to test. Leave both at 1.0 to search at the template's original size only. It does not
+find rotated versions of the pattern. The input and template channels must match each other.
 
 | Key                 | Label           | Type   | Connectable | Description |
 |---------------------|-----------------|--------|-------------|-------------|
@@ -425,15 +426,19 @@ scaled versions of the pattern. The input and template channels must match each 
 | `MinScore`          | Minimum Score   | Double | No          | Required match confidence from 0 to 1; higher values are stricter (default 0.8) |
 | `MaxMatches`        | Maximum Matches | Int    | No          | Maximum number of results; 0 means unlimited (default 100) |
 | `OverlapThreshold`  | Maximum Overlap | Double | No          | How much two result boxes may overlap before the weaker one is removed (default 0.3) |
+| `MinScale`          | Minimum Scale   | Double | Yes         | Smallest scale factor to search; 1.0 = template's original size (default 1.0) |
+| `MaxScale`          | Maximum Scale   | Double | Yes         | Largest scale factor to search; must be ≥ MinScale (default 1.0) |
+| `ScaleSteps`        | Scale Steps     | Int    | Yes         | Number of scale levels to test between MinScale and MaxScale inclusive (default 10) |
 | `RoiCX`             | ROI Center X    | Double | Yes         | Center X of the optional axis-aligned search ROI |
 | `RoiCY`             | ROI Center Y    | Double | Yes         | Center Y of the optional axis-aligned search ROI |
 | `RoiW`              | ROI Width       | Double | Yes         | Search ROI width; zero disables the ROI |
 | `RoiH`              | ROI Height      | Double | Yes         | Search ROI height; zero disables the ROI |
 
-| Output Port | Type   | Description |
-|-------------|--------|-------------|
-| Matches     | Mat    | One row per result: X, Y, Width, Height, and Score; strongest matches first |
-| Rectangles  | Rect[] | Match boxes in full-image coordinates, displayed in the inspector |
+| Output Port | Type     | Description |
+|-------------|----------|-------------|
+| Matches     | Mat      | One row per result: X, Y, Width, Height, and Score; strongest matches first |
+| Rectangles  | Rect[]   | Match boxes in full-image coordinates, displayed in the inspector |
+| Scales      | double[] | Scale factor of each match, parallel to Rectangles |
 
 The template editor opens on the operator's current input image. Run the flow first, then select the
 template region, add or delete mask rectangles as needed, and save it. The saved template path is
