@@ -62,7 +62,7 @@ public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
         if (overlapThreshold is < 0.0 or > 1.0)
             throw new ArgumentOutOfRangeException(nameof(parameters), "Maximum Overlap must be between 0 and 1.");
 
-        using var templateData = LoadTemplate(path, image.Channels());
+        using var templateData = LoadTemplate(path!, image.Channels());
         if (image.Depth() != templateData.Image.Depth() || image.Channels() != templateData.Image.Channels())
             throw new ArgumentException(
                 $"Input image type {image.Type()} does not match template type {templateData.Image.Type()}. " +

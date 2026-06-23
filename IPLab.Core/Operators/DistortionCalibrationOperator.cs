@@ -149,7 +149,7 @@ public class DistortionCalibrationOperator : IOperatorType
                     MeanCol          = meanCol,
                     MeanRow          = meanRow,
                     Corners          = calibCorners,
-                }, outPath);
+                }, outPath!);
                 calibPath = outPath;
             }
 

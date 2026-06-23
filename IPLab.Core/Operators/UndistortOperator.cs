@@ -54,7 +54,7 @@ public class UndistortOperator : IOperatorType, ICacheInvalidationProvider
             throw new ArgumentException($"Undistort requires an existing calibration file. Path: '{path}'.");
 
         long mtime       = File.GetLastWriteTimeUtc(path).Ticks;
-        var (map1, map2) = GetMaps(path, mtime, image.Width, image.Height);
+        var (map1, map2) = GetMaps(path!, mtime, image.Width, image.Height);
 
         var dst = new Mat();
         Cv2.Remap(image, dst, map1, map2, InterpolationFlags.Linear, BorderTypes.Constant);
