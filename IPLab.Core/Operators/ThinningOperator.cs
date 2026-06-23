@@ -7,6 +7,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Applies morphological skeleton thinning (Zhang-Suen or Guo-Hall) to reduce binary objects to single-pixel-wide skeletons, with optional ROI support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/df/d2d/group__ximgproc.html#ga37002c6ca80c978b4d1c3c91694d3cd9">OpenCV ximgproc: thinning</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#thinning">Operator reference</seealso>
 public class ThinningOperator : IOperatorType
 {
     /// <inheritdoc/>

@@ -13,6 +13,7 @@ namespace IPLab.Core.Operators;
 /// label overlay. When the <c>CalibFilePath</c> output is set, the file written to it is a
 /// JSON-serialised <see cref="CalibrationData"/>.
 /// </summary>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#distortioncalibration">Operator reference</seealso>
 public class DistortionCalibrationOperator : IOperatorType
 {
     /// <inheritdoc/>

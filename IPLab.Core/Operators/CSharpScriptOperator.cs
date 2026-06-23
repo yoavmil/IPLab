@@ -9,6 +9,7 @@ using OpenCvSharp;
 namespace IPLab.Core.Operators;
 
 /// <summary>Executes a C# script file at runtime, providing up to four wired inputs and producing up to one image and four data outputs via <see cref="ScriptGlobals"/>.</summary>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#csharpscript">Operator reference</seealso>
 public class CSharpScriptOperator : IOperatorType
 {
     /// <inheritdoc/>

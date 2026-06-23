@@ -7,6 +7,7 @@ namespace IPLab.Core.Operators;
 /// <summary>Applies fixed, Otsu, Triangle, or adaptive thresholding to produce a binary image, with optional ROI support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d7/d1b/group__imgproc__misc.html#gae8a4a146d1ca78c626a53577199e9c57">OpenCV: threshold</seealso>
 /// <seealso href="https://docs.opencv.org/4.x/d7/d1b/group__imgproc__misc.html#ga72b913f352e4a1b1b397736707afcde3">OpenCV: adaptiveThreshold</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#threshold">Operator reference</seealso>
 public class ThresholdOperator : IOperatorType
 {
     /// <inheritdoc/>

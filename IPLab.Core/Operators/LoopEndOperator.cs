@@ -4,6 +4,7 @@ using IPLab.Core.Models;
 namespace IPLab.Core.Operators;
 
 /// <summary>Marks the end of a loop body and passes up to four values from the current iteration to FlowEx for accumulation into output arrays.</summary>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#loopend">Operator reference</seealso>
 public class LoopEndOperator : IOperatorType
 {
     /// <inheritdoc/>

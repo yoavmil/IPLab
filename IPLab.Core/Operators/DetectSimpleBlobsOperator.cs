@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Detects blobs using OpenCV's SimpleBlobDetector and outputs their key-points back-projected to original-image coordinates, with optional ROI support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d0/d7a/classcv_1_1SimpleBlobDetector.html">OpenCV: SimpleBlobDetector</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#detectsimpleblobs">Operator reference</seealso>
 public class DetectSimpleBlobsOperator : IOperatorType
 {
     /// <inheritdoc/>

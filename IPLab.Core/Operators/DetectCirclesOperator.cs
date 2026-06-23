@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Detects circles using Hough Circle Transform and outputs them back-projected to original-image coordinates, with optional ROI support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/dd/d1a/group__imgproc__feature.html#ga47849c3be0d0406ad3ca45db65a25d2d">OpenCV: HoughCircles</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#detectcircles">Operator reference</seealso>
 public class DetectCirclesOperator : IOperatorType
 {
     /// <inheritdoc/>

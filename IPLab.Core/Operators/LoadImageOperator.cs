@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Loads one image from a file list and outputs the image and its path.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#ga288b8b3da0892bd651fce07b3bbd3a56">OpenCV: imread</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#loadimage">Operator reference</seealso>
 public class LoadImageOperator : IOperatorType
 {
     /// <inheritdoc/>

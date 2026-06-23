@@ -7,6 +7,7 @@ namespace IPLab.Core.Operators;
 /// <summary>Enhances contrast using global histogram equalization or CLAHE (Contrast Limited Adaptive Histogram Equalization).</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d6/dc7/group__imgproc__hist.html#ga7e54091f0c937d49bf84152a16f76d6e">OpenCV: equalizeHist</seealso>
 /// <seealso href="https://docs.opencv.org/4.x/d1/d5c/classcv_1_1CLAHE.html">OpenCV: CLAHE</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#histogramequalization">Operator reference</seealso>
 public class HistogramEqualizationOperator : IOperatorType
 {
     /// <inheritdoc/>

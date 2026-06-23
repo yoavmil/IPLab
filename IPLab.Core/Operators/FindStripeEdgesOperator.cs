@@ -13,6 +13,7 @@ namespace IPLab.Core.Operators;
 internal readonly record struct FindStripeEdge(Point2f Point, double Score, LineSegment2f Line, string Polarity);
 
 /// <summary>Detects sub-pixel stripe edges within a rotated ROI by sampling a 1D stripe profile directly from the source image. Outputs edge positions, scores, line segments, and polarity labels.</summary>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#findstripeedges">Operator reference</seealso>
 public class FindStripeEdgesOperator : IOperatorType
 {
     /// <inheritdoc/>

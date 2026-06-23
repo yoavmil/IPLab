@@ -6,6 +6,7 @@ using OpenCvSharp;
 namespace IPLab.Core.Operators;
 
 /// <summary>Marks the start of a discrete loop body and outputs the selected iteration index and source count.</summary>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#loopstart">Operator reference</seealso>
 public class LoopStartOperator : IOperatorType
 {
     /// <inheritdoc/>

@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Renders a bar-chart histogram image from a single-channel (grayscale) input image.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d6/dc7/group__imgproc__hist.html#ga6b2f4b59b8ccc9f8eed1d2f3bae4d94a">OpenCV: calcHist</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#drawhistogram">Operator reference</seealso>
 public class DrawHistogramOperator : IOperatorType
 {
     /// <inheritdoc/>

@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Writes the input image to a file. Has no output ports.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#gabbc7ef1aa2edfaa87772f1202d67e0ce">OpenCV: imwrite</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#saveimage">Operator reference</seealso>
 public class SaveImageOperator : IOperatorType
 {
     /// <inheritdoc/>

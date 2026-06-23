@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Finds multiple fixed-scale, fixed-orientation template occurrences using masked normalized cross-correlation and an optional axis-aligned ROI.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/df/dfb/group__imgproc__object.html#ga586ebfb0a7fb604b35a23d85391329be">OpenCV: matchTemplate</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#templatematch">Operator reference</seealso>
 public class TemplateMatchOperator : IOperatorType, ICacheInvalidationProvider
 {
     /// <inheritdoc/>

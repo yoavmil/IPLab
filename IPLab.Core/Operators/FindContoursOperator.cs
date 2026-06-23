@@ -8,6 +8,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Finds contours in a binary image and outputs them as arrays of points in original-image coordinates, with optional ROI and contour filtering support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#gadf1ad6a0b82947fa1fe3c3d497f260e0">OpenCV: findContours</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#findcontours">Operator reference</seealso>
 public class FindContoursOperator : IOperatorType
 {
     /// <inheritdoc/>

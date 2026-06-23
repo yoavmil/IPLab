@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Inverts pixel values (bitwise NOT) of the input image, with optional ROI support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d2/de8/group__core__array.html#ga0002cf8b418479f4cb49a75442baee2f">OpenCV: bitwise_not</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#invertimage">Operator reference</seealso>
 public class InvertImageOperator : IOperatorType
 {
     /// <inheritdoc/>

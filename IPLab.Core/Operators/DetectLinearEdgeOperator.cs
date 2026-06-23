@@ -12,6 +12,7 @@ namespace IPLab.Core.Operators;
 /// Outlier rejection fits a line through the candidates and removes stripes whose residuals
 /// exceed 3 pixels. The <c>Line</c> output spans the full ROI height along the fitted line.
 /// </summary>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#detectlinearedge">Operator reference</seealso>
 public class DetectLinearEdgeOperator : IOperatorType
 {
     /// <inheritdoc/>

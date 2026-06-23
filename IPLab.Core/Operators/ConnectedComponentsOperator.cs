@@ -7,6 +7,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Finds connected components in a binary image and outputs label map, bounding-box stats, centroids, and an optional colorized label image, with optional ROI support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga107a78bf7cd25dec05fb4dfc5c9e765f">OpenCV: connectedComponentsWithStats</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#connectedcomponents">Operator reference</seealso>
 public class ConnectedComponentsOperator : IOperatorType
 {
     /// <inheritdoc/>

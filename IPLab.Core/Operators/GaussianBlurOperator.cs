@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Applies Gaussian blur to the input image, with optional ROI support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1">OpenCV: GaussianBlur</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#gaussianblur">Operator reference</seealso>
 public class GaussianBlurOperator : IOperatorType
 {
     /// <inheritdoc/>

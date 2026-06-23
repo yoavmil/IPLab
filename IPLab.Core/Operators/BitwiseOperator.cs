@@ -8,6 +8,7 @@ namespace IPLab.Core.Operators;
 /// <seealso href="https://docs.opencv.org/4.x/d2/de8/group__core__array.html#ga60b4d04b251ba5eb1392c34425497e14">OpenCV: bitwise_and</seealso>
 /// <seealso href="https://docs.opencv.org/4.x/d2/de8/group__core__array.html#gab85523db362a4e26ff0c703793a719b4">OpenCV: bitwise_or</seealso>
 /// <seealso href="https://docs.opencv.org/4.x/d2/de8/group__core__array.html#ga84b2d8188ce506593dcc3f8cd00e8e2c">OpenCV: bitwise_xor</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#bitwise">Operator reference</seealso>
 public class BitwiseOperator : IOperatorType
 {
     /// <inheritdoc/>

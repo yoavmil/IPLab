@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Converts a colour image to a single-channel grayscale image using luminance weighting or the HSV value channel.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d8/d01/group__imgproc__color__conversions.html#ga397ae87e1288a81d2363b61574eb8cab">OpenCV: cvtColor</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#converttograyscale">Operator reference</seealso>
 public class ConvertToGrayscaleOperator : IOperatorType
 {
     /// <inheritdoc/>

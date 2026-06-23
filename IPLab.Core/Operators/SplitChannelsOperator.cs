@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Splits a BGR image into its Red, Green, and Blue channel images (each as a single-channel grayscale Mat).</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d2/de8/group__core__array.html#ga0547c7fed86152d7e9d0096029c8518a">OpenCV: split</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#splitchannels">Operator reference</seealso>
 public class SplitChannelsOperator : IOperatorType
 {
     /// <inheritdoc/>

@@ -6,6 +6,7 @@ namespace IPLab.Core.Operators;
 
 /// <summary>Applies a morphological operation (erode, dilate, open, close, gradient, top-hat, or black-hat) with a configurable kernel, with optional ROI support.</summary>
 /// <seealso href="https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#ga67493776e3ad1a3df63883829375201f">OpenCV: morphologyEx</seealso>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#morphology">Operator reference</seealso>
 public class MorphologyOperator : IOperatorType
 {
     /// <inheritdoc/>

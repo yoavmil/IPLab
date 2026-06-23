@@ -15,6 +15,7 @@ namespace IPLab.Core.Operators;
 /// <see cref="ICacheInvalidationProvider"/> surfaces the file's last-write time to
 /// <see cref="Runtime.FlowEx"/> so the run-level cache re-executes when the file is overwritten.
 /// </remarks>
+/// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#undistort">Operator reference</seealso>
 public class UndistortOperator : IOperatorType, ICacheInvalidationProvider
 {
     /// <inheritdoc/>
