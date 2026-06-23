@@ -18,7 +18,13 @@ public class FlowEx : IFlowEx
     private readonly bool _enableCaching;
 
     /// <summary>Initializes a new <see cref="FlowEx"/> for the given flow.</summary>
-    /// <param name="flow">The flow to execute.</param>
+    /// <param name="flow">
+    /// The flow definition to execute. When you have a <see cref="Flow"/> object returned by
+    /// <see cref="Serialization.FlowDefSerializer.Deserialize"/>, pass <c>flow.Def</c> — the layout
+    /// is only used by editor UIs and is irrelevant for programmatic execution.
+    /// For batch use, create a new <see cref="FlowEx"/> per run. To reuse an instance across runs
+    /// while preserving cached results, call <see cref="UpdateFlow"/> instead.
+    /// </param>
     /// <param name="enableCaching">When <see langword="true"/>, skips re-execution when results and parameters are unchanged since the last run.</param>
     public FlowEx(IFlowDef flow, bool enableCaching = false)
     {

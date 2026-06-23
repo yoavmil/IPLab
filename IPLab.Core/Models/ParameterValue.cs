@@ -10,7 +10,11 @@ public record ParameterValue
 {
     /// <summary>Matches the corresponding <see cref="ParameterDescriptor.Name"/>.</summary>
     public required string Name { get; init; }
-    /// <summary>Direct value used at runtime when <see cref="Source"/> is <see langword="null"/>.</summary>
+    /// <summary>
+    /// Direct value used at runtime when <see cref="Source"/> is <see langword="null"/>.
+    /// Mutable after deserialization; assigning here before passing <c>flow.Def</c> to <see cref="Runtime.FlowEx"/>
+    /// is the primary way to drive a flow programmatically.
+    /// </summary>
     public object? Value { get; set; }
     /// <summary>Upstream port to pull the value from at execution time. When set, <see cref="Value"/> is ignored.</summary>
     public SourceRef? Source { get; init; }

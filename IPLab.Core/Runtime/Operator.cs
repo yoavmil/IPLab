@@ -3,7 +3,12 @@ using IPLab.Core.Models;
 
 namespace IPLab.Core.Runtime;
 
-/// <summary>Concrete, immutable operator instance. Constructed by the serializer or flow builder.</summary>
+/// <summary>
+/// Concrete operator instance constructed by the serializer or flow builder.
+/// The identity fields <see cref="Id"/>, <see cref="Type"/>, and <see cref="Dependencies"/> are fixed after construction.
+/// <see cref="ParameterValue.Value"/> entries inside <see cref="Parameters"/> are mutable and may be changed
+/// before passing the flow to <see cref="Runtime.FlowEx"/> to drive execution programmatically.
+/// </summary>
 public class Operator : IOperator
 {
     /// <inheritdoc/>

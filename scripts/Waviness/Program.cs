@@ -104,8 +104,9 @@ await Parallel.ForEachAsync(
         var lines = clusters.Values.Where(l => l.Count >= minLineLen).ToList();
 
         // Layer 1: original image as background.
-        var originalId = flow.Def.Operators.First(o => o.Type.TypeName == "LoadImage").Id;
-        var debug      = (executor.IntermediateResults[originalId] as Mat)!.Clone();
+        var originalId  = flow.Def.Operators.First(o => o.Type.TypeName == "LoadImage").Id;
+        var loadOutputs = executor.IntermediateResults[originalId] as Dictionary<string, object?>;
+        var debug       = (loadOutputs?["Image"] as Mat)!.Clone();
 
         // Layer 2: skeleton pixels in green.
         for (int r = 0; r < image.Rows; r++)

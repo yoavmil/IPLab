@@ -43,7 +43,7 @@
 - [LoopEnd](#loopend) — collect up to four loop body values
 
 ## Scripting
-- [CSharpScript](#csharpscipt) — run a user-written C# snippet loaded from a `.cs` file
+- [CSharpScript](#csharpscript) — run a user-written C# snippet loaded from a `.cs` file
 
 ---
 
@@ -51,10 +51,10 @@
 
 Loads a color image from disk. Supports a list of images; the active one is determined by `ActiveIndex`. The inspector shows a horizontal thumbnail strip for all listed images — clicking a thumbnail switches the active image and re-runs the flow. Thumbnails are decoded at 120 px wide to limit memory use.
 
-| Parameter   | Type       | Connectable | Description                                    |
-|-------------|------------|-------------|------------------------------------------------|
-| FilePaths   | StringList | No          | Ordered list of image file paths               |
-| ActiveIndex | Int        | No          | Zero-based index of the currently active image |
+| Key           | Label        | Type       | Connectable | Description                                    |
+|---------------|--------------|------------|-------------|------------------------------------------------|
+| `FilePaths`   | File Paths   | StringList | No          | Ordered list of image file paths               |
+| `ActiveIndex` | Active Index | Int        | No          | Zero-based index of the currently active image |
 
 | Output Port | Type   | Description |
 |-------------|--------|-------------|
@@ -71,10 +71,10 @@ Loads a color image from disk. Supports a list of images; the active one is dete
 
 Saves an image to disk. No output port — side effect only.
 
-| Parameter | Type   | Connectable | Description           |
-|-----------|--------|-------------|-----------------------|
-| Image     | Object | Yes         | Image Mat to save     |
-| FilePath  | String | No          | Destination file path |
+| Key        | Label     | Type   | Connectable | Description           |
+|------------|-----------|--------|-------------|-----------------------|
+| `Image`    | Image     | Object | Yes         | Image Mat to save     |
+| `FilePath` | File Path | String | No          | Destination file path |
 
 ---
 
@@ -82,10 +82,10 @@ Saves an image to disk. No output port — side effect only.
 
 Converts a BGR color image to a single-channel grayscale image.
 
-| Parameter | Type   | Connectable | Description                                      |
-|-----------|--------|-------------|--------------------------------------------------|
-| Image     | Object | Yes         | Input BGR Mat                                    |
-| Method    | Enum   | No          | `Luminance` (default) — weighted BGR2GRAY (0.299R + 0.587G + 0.114B); `HsvValue` — max(R,G,B), equal brightness for all pure hues |
+| Key      | Label  | Type   | Connectable | Description                                      |
+|----------|--------|--------|-------------|--------------------------------------------------|
+| `Image`  | Image  | Object | Yes         | Input BGR Mat                                    |
+| `Method` | Method | Enum   | No          | `Luminance` (default) — weighted BGR2GRAY (0.299R + 0.587G + 0.114B); `HsvValue` — max(R,G,B), equal brightness for all pure hues |
 
 | Output Port | Type |
 |-------------|------|
@@ -97,9 +97,9 @@ Converts a BGR color image to a single-channel grayscale image.
 
 Splits a BGR color image into three separate single-channel images.
 
-| Parameter | Type   | Connectable | Description   |
-|-----------|--------|-------------|---------------|
-| Image     | Object | Yes         | Input BGR Mat |
+| Key     | Label | Type   | Connectable | Description   |
+|---------|-------|--------|-------------|---------------|
+| `Image` | Image | Object | Yes         | Input BGR Mat |
 
 | Output Port | Type | Description            |
 |-------------|------|------------------------|
@@ -113,9 +113,9 @@ Splits a BGR color image into three separate single-channel images.
 
 Supports [ROI](#roi). Inverts all pixel values in the image using a bitwise NOT (`Cv2.BitwiseNot`). Works on any channel count (grayscale or color). Useful as a pre-processing step when blobs are dark on a bright background and the downstream detector expects light on dark.
 
-| Parameter | Type   | Connectable | Description   |
-|-----------|--------|-------------|---------------|
-| Image     | Object | Yes         | Input Mat     |
+| Key     | Label | Type   | Connectable | Description   |
+|---------|-------|--------|-------------|---------------|
+| `Image` | Image | Object | Yes         | Input Mat     |
 
 | Output Port | Type |
 |-------------|------|
@@ -127,15 +127,15 @@ Supports [ROI](#roi). Inverts all pixel values in the image using a bitwise NOT 
 
 Applies a threshold to a single-channel image. Supports [ROI](#roi).
 
-| Parameter       | Type   | Connectable | Description                                                                                                                                      |
-|-----------------|--------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| Image           | Object | Yes         | Single-channel input Mat                                                                                                                         |
-| Method          | Enum   | No          | `Fixed` (default) — use `Thresh` value; `Otsu` — auto threshold (bimodal histograms); `Triangle` — triangle algorithm (unimodal histograms); `Adaptive` — per-pixel local threshold (`Cv2.AdaptiveThreshold`) |
-| Output Type     | Enum   | No          | `Binary` (default), `BinaryInv`, `Trunc`, `ToZero`, `ToZeroInv`. When Method is `Adaptive` only `Binary` and `BinaryInv` apply.                 |
-| Thresh          | Double | No          | Threshold value (default 128); used only when Method is `Fixed`                                                                                  |
-| Adaptive Method | Enum   | No          | `MeanC` (default) — local mean; `GaussianC` — Gaussian-weighted mean. Used only when Method is `Adaptive`.                                      |
-| Block Size      | Int    | No          | Neighborhood size for local threshold computation (default 11, must be odd ≥ 3). Used only when Method is `Adaptive`.                           |
-| C               | Double | No          | Constant subtracted from the local mean (default 2). Positive values raise the bar; negative lower it. Used only when Method is `Adaptive`.      |
+| Key              | Label           | Type   | Connectable | Description                                                                                                                                      |
+|------------------|-----------------|--------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Image`          | Image           | Object | Yes         | Single-channel input Mat                                                                                                                         |
+| `Method`         | Method          | Enum   | No          | `Fixed` (default) — use `Thresh` value; `Otsu` — auto threshold (bimodal histograms); `Triangle` — triangle algorithm (unimodal histograms); `Adaptive` — per-pixel local threshold (`Cv2.AdaptiveThreshold`) |
+| `Type`           | Output Type     | Enum   | No          | `Binary` (default), `BinaryInv`, `Trunc`, `ToZero`, `ToZeroInv`. When Method is `Adaptive` only `Binary` and `BinaryInv` apply.                 |
+| `Thresh`         | Threshold       | Double | No          | Threshold value (default 128); used only when Method is `Fixed`                                                                                  |
+| `AdaptiveMethod` | Adaptive Method | Enum   | No          | `MeanC` (default) — local mean; `GaussianC` — Gaussian-weighted mean. Used only when Method is `Adaptive`.                                      |
+| `BlockSize`      | Block Size      | Int    | No          | Neighborhood size for local threshold computation (default 11, must be odd ≥ 3). Used only when Method is `Adaptive`.                           |
+| `C`              | C               | Double | No          | Constant subtracted from the local mean (default 2). Positive values raise the bar; negative lower it. Used only when Method is `Adaptive`.      |
 
 | Output Port | Type |
 |-------------|------|
@@ -150,12 +150,12 @@ Redistributes pixel intensity values to improve contrast before thresholding. Op
 - **Equalize** (`Cv2.EqualizeHist`) — global equalization; stretches the full histogram to cover 0–255. Best when illumination is globally poor.
 - **CLAHE** (`Cv2.CreateCLAHE`) — Contrast Limited Adaptive Histogram Equalization; equalizes small local tiles independently, then clips the redistribution at `ClipLimit` to avoid amplifying noise. Better for images with uneven illumination across the frame.
 
-| Parameter     | Type   | Connectable | Description                                                                                           |
-|---------------|--------|-------------|-------------------------------------------------------------------------------------------------------|
-| Image         | Object | Yes         | 8-bit single-channel input Mat                                                                        |
-| Method        | Enum   | No          | `Equalize` (default) — global equalization; `CLAHE` — tile-based adaptive equalization               |
-| Clip Limit    | Double | No          | CLAHE only. Maximum slope of the histogram redistribution (default 2.0). Higher = more contrast, more noise amplification. |
-| Tile Grid Size | Int   | No          | CLAHE only. Image is divided into N×N tiles for local equalization (default 8).                      |
+| Key            | Label          | Type   | Connectable | Description                                                                                           |
+|----------------|----------------|--------|-------------|-------------------------------------------------------------------------------------------------------|
+| `Image`        | Image          | Object | Yes         | 8-bit single-channel input Mat                                                                        |
+| `Method`       | Method         | Enum   | No          | `Equalize` (default) — global equalization; `CLAHE` — tile-based adaptive equalization               |
+| `ClipLimit`    | Clip Limit     | Double | No          | CLAHE only. Maximum slope of the histogram redistribution (default 2.0). Higher = more contrast, more noise amplification. |
+| `TileGridSize` | Tile Grid Size | Int    | No          | CLAHE only. Image is divided into N×N tiles for local equalization (default 8).                      |
 
 | Output Port | Type |
 |-------------|------|
@@ -169,11 +169,11 @@ Smooths an image using a Gaussian kernel (`Cv2.GaussianBlur`). Works on any chan
 
 Supports [ROI](#roi).
 
-| Parameter   | Type   | Connectable | Description                                                                                     |
-|-------------|--------|-------------|-------------------------------------------------------------------------------------------------|
-| Image       | Object | Yes         | Input Mat (any channel count)                                                                   |
-| Kernel Size | Int    | No          | Side length of the Gaussian kernel in pixels (default 5, always rounded up to nearest odd)      |
-| Sigma       | Double | No          | Standard deviation in X and Y (default 0 — auto-computed from kernel size)                      |
+| Key          | Label       | Type   | Connectable | Description                                                                                     |
+|--------------|-------------|--------|-------------|-------------------------------------------------------------------------------------------------|
+| `Image`      | Image       | Object | Yes         | Input Mat (any channel count)                                                                   |
+| `KernelSize` | Kernel Size | Int    | No          | Side length of the Gaussian kernel in pixels (default 5, always rounded up to nearest odd)      |
+| `Sigma`      | Sigma       | Double | No          | Standard deviation in X and Y (default 0 — auto-computed from kernel size)                      |
 
 | Output Port | Type |
 |-------------|------|
@@ -187,13 +187,13 @@ Applies a morphological operation to an image using `Cv2.MorphologyEx`. Works on
 
 Supports [ROI](#roi).
 
-| Parameter    | Type   | Connectable | Description                                                                                        |
-|--------------|--------|-------------|----------------------------------------------------------------------------------------------------|
-| Image        | Object | Yes         | Input Mat (any channel count)                                                                      |
-| Operation    | Enum   | No          | `Erode` (default), `Dilate`, `Open`, `Close`, `Gradient`, `TopHat`, `BlackHat`                    |
-| Kernel Shape | Enum   | No          | `Rect` (default) — filled rectangle; `Ellipse` — filled ellipse; `Cross` — plus-sign shape        |
-| Kernel Size  | Int    | No          | Side length of the structuring element in pixels (default 3, must be odd for symmetric anchor)     |
-| Iterations   | Int    | No          | Number of times the operation is applied (default 1); each pass adds one more ring of erosion/dilation |
+| Key           | Label        | Type   | Connectable | Description                                                                                        |
+|---------------|--------------|--------|-------------|----------------------------------------------------------------------------------------------------|
+| `Image`       | Image        | Object | Yes         | Input Mat (any channel count)                                                                      |
+| `Operation`   | Operation    | Enum   | No          | `Erode` (default), `Dilate`, `Open`, `Close`, `Gradient`, `TopHat`, `BlackHat`                    |
+| `KernelShape` | Kernel Shape | Enum   | No          | `Rect` (default) — filled rectangle; `Ellipse` — filled ellipse; `Cross` — plus-sign shape        |
+| `KernelSize`  | Kernel Size  | Int    | No          | Side length of the structuring element in pixels (default 3, must be odd for symmetric anchor)     |
+| `Iterations`  | Iterations   | Int    | No          | Number of times the operation is applied (default 1); each pass adds one more ring of erosion/dilation |
 
 | Output Port | Type |
 |-------------|------|
@@ -207,10 +207,10 @@ Skeletonizes a binary single-channel image using iterative thinning (`CvXImgProc
 
 Supports [ROI](#roi).
 
-| Parameter    | Type   | Connectable | Description                                                                                   |
-|--------------|--------|-------------|-----------------------------------------------------------------------------------------------|
-| Image        | Object | Yes         | Binary single-channel input Mat (8-bit, values 0/255)                                         |
-| ThinningType | Enum   | No          | `ZhangSuen` (default) — Zhang-Suen algorithm; `GuoHall` — Guo-Hall algorithm (slightly faster) |
+| Key            | Label         | Type   | Connectable | Description                                                                                   |
+|----------------|---------------|--------|-------------|-----------------------------------------------------------------------------------------------|
+| `Image`        | Image         | Object | Yes         | Binary single-channel input Mat (8-bit, values 0/255)                                         |
+| `ThinningType` | Thinning Type | Enum   | No          | `ZhangSuen` (default) — Zhang-Suen algorithm; `GuoHall` — Guo-Hall algorithm (slightly faster) |
 
 | Output Port | Type |
 |-------------|------|
@@ -222,11 +222,11 @@ Supports [ROI](#roi).
 
 Applies a pixel-wise bitwise operation to two images (`Cv2.BitwiseAnd`, `Cv2.BitwiseOr`, `Cv2.BitwiseXor`). Both inputs must have the same dimensions, depth, and channel count. Supports integer depths (`CV_8U`, `CV_16U`, `CV_32S`); float images are not supported by OpenCV bitwise functions. Supports grayscale and color inputs — for color images the operation is applied per channel and the result is merged back into a color image.
 
-| Parameter | Type   | Connectable | Description                  |
-|-----------|--------|-------------|------------------------------|
-| Image A   | Object | Yes         | First input Mat              |
-| Image B   | Object | Yes         | Second input Mat             |
-| Operation | Enum   | No          | `And` (default), `Or`, `Xor` |
+| Key         | Label     | Type   | Connectable | Description                  |
+|-------------|-----------|--------|-------------|------------------------------|
+| `ImageA`    | Image A   | Object | Yes         | First input Mat              |
+| `ImageB`    | Image B   | Object | Yes         | Second input Mat             |
+| `Operation` | Operation | Enum   | No          | `And` (default), `Or`, `Xor` |
 
 | Output Port | Type |
 |-------------|------|
@@ -238,12 +238,12 @@ Applies a pixel-wise bitwise operation to two images (`Cv2.BitwiseAnd`, `Cv2.Bit
 
 Computes the intensity histogram of a single-channel image using `Cv2.CalcHist` and renders it as a BGR image. Each of the 256 bins is drawn as a filled vertical bar scaled to the output height. Useful for visually checking the intensity distribution before or after `HistogramEqualization` or `Threshold`.
 
-| Parameter | Type   | Connectable | Description                                                             |
-|-----------|--------|-------------|-------------------------------------------------------------------------|
-| Image     | Object | Yes         | Single-channel 8-bit input Mat                                          |
-| Height    | Int    | No          | Output image height in pixels (default 200)                             |
-| Width     | Int    | No          | Output image width in pixels — bins are scaled to fill it (default 512) |
-| Color     | Enum   | No          | Bar color: `Green` (default), `White`, `Cyan`, `Red`, `Yellow`         |
+| Key     | Label  | Type   | Connectable | Description                                                             |
+|---------|--------|--------|-------------|-------------------------------------------------------------------------|
+| `Image` | Image  | Object | Yes         | Single-channel 8-bit input Mat                                          |
+| `Height`| Height | Int    | No          | Output image height in pixels (default 200)                             |
+| `Width` | Width  | Int    | No          | Output image width in pixels — bins are scaled to fill it (default 512) |
+| `Color` | Color  | Enum   | No          | Bar color: `Green` (default), `White`, `Cyan`, `Red`, `Yellow`         |
 
 | Output Port | Type |
 |-------------|------|
@@ -257,14 +257,14 @@ Detects circles in a single-channel image using the Hough Gradient transform (`C
 
 Supports [ROI](#roi). When an ROI is set, detection runs only within that region; returned circle coordinates are automatically translated to full-image space.
 
-| Parameter | Type   | Connectable | Description                                        |
-|-----------|--------|-------------|----------------------------------------------------|
-| Image     | Object | Yes         | Single-channel input Mat                           |
-| MinDist   | Double | No          | Minimum distance between detected circle centers   |
-| Param1    | Double | No          | Canny edge detector upper threshold                |
-| Param2    | Double | No          | Accumulator threshold — lower values detect more circles |
-| MinRadius | Int    | No          | Minimum circle radius in pixels                    |
-| MaxRadius | Int    | No          | Maximum circle radius in pixels                    |
+| Key         | Label                | Type   | Connectable | Description                                        |
+|-------------|----------------------|--------|-------------|----------------------------------------------------|
+| `Image`     | Image                | Object | Yes         | Single-channel input Mat                           |
+| `MinDist`   | Min Distance         | Double | No          | Minimum distance between detected circle centers   |
+| `Param1`    | Canny Threshold      | Double | No          | Canny edge detector upper threshold                |
+| `Param2`    | Accumulator Thresh   | Double | No          | Accumulator threshold — lower values detect more circles |
+| `MinRadius` | Min Radius           | Int    | No          | Minimum circle radius in pixels                    |
+| `MaxRadius` | Max Radius           | Int    | No          | Maximum circle radius in pixels                    |
 
 | Output Port | Type            |
 |-------------|-----------------|
@@ -278,18 +278,18 @@ Detects circular blobs in a single-channel image using `SimpleBlobDetector`.
 
 Supports [ROI](#roi). When an ROI is set, detection runs only within that region; returned blob coordinates are automatically translated to full-image space.
 
-| Parameter           | Type   | Connectable | Description                                                       |
-|---------------------|--------|-------------|-------------------------------------------------------------------|
-| Image               | Object | Yes         | Single-channel input Mat                                          |
-| Polarity            | Enum   | No          | `Light on Dark` (default) or `Dark on Light`                      |
-| MinCircularity      | Double | No          | Minimum circularity score (0–1); higher = rounder                 |
-| MinArea             | Double | No          | Minimum blob area in pixels²                                      |
-| MaxArea             | Double | No          | Maximum blob area in pixels²                                      |
-| MinDistBetweenBlobs | Double | No          | Minimum distance between blob centers in pixels                   |
-| MinThreshold        | Double | No          | Lower bound of the internal threshold sweep                       |
-| MaxThreshold        | Double | No          | Upper bound of the internal threshold sweep                       |
-| ThresholdStep       | Double | No          | Step size between threshold levels (default 10)                   |
-| MinRepeatability    | Int    | No          | How many threshold levels a blob must appear in to be kept (default 2) |
+| Key                  | Label                 | Type   | Connectable | Description                                                       |
+|----------------------|-----------------------|--------|-------------|-------------------------------------------------------------------|
+| `Image`              | Image                 | Object | Yes         | Single-channel input Mat                                          |
+| `Polarity`           | Polarity              | Enum   | No          | `Light on Dark` (default) or `Dark on Light`                      |
+| `MinCircularity`     | Min Circularity       | Double | No          | Minimum circularity score (0–1); higher = rounder                 |
+| `MinArea`            | Min Area (px²)        | Double | No          | Minimum blob area in pixels²                                      |
+| `MaxArea`            | Max Area (px²)        | Double | No          | Maximum blob area in pixels²                                      |
+| `MinDistBetweenBlobs`| Min Dist Between Blobs| Double | No          | Minimum distance between blob centers in pixels                   |
+| `MinThreshold`       | Min Threshold         | Double | No          | Lower bound of the internal threshold sweep                       |
+| `MaxThreshold`       | Max Threshold         | Double | No          | Upper bound of the internal threshold sweep                       |
+| `ThresholdStep`      | Threshold Step        | Double | No          | Step size between threshold levels (default 10)                   |
+| `MinRepeatability`   | Min Repeatability     | Int    | No          | How many threshold levels a blob must appear in to be kept (default 2) |
 
 | Output Port | Type       |
 |-------------|------------|
@@ -303,11 +303,11 @@ Labels connected regions in a binary (thresholded) single-channel image using `C
 
 Supports [ROI](#roi). When an ROI is set, labeling runs only within that region; all returned coordinates are in full-image space, and the label image shows component colors inside the ROI on a black background. `Count` is the raw OpenCV label count (background label 0 included); actual components = Count − 1. `Stats` and `Centroids` rows follow OpenCV layout: row 0 = background, rows 1..Count−1 = components.
 
-| Parameter        | Type   | Connectable | Description                                                    |
-|------------------|--------|-------------|----------------------------------------------------------------|
-| Image            | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)     |
-| Connectivity     | Enum   | No          | `8` (default) — 8-connected; `4` — 4-connected                 |
-| OutputLabelImage | Bool   | No          | When `true` (default), produce the colored label image. Set to `false` for offline/batch use to skip the image build. |
+| Key                | Label              | Type   | Connectable | Description                                                    |
+|--------------------|--------------------|--------|-------------|----------------------------------------------------------------|
+| `Image`            | Image              | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)     |
+| `Connectivity`     | Connectivity       | Enum   | No          | `8` (default) — 8-connected; `4` — 4-connected                 |
+| `OutputLabelImage` | Output Label Image | Bool   | No          | When `true` (default), produce the colored label image. Set to `false` for offline/batch use to skip the image build. |
 
 | Output Port | Type   | Description                                                                                          |
 |-------------|--------|------------------------------------------------------------------------------------------------------|
@@ -327,13 +327,13 @@ Supports [ROI](#roi). When an ROI is set, contour detection runs only within tha
 
 Raw output commonly contains degenerate contours (zero area, self-intersecting rings) that render as visual artifacts in the Inspector — use `Filter` or `Fix` to clean them up.
 
-| Parameter | Type   | Connectable | Description                                                                                  |
-|-----------|--------|-------------|----------------------------------------------------------------------------------------------|
-| Image     | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)                                   |
-| Mode      | Enum   | No          | `List` (default) — all contours flat; `External` — outermost only; `CComp` — two-level hierarchy; `Tree` — full hierarchy |
-| Method    | Enum   | No          | `Simple` (default) — compress collinear segments; `None` — all points; `TC89L1` / `TC89KCOS` — Teh-Chin approximation |
-| Filter    | Enum   | No          | `Fix` (default) — repair invalid rings via GeometryFixer, splitting self-intersecting rings into valid sub-polygons; `Filter` — drop invalid contours; `None` — raw output, no filtering |
-| MinArea   | Double | No          | Minimum contour area in px² (default 1.0); contours below this are always dropped (ignored when Filter = None) |
+| Key       | Label    | Type   | Connectable | Description                                                                                  |
+|-----------|----------|--------|-------------|----------------------------------------------------------------------------------------------|
+| `Image`   | Image    | Object | Yes         | Binary single-channel input Mat (e.g. output of Threshold)                                   |
+| `Mode`    | Mode     | Enum   | No          | `List` (default) — all contours flat; `External` — outermost only; `CComp` — two-level hierarchy; `Tree` — full hierarchy |
+| `Method`  | Method   | Enum   | No          | `Simple` (default) — compress collinear segments; `None` — all points; `TC89L1` / `TC89KCOS` — Teh-Chin approximation |
+| `Filter`  | Filter   | Enum   | No          | `Fix` (default) — repair invalid rings via GeometryFixer, splitting self-intersecting rings into valid sub-polygons; `Filter` — drop invalid contours; `None` — raw output, no filtering |
+| `MinArea` | Min Area | Double | No          | Minimum contour area in px² (default 1.0); contours below this are always dropped (ignored when Filter = None) |
 
 | Output Port | Type      | Description                                        |
 |-------------|-----------|----------------------------------------------------|
@@ -347,19 +347,19 @@ Finds the N most prominent sub-pixel edges along a rotated stripe ROI by samplin
 
 Supports [ROI](#roi). All returned coordinates are in full-image space.
 
-| Parameter       | Type   | Connectable | Description |
-|-----------------|--------|-------------|-------------|
-| Image           | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
-| Center X        | Double | No          | X coordinate of the stripe center in image pixels |
-| Center Y        | Double | No          | Y coordinate of the stripe center in image pixels |
-| Length          | Double | No          | Length of the stripe along the search axis in pixels |
-| Width           | Double | No          | Height of the stripe perpendicular to the axis; wider stripes average over more rows, reducing noise |
-| Angle (°)       | Double | No          | Rotation of the search axis in degrees; 0 = horizontal left-to-right |
-| Filter Size     | Int    | No          | Width of the box-difference derivative kernel (min 2, clamped to at most Length/2); larger = smoother profile, less noise sensitivity |
-| Threshold       | Enum   | No          | `Manual` (default) — use Threshold Value; `Auto` — Otsu on the gradient response distribution |
-| Threshold Value | Double | No          | Minimum gradient response to consider as an edge candidate; shown only when Threshold = Manual (default 10) |
-| Polarity        | Enum   | No          | `Both` (default) — any transition; `DarkToBright` — rising edges only; `BrightToDark` — falling edges only |
-| Max Edges       | Int    | No          | Maximum number of edges to return (default 1) |
+| Key              | Label           | Type   | Connectable | Description |
+|------------------|-----------------|--------|-------------|-------------|
+| `Image`          | Image           | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
+| `RoiCX`          | ROI Center X    | Double | Yes         | X coordinate of the stripe center in image pixels |
+| `RoiCY`          | ROI Center Y    | Double | Yes         | Y coordinate of the stripe center in image pixels |
+| `RoiW`           | ROI Width       | Double | Yes         | Length of the stripe along the search axis in pixels |
+| `RoiH`           | ROI Height      | Double | Yes         | Height of the stripe perpendicular to the axis; wider stripes average over more rows, reducing noise |
+| `RoiAngle`       | ROI Angle (°)   | Double | Yes         | Rotation of the search axis in degrees; 0 = horizontal left-to-right |
+| `FilterSize`     | Filter Size     | Int    | No          | Width of the box-difference derivative kernel (min 2, clamped to at most Length/2); larger = smoother profile, less noise sensitivity |
+| `Threshold`      | Threshold       | Enum   | No          | `Manual` (default) — use Threshold Value; `Auto` — Otsu on the gradient response distribution |
+| `ThresholdValue` | Threshold Value | Double | No          | Minimum gradient response to consider as an edge candidate; shown only when Threshold = Manual (default 10) |
+| `Polarity`       | Polarity        | Enum   | No          | `Both` (default) — any transition; `DarkToBright` — rising edges only; `BrightToDark` — falling edges only |
+| `MaxEdges`       | Max Edges       | Int    | No          | Maximum number of edges to return (default 1) |
 
 | Output Port | Type            | Description |
 |-------------|-----------------|-------------|
@@ -379,22 +379,22 @@ Fits a sub-pixel straight line to a single prominent edge within a rotated ROI. 
 
 Supports [ROI](#roi).
 
-| Parameter       | Type   | Connectable | Description |
-|-----------------|--------|-------------|-------------|
-| Image           | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
-| Center X        | Double | Yes         | X coordinate of the ROI center in image pixels |
-| Center Y        | Double | Yes         | Y coordinate of the ROI center in image pixels |
-| Width           | Double | Yes         | ROI extent along the scan direction (perpendicular to the edge) |
-| Height          | Double | Yes         | ROI extent along the edge direction |
-| Angle (°)       | Double | Yes         | ROI rotation; 0 = edge runs vertically, scan direction is horizontal |
-| Stripe Count    | Int    | No          | Number of stripes to split the ROI into; min 2 (default 5) |
-| Stripe Width    | Int    | No          | Height of each stripe in pixels (default 10) |
-| Filter Size     | Int    | No          | Box-difference derivative kernel width; min 2 (default 5) |
-| Threshold       | Enum   | No          | `Manual` (default) or `Auto` (Otsu on the gradient distribution) |
-| Threshold Value | Double | No          | Minimum gradient response; shown when Threshold = Manual (default 10) |
-| Polarity        | Enum   | No          | `DarkToBright` (default) — rising edges only; `BrightToDark` — falling edges only |
-| Edge Select     | Enum   | No          | Which edge to pick per stripe: `Strongest` (default), `First`, `Last` |
-| Min Score       | Double | No          | Minimum fraction [0–1] of stripes that must agree for Found = true (default 0.5) |
+| Key              | Label           | Type   | Connectable | Description |
+|------------------|-----------------|--------|-------------|-------------|
+| `Image`          | Image           | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
+| `RoiCX`          | ROI Center X    | Double | Yes         | X coordinate of the ROI center in image pixels |
+| `RoiCY`          | ROI Center Y    | Double | Yes         | Y coordinate of the ROI center in image pixels |
+| `RoiW`           | ROI Width       | Double | Yes         | ROI extent along the scan direction (perpendicular to the edge) |
+| `RoiH`           | ROI Height      | Double | Yes         | ROI extent along the edge direction |
+| `RoiAngle`       | ROI Angle (°)   | Double | Yes         | ROI rotation; 0 = edge runs vertically, scan direction is horizontal |
+| `StripeCount`    | Stripe Count    | Int    | No          | Number of stripes to split the ROI into; min 2 (default 5) |
+| `StripeWidth`    | Stripe Width    | Int    | No          | Height of each stripe in pixels (default 10) |
+| `FilterSize`     | Filter Size     | Int    | No          | Box-difference derivative kernel width; min 2 (default 5) |
+| `Threshold`      | Threshold       | Enum   | No          | `Manual` (default) or `Auto` (Otsu on the gradient distribution) |
+| `ThresholdValue` | Threshold Value | Double | No          | Minimum gradient response; shown when Threshold = Manual (default 10) |
+| `Polarity`       | Polarity        | Enum   | No          | `DarkToBright` (default) — rising edges only; `BrightToDark` — falling edges only |
+| `EdgeSelect`     | Edge Select     | Enum   | No          | Which edge to pick per stripe: `Strongest` (default), `First`, `Last` |
+| `MinScore`       | Min Score       | Double | No          | Minimum fraction [0–1] of stripes that must agree for Found = true (default 0.5) |
 
 | Output Port | Type          | Description |
 |-------------|---------------|-------------|
@@ -418,15 +418,17 @@ same occurrence. An optional ROI limits the search to part of the image.
 The current version searches at the template's original size and angle. It does not find rotated or
 scaled versions of the pattern. The input and template channels must match each other.
 
-| Parameter         | Type   | Connectable | Description |
-|-------------------|--------|-------------|-------------|
-| Image             | Object | Yes (Mat)   | Image in which to search for the template |
-| Template          | String | No          | Saved template selected or created with **Edit Template...** |
-| Minimum Score     | Double | No          | Required match confidence from 0 to 1; higher values are stricter (default 0.8) |
-| Maximum Matches   | Int    | No          | Maximum number of results; 0 means unlimited (default 100) |
-| Maximum Overlap   | Double | No          | How much two result boxes may overlap before the weaker one is removed (default 0.3) |
-| ROI Center X/Y    | Double | Yes         | Center of the optional axis-aligned search ROI |
-| ROI Width/Height  | Double | Yes         | Search ROI size; zero disables the ROI |
+| Key                 | Label           | Type   | Connectable | Description |
+|---------------------|-----------------|--------|-------------|-------------|
+| `Image`             | Image           | Object | Yes (Mat)   | Image in which to search for the template |
+| `TemplatePath`      | Template        | String | No          | Saved template selected or created with **Edit Template...** |
+| `MinScore`          | Minimum Score   | Double | No          | Required match confidence from 0 to 1; higher values are stricter (default 0.8) |
+| `MaxMatches`        | Maximum Matches | Int    | No          | Maximum number of results; 0 means unlimited (default 100) |
+| `OverlapThreshold`  | Maximum Overlap | Double | No          | How much two result boxes may overlap before the weaker one is removed (default 0.3) |
+| `RoiCX`             | ROI Center X    | Double | Yes         | Center X of the optional axis-aligned search ROI |
+| `RoiCY`             | ROI Center Y    | Double | Yes         | Center Y of the optional axis-aligned search ROI |
+| `RoiW`              | ROI Width       | Double | Yes         | Search ROI width; zero disables the ROI |
+| `RoiH`              | ROI Height      | Double | Yes         | Search ROI height; zero disables the ROI |
 
 | Output Port | Type   | Description |
 |-------------|--------|-------------|
@@ -449,28 +451,28 @@ When **Square Size (mm)** is greater than 0, the physical edge length of one che
 
 The schema of the resulting calibration data file can be found at [IPLab.Core/Models/CalibrationData.cs](../IPLab.Core/Models/CalibrationData.cs).
 
-| Parameter        | Type   | Connectable | Description |
-|------------------|--------|-------------|-------------|
-| Image            | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
-| Square Half-Size (px) | Int  | No     | Half the checkerboard square edge in pixels; sets the saddle kernel size (default 7, min 2) |
-| Min Response     | Double | No          | Minimum relative saddle response for a corner peak, 0–1 (default 0.45) |
-| Show Response Heatmap | Bool | No       | When `true`, the display image is the saddle-response heatmap (default false) |
-| Show Grid Indices | Bool  | No          | When `true`, the display image is the input annotated with grid (col,row) labels (default false) |
-| Anchor X         | Double | No          | Normalized X (0–1) of the grid origin anchor; seeds grid inference and indexing (default 0.5) |
-| Anchor Y         | Double | No          | Normalized Y (0–1) of the grid origin anchor (default 0.5) |
-| Square Size (mm) | Double | No          | Physical edge length of one square in mm; when > 0 enables the `MmPerPixel` output (default 0 = disabled) |
-| Output File Path | String | No          | When set, the calibration data is written to this path; left blank to skip saving |
+| Key              | Label                 | Type   | Connectable | Description |
+|------------------|-----------------------|--------|-------------|-------------|
+| `Image`          | Image                 | Object | Yes (Mat)   | Single-channel (grayscale) input Mat |
+| `KernelHalfSize` | Square Half-Size (px) | Int    | No          | Half the checkerboard square edge in pixels; sets the saddle kernel size (default 7, min 2) |
+| `MinResponse`    | Min Response          | Double | No          | Minimum relative saddle response for a corner peak, 0–1 (default 0.45) |
+| `ShowHeatmap`    | Show Response Heatmap | Bool   | No          | When `true`, the display image is the saddle-response heatmap (default false) |
+| `ShowLabels`     | Show Grid Indices     | Bool   | No          | When `true`, the display image is the input annotated with grid (col,row) labels (default false) |
+| `AnchorX`        | Anchor X              | Double | No          | Normalized X (0–1) of the grid origin anchor; seeds grid inference and indexing (default 0.5) |
+| `AnchorY`        | Anchor Y              | Double | No          | Normalized Y (0–1) of the grid origin anchor (default 0.5) |
+| `SquareSizeMm`   | Square Size (mm)      | Double | No          | Physical edge length of one square in mm; when > 0 enables the `MmPerPixel` output (default 0 = disabled) |
+| `OutputFilePath` | Output File Path      | String | No          | When set, the calibration data is written to this path; left blank to skip saving |
 
-| Output Port      | Type                | Description |
-|------------------|---------------------|-------------|
-| Image            | Mat                 | Saddle heatmap or grid-index label overlay (per Show* flags); null when both are off |
-| GridCorners      | Point2f[]           | Matched grid-crossing corners (the calibration correspondences) |
-| GridLines        | LineSegmentPoint[]  | Line segments connecting adjacent matched corners |
-| Corners          | Point2f[]           | All raw sub-pixel corner peaks before grid matching |
-| InlierCount      | int                 | Number of matched grid corners |
-| RotationAngleDeg | double              | Estimated board rotation, −90..+90° |
-| MmPerPixel       | double              | mm-per-pixel scale (Square Size ÷ pixel pitch); null when Square Size (mm) ≤ 0 |
-| CalibFilePath    | string              | Path the calibration file was written to; null when Output File Path is blank |
+| Output Port      | Type               | Description |
+|------------------|--------------------|-------------|
+| Image            | Mat?               | Saddle heatmap or grid-index label overlay (per Show* flags); null when both are off |
+| GridCorners      | Point2f[]          | Matched grid-crossing corners (the calibration correspondences) |
+| GridLines        | LineSegmentPoint[] | Line segments connecting adjacent matched corners |
+| Corners          | Point2f[]          | All raw sub-pixel corner peaks before grid matching |
+| InlierCount      | int                | Number of matched grid corners |
+| RotationAngleDeg | double             | Estimated board rotation, −90..+90° |
+| MmPerPixel       | double?            | mm-per-pixel scale (Square Size ÷ pixel pitch); null when Square Size (mm) ≤ 0 |
+| CalibFilePath    | string?            | Path the calibration file was written to; null when Output File Path is blank |
 
 Does not support ROI.
 
@@ -484,10 +486,10 @@ The input image size must match the size recorded in the calibration file. The d
 
 Fails when the input is empty, the calibration file is missing/blank, the image size disagrees with the file, or the file has fewer than 4 distinct corners or no precomputed pitch (regenerate it by re-running `DistortionCalibration`).
 
-| Parameter        | Type   | Connectable | Description |
-|------------------|--------|-------------|-------------|
-| Image            | Object | Yes (Mat)   | Input Mat to undistort |
-| Calibration File | String | Yes (string)| Path to a calibration file written by `DistortionCalibration` |
+| Key              | Label            | Type   | Connectable | Description |
+|------------------|------------------|--------|-------------|-------------|
+| `Image`          | Image            | Object | Yes (Mat)   | Input Mat to undistort |
+| `CalibFilePath`  | Calibration File | String | Yes (string)| Path to a calibration file written by `DistortionCalibration` |
 
 | Output Port | Type | Description |
 |-------------|------|-------------|
@@ -514,11 +516,11 @@ original source plus `Index` through ordinary upstream wiring.
 `Source` must be a `Mat` or a non-string `IEnumerable`. For a `Mat`, count is `Rows`. For a
 collection, count is the number of items.
 
-| Parameter | Type   | Connectable | Description |
-|-----------|--------|-------------|-------------|
-| Source    | Object | Yes         | Mat or non-string collection that defines the loop count |
-| Index     | Int    | No          | Iteration to display in the inspector; the only iteration that runs in Discrete mode |
-| Mode      | Enum   | No          | `Discrete` / `Serial` / `Parallel`; default `Serial` |
+| Key      | Label  | Type   | Connectable | Description |
+|----------|--------|--------|-------------|-------------|
+| `Source` | Source | Object | Yes         | Mat or non-string collection that defines the loop count |
+| `Index`  | Index  | Int    | No          | Iteration to display in the inspector; the only iteration that runs in Discrete mode |
+| `Mode`   | Mode   | Enum   | No          | `Discrete` / `Serial` / `Parallel`; default `Serial` |
 
 | Output Port | Type |
 |-------------|------|
@@ -536,13 +538,13 @@ accumulates its per-iteration values. After all iterations complete, downstream 
 `Index` should be wired from the paired `LoopStart.Index`; this identifies which start/end nodes
 belong together.
 
-| Parameter | Type   | Connectable | Description |
-|-----------|--------|-------------|-------------|
-| Index     | Object | Yes (int)   | Index from the paired LoopStart |
-| In 1      | Object | Yes         | First value to collect |
-| In 2      | Object | Yes         | Second value to collect |
-| In 3      | Object | Yes         | Third value to collect |
-| In 4      | Object | Yes         | Fourth value to collect |
+| Key     | Label | Type   | Connectable | Description |
+|---------|-------|--------|-------------|-------------|
+| `Index` | Index | Object | Yes (int)   | Index from the paired LoopStart |
+| `In1`   | In 1  | Object | Yes         | First value to collect |
+| `In2`   | In 2  | Object | Yes         | Second value to collect |
+| `In3`   | In 3  | Object | Yes         | Third value to collect |
+| `In4`   | In 4  | Object | Yes         | Fourth value to collect |
 
 | Output Port | Type   |
 |-------------|--------|
@@ -555,17 +557,27 @@ belong together.
 
 ## ROI
 
-Operators that support ROI expose four extra connectable Int parameters: **ROI X**, **ROI Y**, **ROI Width**, **ROI Height**. When Width and Height are both 0 (the default) the operator runs on the full image.
+Operators that support ROI expose five extra connectable Double parameters with the following keys and labels:
+
+| Key        | Label        | Description |
+|------------|--------------|-------------|
+| `RoiCX`    | ROI Center X | X coordinate of the ROI center |
+| `RoiCY`    | ROI Center Y | Y coordinate of the ROI center |
+| `RoiW`     | ROI Width    | ROI width (or stripe length for rotated operators) |
+| `RoiH`     | ROI Height   | ROI height (or stripe height for rotated operators) |
+| `RoiAngle` | ROI Angle (°)| Rotation angle; 0 = axis-aligned |
+
+When `RoiW` and `RoiH` are both 0 (the default) the operator runs on the full image. `RoiAngle` is only meaningful for rotated-ROI operators (FindStripeEdges, DetectLinearEdge).
 
 **Image-output operators** (Morphology, Threshold, InvertImage): the effect is confined to the ROI rectangle; pixels outside it are copied unchanged from the input.
 
 **Detection operators** (DetectCircles, ConnectedComponents, FindContours, DetectSimpleBlobs): detection runs only within the ROI region, and all returned coordinates are expressed in full-image space.
 
-**Rotated-ROI detection operators** (FindStripeEdges, DetectLinearEdge): support an additional `Angle (°)` ROI parameter; the ROI is sampled directly in image space using bilinear interpolation, and all output coordinates are in full-image space.
+**Rotated-ROI detection operators** (FindStripeEdges, DetectLinearEdge): support `RoiAngle`; the ROI is sampled directly in image space using bilinear interpolation, and all output coordinates are in full-image space.
 
 In both cases, if the rectangle lies entirely outside the image bounds after clamping, image-output operators return the input unchanged and detection operators return an empty result.
 
-All four parameters are connectable, so they can be wired to outputs of upstream operators (e.g. a detected bounding box driving the ROI of a downstream filter). Operators that support ROI also expose **RoiX**, **RoiY**, **RoiW**, **RoiH** as output ports, so their ROI values can be forwarded to downstream operators.
+All five parameters are connectable, so they can be wired to outputs of upstream operators (e.g. a detected bounding box driving the ROI of a downstream filter). Operators that support ROI also expose **RoiX**, **RoiY**, **RoiW**, **RoiH**, **RoiAngle** as output ports, so their ROI values can be forwarded to downstream operators.
 
 ---
 
@@ -577,7 +589,7 @@ The script body is plain top-level C# (no namespace or class declaration). The f
 
 - `In1`, `In2`, `In3`, `In4` — (`object?`) — values from wired upstream ports; `null` when not connected.
 - `Image` — (`Mat?`) — assign a Mat to send it to the primary image output port.
-- `Out1`, `Out2`, `Out3`, `Out4` — (`object?`) — assign any value to send it to the corresponding output port.
+- `Out1`, `Out2`, `Out3`, `Out4`, `Out5` — (`object?`) — assign any value to send it to the corresponding output port.
 
 Auto-imported namespaces: `System`, `System.Linq`, `System.Collections.Generic`, `OpenCvSharp`, `OpenCvSharp.Features2D`, `IPLab.Core.Models`.
 
@@ -604,13 +616,13 @@ Out2  = big.Length; // scalar count
 
 Does not support ROI.
 
-| Parameter   | Type   | Connectable | Description                               |
-|-------------|--------|-------------|-------------------------------------------|
-| Script Path | String | No          | Absolute path to the `.cs` script file   |
-| In1         | Object | Yes         | First wired input (wildcard type)         |
-| In2         | Object | Yes         | Second wired input (wildcard type)        |
-| In3         | Object | Yes         | Third wired input (wildcard type)         |
-| In4         | Object | Yes         | Fourth wired input (wildcard type)        |
+| Key          | Label       | Type   | Connectable | Description                               |
+|--------------|-------------|--------|-------------|-------------------------------------------|
+| `ScriptPath` | Script Path | String | No          | Absolute path to the `.cs` script file   |
+| `In1`        | In 1        | Object | Yes         | First wired input (wildcard type)         |
+| `In2`        | In 2        | Object | Yes         | Second wired input (wildcard type)        |
+| `In3`        | In 3        | Object | Yes         | Third wired input (wildcard type)         |
+| `In4`        | In 4        | Object | Yes         | Fourth wired input (wildcard type)        |
 
 | Output Port | Type   |
 |-------------|--------|
@@ -619,3 +631,4 @@ Does not support ROI.
 | Out2        | Object |
 | Out3        | Object |
 | Out4        | Object |
+| Out5        | Object |
