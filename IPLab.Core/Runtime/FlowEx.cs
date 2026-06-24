@@ -504,16 +504,12 @@ public class FlowEx : IFlowEx
             {
                 if (!_results.TryGetValue(source.OperatorId, out var raw))
                     throw new InvalidOperationException($"Operator '{source.OperatorId}' did not produce a result — it may have failed.");
-                var sourceOp = Flow.Operators.FirstOrDefault(o => o.Id == source.OperatorId);
-                if (sourceOp is not null)
-                    resolved[param.Name] = sourceOp.Type.OutputPorts.Count == 1
-                        ? raw
-                        : ((IReadOnlyDictionary<string, object?>)raw!)[source.Port];
-                else
-                    // Seeded phantom or outer op not in sub-flow: infer from value type.
-                    resolved[param.Name] = raw is IReadOnlyDictionary<string, object?> d
-                        ? d.GetValueOrDefault(source.Port)
-                        : raw;
+                // Extract by port name when the result is a dictionary; otherwise use the raw value.
+                // Works uniformly for single-port ops (raw or dict), multi-port ops (always dict),
+                // and seeded phantoms.
+                resolved[param.Name] = raw is IReadOnlyDictionary<string, object?> d
+                    ? d.GetValueOrDefault(source.Port)
+                    : raw;
             }
             else
             {

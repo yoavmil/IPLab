@@ -27,7 +27,7 @@ internal static class ResultUnwrapper
             foreach (var slot in accumulator)
             {
                 if (slot is null) continue;
-                if (slot is Array arr)
+                if (slot is Array arr && elementType.IsAssignableFrom(arr.GetType().GetElementType()))
                     items.AddRange(arr.Cast<object?>().Where(v => v is not null));
                 else if (elementType.IsInstanceOfType(slot))
                     items.Add(slot);

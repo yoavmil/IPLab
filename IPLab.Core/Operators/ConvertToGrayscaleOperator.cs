@@ -37,12 +37,12 @@ public class ConvertToGrayscaleOperator : IOperatorType
             using var hsv = new Mat();
             Cv2.CvtColor(image, hsv, ColorConversionCodes.BGR2HSV);
             var channels = Cv2.Split(hsv);
-            try     { return channels[2]; }
+            try     { return new Dictionary<string, object?> { ["Image"] = channels[2] }; }
             finally { channels[0].Dispose(); channels[1].Dispose(); }
         }
 
         var gray = new Mat();
         Cv2.CvtColor(image, gray, ColorConversionCodes.BGR2GRAY);
-        return gray;
+        return new Dictionary<string, object?> { ["Image"] = gray };
     }
 }

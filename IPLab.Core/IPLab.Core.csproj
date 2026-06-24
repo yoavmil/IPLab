@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
     <PackageId>IPLab.Core</PackageId>
-    <Version>1.0.0-alpha.11</Version>
+    <Version>1.0.0-alpha.12</Version>
     <Description>IPLab image-processing pipeline core library — operators, flow model, and runtime executor.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
