@@ -15,8 +15,8 @@ public class BitwiseOperatorTests
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
         public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
-        public object? Execute(IReadOnlyDictionary<string, object?> _)
-            => new Mat(4, 4, MatType.CV_8UC1, new Scalar(value));
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _)
+            => new Dictionary<string, object?> { ["Image"] = new Mat(4, 4, MatType.CV_8UC1, new Scalar(value)) };
     }
 
     private class BgrSourceOperator(byte b, byte g, byte r) : IOperatorType
@@ -26,8 +26,8 @@ public class BitwiseOperatorTests
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
         public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
-        public object? Execute(IReadOnlyDictionary<string, object?> _)
-            => new Mat(4, 4, MatType.CV_8UC3, new Scalar(b, g, r));
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _)
+            => new Dictionary<string, object?> { ["Image"] = new Mat(4, 4, MatType.CV_8UC3, new Scalar(b, g, r)) };
     }
 
     private static FlowDef BuildFlow(byte a, byte b, string operation) => new(
@@ -60,7 +60,7 @@ public class BitwiseOperatorTests
         var executor = new FlowEx(BuildFlow(a, b, operation));
         await executor.RunAllAsync();
         Assert.Equal(OperatorStatus.Success, executor.Statuses["O3"]);
-        using var result = (Mat)executor.IntermediateResults["O3"]!;
+        using var result = (Mat)executor.IntermediateResults["O3"]["Image"]!;
         Assert.Equal(MatType.CV_8UC1, result.Type());
         return result.At<byte>(0, 0);
     }
@@ -139,7 +139,7 @@ public class BitwiseOperatorTests
         var executor = new FlowEx(BuildColorFlow(a, bv, operation));
         await executor.RunAllAsync();
         Assert.Equal(OperatorStatus.Success, executor.Statuses["O3"]);
-        using var result = (Mat)executor.IntermediateResults["O3"]!;
+        using var result = (Mat)executor.IntermediateResults["O3"]["Image"]!;
         Assert.Equal(MatType.CV_8UC3, result.Type());
         return result.At<Vec3b>(0, 0);
     }

@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
 
@@ -29,7 +29,7 @@ public class SplitChannelsOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image = (Mat)parameters["Image"]!;
         Cv2.Split(image, out Mat[] channels); // OpenCV channel order: BGR

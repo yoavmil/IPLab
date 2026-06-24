@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
 using System.Runtime.InteropServices;
@@ -38,7 +38,7 @@ public class ConnectedComponentsOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image            = (Mat)parameters["Image"]!;
         var connectivity     = (string?)parameters.GetValueOrDefault("Connectivity") ?? "8";

@@ -11,10 +11,10 @@ public class ExecutionService
 
     public bool HasResults => _executor is not null;
 
-    public IReadOnlyDictionary<string, object?> IntermediateResults
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> IntermediateResults
         => _executor?.IntermediateResults ?? _empty;
 
-    private static readonly Dictionary<string, object?> _empty = [];
+    private static readonly Dictionary<string, IReadOnlyDictionary<string, object?>> _empty = [];
 
     public event Action<string, OperatorStatus, Exception?>? StatusChanged;
 

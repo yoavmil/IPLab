@@ -53,15 +53,7 @@ internal static class ResultUnwrapper
         return null;
     }
 
-    /// <summary>
-    /// Returns the raw value for a named output port from a result blob.
-    /// If the result is a port dictionary, looks up by port name.
-    /// Otherwise (single-output raw value) returns the result itself regardless of port name.
-    /// </summary>
-    internal static object? GetPortValue(object? result, string portName)
-    {
-        if (result is IReadOnlyDictionary<string, object?> dict)
-            return dict.GetValueOrDefault(portName);
-        return result;
-    }
+    /// <summary>Returns the raw value for a named output port from a result port dictionary.</summary>
+    internal static object? GetPortValue(IReadOnlyDictionary<string, object?>? result, string portName)
+        => result?.GetValueOrDefault(portName);
 }

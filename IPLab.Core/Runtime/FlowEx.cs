@@ -8,7 +8,7 @@ namespace IPLab.Core.Runtime;
 /// <summary>Async runtime executor for a processing flow. Resolves parameters, respects dependency order, and optionally caches results.</summary>
 public class FlowEx : IFlowEx
 {
-    private readonly ConcurrentDictionary<string, object?> _results = new();
+    private readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, object?>> _results = new();
     private readonly ConcurrentDictionary<string, OperatorStatus> _statuses;
     private readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, object?>> _paramSnapshot = new();
 
@@ -35,7 +35,7 @@ public class FlowEx : IFlowEx
     }
 
     /// <summary>Initializes a sub-flow executor pre-seeded with results from an outer execution context.</summary>
-    internal FlowEx(IFlowDef flow, IReadOnlyDictionary<string, object?> seed)
+    internal FlowEx(IFlowDef flow, IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> seed)
     {
         _flow = flow;
         _enableCaching = false;
@@ -66,7 +66,7 @@ public class FlowEx : IFlowEx
     }
 
     /// <inheritdoc/>
-    public IReadOnlyDictionary<string, object?> IntermediateResults => _results;
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> IntermediateResults => _results;
     /// <inheritdoc/>
     public IReadOnlyDictionary<string, OperatorStatus> Statuses => _statuses;
 
@@ -152,7 +152,7 @@ public class FlowEx : IFlowEx
             _statuses[key] = OperatorStatus.NotRun;
     }
 
-    private async Task<object?> RunOperatorAsync(IOperator op, CancellationToken ct = default)
+    private async Task<IReadOnlyDictionary<string, object?>?> RunOperatorAsync(IOperator op, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -201,7 +201,7 @@ public class FlowEx : IFlowEx
         var probeParams = baseParams.ToDictionary(kv => kv.Key, kv => kv.Value);
         probeParams["Index"] = 0;
         SetStatus(ctx.Start.Id, OperatorStatus.Running, null);
-        object? probeResult;
+        IReadOnlyDictionary<string, object?> probeResult;
         try { probeResult = ctx.Start.Type.Execute(probeParams); }
         catch (Exception ex) { SetStatus(ctx.Start.Id, OperatorStatus.Failed, ex); return; }
         if (!TryGetLoopCount(probeResult, out int count))
@@ -267,9 +267,9 @@ public class FlowEx : IFlowEx
         {
             foreach (var bodyOp in ctx.Body)
                 if (subFlow._results.TryGetValue($"{bodyOp.Id}#{i}", out var r))
-                    _results[bodyOp.Id] = r;
+                    _results[bodyOp.Id] = r!;
             if (subFlow._results.TryGetValue($"{ctx.End.Id}#{i}", out var er))
-                _results[ctx.End.Id] = er;
+                _results[ctx.End.Id] = er!;
         }
 
         // Accumulate LoopEnd Out1-Out4 across all iterations.
@@ -277,11 +277,10 @@ public class FlowEx : IFlowEx
         for (int i = 0; i < n; i++)
         {
             int actualIndex = mode == LoopMode.Discrete ? startIndex : i;
-            if (subFlow._results.TryGetValue($"{ctx.End.Id}#{i}", out var endResult) &&
-                endResult is IReadOnlyDictionary<string, object?> endDict)
+            if (subFlow._results.TryGetValue($"{ctx.End.Id}#{i}", out var endResult))
             {
                 for (int p = 0; p < 4; p++)
-                    accumulators[p][actualIndex] = endDict.GetValueOrDefault($"Out{p + 1}");
+                    accumulators[p][actualIndex] = endResult!.GetValueOrDefault($"Out{p + 1}");
             }
         }
         _results[ctx.End.Id] = new Dictionary<string, object?>
@@ -462,13 +461,11 @@ public class FlowEx : IFlowEx
         Flow.Operators
             .SelectMany(op => op.Dependencies.Select(dep => (dep.OperatorId, op.Id)));
 
-    private static bool TryGetLoopCount(object? result, out int count)
+    private static bool TryGetLoopCount(IReadOnlyDictionary<string, object?> outputs, out int count)
     {
         count = 0;
-        if (result is not IReadOnlyDictionary<string, object?> outputs ||
-            !outputs.TryGetValue("Count", out var countValue))
+        if (!outputs.TryGetValue("Count", out var countValue))
             return false;
-
         count = Convert.ToInt32(countValue);
         return true;
     }
@@ -504,12 +501,7 @@ public class FlowEx : IFlowEx
             {
                 if (!_results.TryGetValue(source.OperatorId, out var raw))
                     throw new InvalidOperationException($"Operator '{source.OperatorId}' did not produce a result — it may have failed.");
-                // Extract by port name when the result is a dictionary; otherwise use the raw value.
-                // Works uniformly for single-port ops (raw or dict), multi-port ops (always dict),
-                // and seeded phantoms.
-                resolved[param.Name] = raw is IReadOnlyDictionary<string, object?> d
-                    ? d.GetValueOrDefault(source.Port)
-                    : raw;
+                resolved[param.Name] = raw!.GetValueOrDefault(source.Port);
             }
             else
             {

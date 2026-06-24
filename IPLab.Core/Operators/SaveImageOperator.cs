@@ -25,11 +25,11 @@ public class SaveImageOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image    = (Mat)parameters["Image"]!;
         var filePath = (string)parameters["FilePath"]!;
         Cv2.ImWrite(filePath, image);
-        return null;
+        return new Dictionary<string, object?>();
     }
 }

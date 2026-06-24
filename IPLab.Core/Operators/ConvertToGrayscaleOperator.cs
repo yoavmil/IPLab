@@ -26,7 +26,7 @@ public class ConvertToGrayscaleOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image  = (Mat)parameters["Image"]!;
         parameters.TryGetValue("Method", out var methodObj);

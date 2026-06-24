@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.Core.Spatial;
 using OpenCvSharp;
@@ -49,7 +49,7 @@ public class DetectLinearEdgeOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image       = (Mat)parameters["Image"]!;
         int stripeCount = Math.Max(2, Convert.ToInt32(parameters.GetValueOrDefault("StripeCount")    ?? 5));

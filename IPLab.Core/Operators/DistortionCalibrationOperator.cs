@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.Core.Spatial;
 using IPLab.Core.Utilities;
@@ -55,7 +55,7 @@ public class DistortionCalibrationOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image = (Mat)parameters["Image"]!;
         int halfSizeParam = Convert.ToInt32(parameters.GetValueOrDefault("KernelHalfSize") ?? 0);

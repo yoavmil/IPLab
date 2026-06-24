@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.Core.Spatial;
 using OpenCvSharp;
@@ -47,7 +47,7 @@ public class FindStripeEdgesOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image      = (Mat)parameters["Image"]!;
         var filterSize = Convert.ToInt32(parameters.GetValueOrDefault("FilterSize")      ?? 5);

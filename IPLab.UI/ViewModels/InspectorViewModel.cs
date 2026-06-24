@@ -98,8 +98,7 @@ public class InspectorViewModel : ViewModelBase
     {
         if (p.IsWired && p.SelectedSource is { } src &&
             _execution.IntermediateResults.TryGetValue(src.OperatorId, out var result) &&
-            result is Dictionary<string, object?> dict &&
-            dict.TryGetValue(src.Port, out var raw) && raw is IConvertible conv)
+            result!.TryGetValue(src.Port, out var raw) && raw is IConvertible conv)
             return conv.ToDouble(null);
         return double.TryParse(p.ValueText, out var v) ? v : 0.0;
     }
@@ -246,19 +245,10 @@ public class InspectorViewModel : ViewModelBase
             {
                 var ports = portsByNode.TryGetValue(id, out var p) ? p
                     : (IReadOnlyList<OutputPortDescriptor>)[new OutputPortDescriptor { Name = "Image", DataType = typeof(Mat) }];
-                if (result is Mat mat)
+                foreach (var port in ports.Where(p => p.IsDisplayImage))
                 {
-                    var displayPort = ports.FirstOrDefault(p => p.IsDisplayImage);
-                    if (displayPort is not null)
-                        TryAddImage(images, mats, oldImages, oldMats, id, displayPort.Name, mat);
-                }
-                else if (result is Dictionary<string, object?> dict)
-                {
-                    foreach (var port in ports.Where(p => p.IsDisplayImage))
-                    {
-                        if (!dict.TryGetValue(port.Name, out var val)) continue;
-                        TryAddImage(images, mats, oldImages, oldMats, id, port.Name, val as Mat);
-                    }
+                    if (!result.TryGetValue(port.Name, out var val)) continue;
+                    TryAddImage(images, mats, oldImages, oldMats, id, port.Name, val as Mat);
                 }
             }
             return (images, mats);

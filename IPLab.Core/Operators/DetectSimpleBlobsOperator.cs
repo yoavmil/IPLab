@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
 
@@ -35,7 +35,7 @@ public class DetectSimpleBlobsOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Blobs", DataType = typeof(KeyPoint[]) }, ..RoiParameters.OutputPorts];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image               = (Mat)parameters["Image"]!;
         var polarity            = (string?)parameters.GetValueOrDefault("Polarity") ?? "Light on Dark";

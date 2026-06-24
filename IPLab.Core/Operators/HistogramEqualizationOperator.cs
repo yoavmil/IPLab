@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
 
@@ -31,7 +31,7 @@ public class HistogramEqualizationOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image        = (Mat)parameters["Image"]!;
         var method       = parameters.GetValueOrDefault("Method") as string ?? "Equalize";
@@ -49,6 +49,6 @@ public class HistogramEqualizationOperator : IOperatorType
             Cv2.EqualizeHist(image, result);
         }
 
-        return result;
+        return new Dictionary<string, object?> { ["Image"] = result };
     }
 }

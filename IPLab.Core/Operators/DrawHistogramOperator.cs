@@ -28,7 +28,7 @@ public class DrawHistogramOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image  = (Mat)parameters["Image"]!;
         var height = Convert.ToInt32(parameters.GetValueOrDefault("Height") ?? 200);
@@ -61,6 +61,6 @@ public class DrawHistogramOperator : IOperatorType
             Cv2.Rectangle(canvas, new Point(x0, height - barH), new Point(x1, height), barColor, -1);
         }
 
-        return canvas;
+        return new Dictionary<string, object?> { ["Image"] = canvas };
     }
 }

@@ -196,9 +196,7 @@ public class MainViewModel : ViewModelBase
 
         if (!_execution.IntermediateResults.TryGetValue(source.OperatorId, out var raw))
             return null;
-        if (raw is IReadOnlyDictionary<string, object?> dictionary)
-            return dictionary.GetValueOrDefault(source.Port);
-        return raw;
+        return raw!.GetValueOrDefault(source.Port);
     }
 
     private void NewFlow()

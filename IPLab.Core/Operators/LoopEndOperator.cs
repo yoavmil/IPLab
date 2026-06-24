@@ -34,7 +34,7 @@ public class LoopEndOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters) =>
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters) =>
         new Dictionary<string, object?>
         {
             ["Out1"] = parameters.GetValueOrDefault("In1"),

@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using IPLab.Core.Utilities;
 using OpenCvSharp;
@@ -41,7 +41,7 @@ public class FindContoursOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Contours", DataType = typeof(Point[][]) }, ..RoiParameters.OutputPorts];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image   = (Mat)parameters["Image"]!;
         var mode    = (string?)parameters.GetValueOrDefault("Mode")   ?? "List";

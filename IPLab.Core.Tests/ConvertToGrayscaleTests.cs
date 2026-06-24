@@ -16,8 +16,8 @@ public class ConvertToGrayscaleTests
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
         public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
-        public object? Execute(IReadOnlyDictionary<string, object?> _)
-            => new Mat(100, 100, MatType.CV_8UC1, new Scalar(128));
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _)
+            => new Dictionary<string, object?> { ["Image"] = new Mat(100, 100, MatType.CV_8UC1, new Scalar(128)) };
     }
 
     // Injects a 3-channel BGR Mat.
@@ -28,8 +28,8 @@ public class ConvertToGrayscaleTests
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
         public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
-        public object? Execute(IReadOnlyDictionary<string, object?> _)
-            => new Mat(100, 100, MatType.CV_8UC3, new Scalar(100, 150, 200));
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _)
+            => new Dictionary<string, object?> { ["Image"] = new Mat(100, 100, MatType.CV_8UC3, new Scalar(100, 150, 200)) };
     }
 
     [Theory]

@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
@@ -34,7 +34,7 @@ public class LoopStartOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var source = parameters.GetValueOrDefault("Source")
             ?? throw new InvalidOperationException("LoopStart requires a Source value.");

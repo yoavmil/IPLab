@@ -16,9 +16,8 @@ public interface IOperatorType
     /// <summary>Describes every output port this operator can produce. Single-port operators return one entry; multi-port operators return one entry per port.</summary>
     IReadOnlyList<OutputPortDescriptor> OutputPorts { get; }
     /// <summary>
-    /// Executes the operator with the given resolved parameters.
-    /// Single-port operators return the value directly.
-    /// Multi-port operators return a <c>Dictionary&lt;string, object?&gt;</c> keyed by port name.
+    /// Executes the operator with the given resolved parameters and returns all output values
+    /// as a dictionary keyed by port name. Operators with no output ports return an empty dictionary.
     /// </summary>
-    object? Execute(IReadOnlyDictionary<string, object?> parameters);
+    IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters);
 }

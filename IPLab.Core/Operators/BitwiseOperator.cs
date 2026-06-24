@@ -34,7 +34,7 @@ public class BitwiseOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var imageA    = (Mat)parameters["ImageA"]!;
         var imageB    = (Mat)parameters["ImageB"]!;
@@ -68,7 +68,7 @@ public class BitwiseOperator : IOperatorType
         {
             var result = new Mat();
             op(imageA, imageB, result);
-            return result;
+            return new Dictionary<string, object?> { ["Image"] = result };
         }
 
         // 3-channel: apply op per channel then merge.
@@ -88,6 +88,6 @@ public class BitwiseOperator : IOperatorType
         foreach (var m in chB) m.Dispose();
         foreach (var m in chR) m.Dispose();
 
-        return merged;
+        return new Dictionary<string, object?> { ["Image"] = merged };
     }
 }

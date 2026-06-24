@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
 
@@ -45,7 +45,7 @@ public class UndistortOperator : IOperatorType, ICacheInvalidationProvider
     private Mat?    _map1, _map2;
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         if (parameters.GetValueOrDefault("Image") is not Mat image || image.Empty())
             throw new ArgumentException("Undistort requires an input image.");

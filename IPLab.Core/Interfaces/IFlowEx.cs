@@ -13,11 +13,10 @@ public interface IFlowEx
     /// <summary>Runs a single operator by ID without re-running its predecessors.</summary>
     Task RunSingleAsync(string operatorId, CancellationToken ct = default);
     /// <summary>
-    /// Intermediate results keyed by operator ID.
-    /// Multi-port operators (those with more than one output port) store a <c>Dictionary&lt;string, object?&gt;</c>
-    /// keyed by the port's <c>Name</c> string. Single-port operators store the raw value directly.
+    /// Intermediate results keyed by operator ID. Each entry is a port dictionary mapping port name
+    /// to the produced value, matching <c>IOperatorType.Execute</c>'s return convention.
     /// </summary>
-    IReadOnlyDictionary<string, object?> IntermediateResults { get; }
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> IntermediateResults { get; }
     /// <summary>Current execution status for each operator, keyed by operator ID.</summary>
     IReadOnlyDictionary<string, OperatorStatus> Statuses { get; }
     /// <summary>Clears all cached results and resets all operator statuses to <see cref="OperatorStatus.NotRun"/>.</summary>

@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
 
@@ -30,7 +30,7 @@ public class DetectCirclesOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Circles", DataType = typeof(CircleSegment[]) }, ..RoiParameters.OutputPorts];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image     = (Mat)parameters["Image"]!;
         var minDist   = Convert.ToDouble(parameters["MinDist"]);

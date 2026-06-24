@@ -15,8 +15,8 @@ public class InvertImageTests
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
         public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
-        public object? Execute(IReadOnlyDictionary<string, object?> _)
-            => new Mat(4, 4, MatType.CV_8UC1, new Scalar(value));
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _)
+            => new Dictionary<string, object?> { ["Image"] = new Mat(4, 4, MatType.CV_8UC1, new Scalar(value)) };
     }
 
     private class BgrSourceOperator(byte b, byte g, byte r) : IOperatorType
@@ -26,8 +26,8 @@ public class InvertImageTests
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
         public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
-        public object? Execute(IReadOnlyDictionary<string, object?> _)
-            => new Mat(4, 4, MatType.CV_8UC3, new Scalar(b, g, r));
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _)
+            => new Dictionary<string, object?> { ["Image"] = new Mat(4, 4, MatType.CV_8UC3, new Scalar(b, g, r)) };
     }
 
     private static FlowDef BuildFlow(IOperatorType source) => new(
@@ -79,7 +79,8 @@ public class InvertImageTests
         public string Icon      => "";
         public IReadOnlyList<ParameterDescriptor> ParameterSchema => [];
         public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat) }];
-        public object? Execute(IReadOnlyDictionary<string, object?> _) => mat.Clone();
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _)
+            => new Dictionary<string, object?> { ["Image"] = mat.Clone() };
     }
 
     [Fact]

@@ -20,8 +20,8 @@ public class FlowExLoopTests
         public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
             [new() { Name = "Items", DataType = typeof(int[]) }];
 
-        public object? Execute(IReadOnlyDictionary<string, object?> _)
-            => Enumerable.Range(0, length).ToArray();
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _)
+            => new Dictionary<string, object?> { ["Items"] = Enumerable.Range(0, length).ToArray() };
     }
 
     // Body op: reads Index from LoopStart, records when it ran, outputs index^2.
@@ -37,13 +37,13 @@ public class FlowExLoopTests
         public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
             [new() { Name = "Out", DataType = typeof(int) }];
 
-        public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
         {
             int index = Convert.ToInt32(parameters["Index"]);
             long start = Stopwatch.GetTimestamp();
             Thread.Sleep(delayMs);
             log[index] = (start, Stopwatch.GetTimestamp());
-            return index * index;
+            return new Dictionary<string, object?> { ["Out"] = index * index };
         }
     }
 
@@ -165,7 +165,7 @@ public class FlowExLoopTests
         public IReadOnlyList<OutputPortDescriptor> OutputPorts =>
             [new() { Name = "Out", DataType = typeof(int) }];
 
-        public object? Execute(IReadOnlyDictionary<string, object?> _) =>
+        public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> _) =>
             throw new InvalidOperationException("body op failed on purpose");
     }
 

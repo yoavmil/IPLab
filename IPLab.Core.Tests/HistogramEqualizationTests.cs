@@ -17,7 +17,7 @@ public class HistogramEqualizationTests
             ["Method"]       = method,
             ["ClipLimit"]    = clipLimit,
             ["TileGridSize"] = tileGridSize,
-        })!;
+        })["Image"]!;
     }
 
     [Fact]

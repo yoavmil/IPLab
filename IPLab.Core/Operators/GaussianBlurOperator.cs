@@ -29,7 +29,7 @@ public class GaussianBlurOperator : IOperatorType
     public IReadOnlyList<OutputPortDescriptor> OutputPorts => [new() { Name = "Image", DataType = typeof(Mat), IsDisplayImage = true }, ..RoiParameters.OutputPorts];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var image  = (Mat)parameters["Image"]!;
         var size   = Convert.ToInt32(parameters.GetValueOrDefault("KernelSize") ?? 5);

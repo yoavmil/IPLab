@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using Microsoft.CodeAnalysis;
@@ -60,7 +60,7 @@ public class CSharpScriptOperator : IOperatorType
         );
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var path = parameters.GetValueOrDefault("ScriptPath") as string ?? "";
 

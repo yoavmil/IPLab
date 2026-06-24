@@ -1,4 +1,4 @@
-using IPLab.Core.Interfaces;
+﻿using IPLab.Core.Interfaces;
 using IPLab.Core.Models;
 using OpenCvSharp;
 
@@ -33,11 +33,11 @@ public class LoadImageOperator : IOperatorType
     ];
 
     /// <inheritdoc/>
-    public object? Execute(IReadOnlyDictionary<string, object?> parameters)
+    public IReadOnlyDictionary<string, object?> Execute(IReadOnlyDictionary<string, object?> parameters)
     {
         var filePaths   = parameters["FilePaths"] as string[] ?? [];
         var activeIndex = Convert.ToInt32(parameters.GetValueOrDefault("ActiveIndex") ?? 0);
-        if (filePaths.Length == 0) return null;
+        if (filePaths.Length == 0) return new Dictionary<string, object?>();
         var idx   = Math.Min(filePaths.Length - 1, Math.Max(0, activeIndex));
         var path  = filePaths[idx];
         var image = Cv2.ImRead(path, ImreadModes.Color);
