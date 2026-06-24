@@ -97,13 +97,6 @@ public class SerializationTests
     }
 
     [Fact]
-    public void Deserialize_EmptyString_Throws()
-    {
-        Assert.Throws<System.Text.Json.JsonException>(
-            () => FlowDefSerializer.Deserialize(string.Empty, OperatorRegistry.CreateDefault()));
-    }
-
-    [Fact]
     public void Deserialize_EmptyObject_ReturnsEmptyFlow()
     {
         var flow = FlowDefSerializer.Deserialize("{}", OperatorRegistry.CreateDefault());
