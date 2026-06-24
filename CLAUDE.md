@@ -86,7 +86,7 @@ An operator turns **red** (failed) in two distinct situations:
 - **Local feed:** `%USERPROFILE%\LocalNuGet\`
 - **nuget.config** at the repo root registers this feed alongside nuget.org.
 - **Pack command:** `dotnet pack IPLab.Core\IPLab.Core.csproj -c Release -o .\nupkg`
-- **Version:** bump `<Version>` in `IPLab.Core\IPLab.Core.csproj` before packing a new release. Current: `1.0.0-alpha.7`.
+- **Version:** bump `<Version>` in `IPLab.Core\IPLab.Core.csproj` before packing a new release.
 - Consuming solutions add the same `nuget.config` and reference `<PackageReference Include="IPLab.Core" Version="x.y.z" />`.
 
 ## MVP Feature List

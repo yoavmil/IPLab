@@ -138,6 +138,7 @@ public class MainViewModel : ViewModelBase
     public ICommand         ClearResultsCommand  { get; }
     public ICommand         CloseSettingsCommand { get; }
     public ICommand         SaveFlowCommand      { get; }
+    public ICommand         SaveFlowAsCommand    { get; }
     public ICommand         LoadFlowCommand      { get; }
 
     public MainViewModel()
@@ -175,7 +176,8 @@ public class MainViewModel : ViewModelBase
         StopCommand          = new RelayCommand(Stop);
         ClearResultsCommand  = new RelayCommand(ClearResults);
         CloseSettingsCommand = new RelayCommand(() => EditingNode = null);
-        SaveFlowCommand      = new RelayCommand(() => SaveFlowAs());
+        SaveFlowCommand      = new RelayCommand(() => SaveFlow());
+        SaveFlowAsCommand    = new RelayCommand(() => SaveFlowAs());
         LoadFlowCommand      = new RelayCommand(LoadFlow);
     }
 
@@ -373,6 +375,11 @@ public class MainViewModel : ViewModelBase
             Filter     = "IPLab Flow|*.ipl|JSON|*.json|All files|*.*",
             DefaultExt = ".ipl"
         };
+        if (_currentFilePath is not null)
+        {
+            dialog.InitialDirectory = Path.GetDirectoryName(_currentFilePath);
+            dialog.FileName         = Path.GetFileName(_currentFilePath);
+        }
         if (dialog.ShowDialog() != true) return false;
 
         var json = SerializeCurrentFlow();
