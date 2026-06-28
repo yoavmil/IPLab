@@ -149,6 +149,7 @@ public class DistortionCalibrationOperator : IOperatorType
                     Pitch            = pitch,
                     MeanCol          = meanCol,
                     MeanRow          = meanRow,
+                    MmPerPixel       = mmPerPixel,
                     Corners          = calibCorners,
                 }, outPath!);
                 calibPath = outPath;
@@ -819,7 +820,7 @@ public class DistortionCalibrationOperator : IOperatorType
             var prev = p0;
             for (int c = c0 - 1; c >= targetColMin; c--)
             {
-                prev = new Point2f(prev.X + lvelX, prev.Y + lvelY);
+                prev = new Point2f(prev.X - lvelX, prev.Y - lvelY);
                 corners[(c, row)] = prev;
             }
 
@@ -848,7 +849,7 @@ public class DistortionCalibrationOperator : IOperatorType
             var prev = p0;
             for (int r = r0 - 1; r >= targetRowMin; r--)
             {
-                prev = new Point2f(prev.X + dvelX, prev.Y + dvelY);
+                prev = new Point2f(prev.X - dvelX, prev.Y - dvelY);
                 corners[(col, r)] = prev;
             }
 

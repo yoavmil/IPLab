@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IPLab.Core.Models;
 
@@ -26,6 +27,9 @@ public class CalibrationData
     public float MeanCol { get; set; }
     /// <summary>Mean Row index of the originally detected corners. Anchors the pixel↔grid coordinate mapping.</summary>
     public float MeanRow { get; set; }
+    /// <summary>Physical scale in mm per pixel, computed from <c>SquareSizeMm / Pitch</c> at calibration time. Null when the square size was not provided.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? MmPerPixel { get; set; }
     /// <summary>Complete grid corners (detected + gap-filled + boundary-extended) ready for bilinear warp.</summary>
     public List<CornerRecord> Corners { get; set; } = [];
 }
