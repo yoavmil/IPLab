@@ -322,9 +322,20 @@ public class FlowEx : IFlowEx
             if (st == OperatorStatus.Failed) anyFailed = true;
         }
 
+        var failedIndices = new List<int>();
+        for (int i = 0; i < n && failedIndices.Count < 4; i++)
+        {
+            int actualIndex = mode == LoopMode.Discrete ? startIndex : i;
+            bool iterFailed = ctx.Body.Any(op => subFlow._statuses.TryGetValue($"{op.Id}#{i}", out var s) && s == OperatorStatus.Failed)
+                           || (subFlow._statuses.TryGetValue($"{ctx.End.Id}#{i}", out var es) && es == OperatorStatus.Failed);
+            if (iterFailed) failedIndices.Add(actualIndex);
+        }
+        bool hasMore = failedIndices.Count > 3;
+        var failMsg = $"Inner loop operator(s) failed at: {string.Join(", ", failedIndices.Take(3))}{(hasMore ? " ..." : ".")}";
+
         SetStatus(ctx.Start.Id,
             anyFailed ? OperatorStatus.Failed : OperatorStatus.Success,
-            anyFailed ? new InvalidOperationException("One or more loop body operators failed.") : null);
+            anyFailed ? new InvalidOperationException(failMsg) : null);
     }
 
     private static FlowDef BuildBodyFlowDef(LoopContext ctx, int n, LoopMode mode)

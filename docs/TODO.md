@@ -76,6 +76,8 @@
   and include `RoiParameters.OutputPorts`. Add rotated-ROI and image-edge tests as required
   for ROI-supporting detection operators.
 
+- **TemplateMatch: investigate why tests require `minScore: 0.999`** — several tests in `TemplateMatchOperatorTests` (e.g. `Execute_FindsMultipleMatchesAndReturnsMatrixAndRectangles`, `Execute_FindsMatchesAtDifferentScales`) pass `minScore: 0.999` to avoid false positives. A synthetic pattern placed on a flat black background should score ≈1.0 at the true location; the fact that a lower threshold like 0.95 lets spurious matches through suggests either the score normalisation is off (e.g. NaN or near-zero-energy regions being scored) or NMS is not suppressing overlap correctly. Investigate and fix so tests can use a realistic production threshold (0.7–0.9) without false positives.
+
 - **Replace `GaussianBlur` with `NoiseFilter` operator** — retire `GaussianBlurOperator` and replace it with a `NoiseFilterOperator` that exposes a `Method` enum (`Gaussian` / `Median`). Gaussian keeps its existing `KernelSize` and `Sigma` parameters (shown always / shown when Method=Gaussian respectively); Median only needs `KernelSize`. Both support ROI via `ApplyImageFilter`. Existing `.ipl` files that reference type `GaussianBlur` will need migration (sed rename + add `Method=Gaussian`).
 
 ## IPLab.Core (Architecture)
