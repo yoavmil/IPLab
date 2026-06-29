@@ -5,9 +5,12 @@ using OpenCvSharp;
 namespace IPLab.Core.Operators;
 
 /// <summary>
-/// Applies bilinear warp correction to an image using a corner-correspondence calibration file
-/// produced by <see cref="DistortionCalibrationOperator"/>. The output is rotated so the
-/// checkerboard axes align with the image axes, with black fill where coverage is absent.
+/// Simultaneously corrects lens distortion, camera rotation, and perspective tilt in a single
+/// bilinear warp pass, using a corner-correspondence calibration file produced by
+/// <see cref="DistortionCalibrationOperator"/>. All three geometric errors are absorbed from the
+/// stored corner correspondences — no camera model or distortion coefficients are needed.
+/// The output is axis-aligned (checkerboard axes map to image axes), with black fill where
+/// calibration coverage is absent.
 /// </summary>
 /// <remarks>
 /// The dense warp maps are expensive to build, so they are cached and rebuilt only when the

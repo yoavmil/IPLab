@@ -8,10 +8,14 @@ namespace IPLab.Core.Operators;
 
 /// <summary>
 /// Detects checkerboard corner features using a rotation-invariant saddle filter and builds a
-/// sparse corner-correspondence calibration file (<see cref="CalibrationData"/>) for use with
-/// <see cref="UndistortOperator"/>. The output image is the saddle-filter heatmap or an annotated
-/// label overlay. When the <c>CalibFilePath</c> output is set, the file written to it is a
-/// JSON-serialised <see cref="CalibrationData"/>.
+/// corner-correspondence calibration file (<see cref="CalibrationData"/>) for use with
+/// <see cref="UndistortOperator"/>. Because the file records where each physically-regular grid
+/// corner actually appears in the source image, it implicitly captures all three sources of
+/// geometric error at once — lens distortion, camera rotation, and perspective tilt — so
+/// <see cref="UndistortOperator"/> can correct all three in a single warp pass without decomposing
+/// them into camera intrinsics or distortion coefficients.
+/// The output image is the saddle-filter heatmap or an annotated label overlay.
+/// When the <c>CalibFilePath</c> output is set, the file written to it is a JSON-serialised <see cref="CalibrationData"/>.
 /// </summary>
 /// <seealso href="https://github.com/yoavmil/IPLab/blob/master/docs/OPERATORS.md#distortioncalibration">Operator reference</seealso>
 public class DistortionCalibrationOperator : IOperatorType

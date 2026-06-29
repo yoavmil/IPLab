@@ -448,7 +448,9 @@ assigned to the operator automatically.
 
 ## DistortionCalibration
 
-Detects checkerboard corners using a rotation-invariant saddle filter, infers the grid topology, and (optionally) writes a sparse corner-correspondence calibration file for use with the `Undistort` operator. Requires a single-channel (grayscale) input. The display image is the saddle-response heatmap or a grid-index label overlay, depending on `ShowHeatmap` / `ShowLabels`.
+Detects checkerboard corners using a rotation-invariant saddle filter, infers the grid topology, and (optionally) writes a corner-correspondence calibration file for use with the `Undistort` operator. Requires a single-channel (grayscale) input. The display image is the saddle-response heatmap or a grid-index label overlay, depending on `ShowHeatmap` / `ShowLabels`.
+
+Because the file records where each physically-regular grid corner actually appears in the image, it implicitly captures **all three sources of geometric error in a single pass**: lens distortion (barrel/pincushion warp), camera rotation (the grid axes are canonicalized to horizontal/vertical), and perspective tilt (each cell's corners encode the local scale and shear). The paired `Undistort` operator reverses all three simultaneously — no camera model, no decomposition into intrinsics or distortion coefficients.
 
 Fails when too few inlier corners survive grid inference — i.e. no recognisable checkerboard, or parameters that don't suit the square size.
 
@@ -485,7 +487,7 @@ Does not support ROI.
 
 ## Undistort
 
-Corrects geometric distortion by applying a dense bilinear warp built from a corner-correspondence calibration file produced by `DistortionCalibration`. For each output pixel the operator finds the enclosing grid cell and bilinear-blends the four corner source positions, then remaps via `Cv2.Remap`. The output is rotated so the checkerboard axes align with the image axes; areas with no calibration coverage are filled black.
+Simultaneously corrects lens distortion, camera rotation, and perspective tilt in a single warp pass, using a corner-correspondence calibration file produced by `DistortionCalibration`. For each output pixel the operator finds the enclosing grid cell and bilinear-blends the four corner source positions to determine where to sample in the original image, then remaps via `Cv2.Remap`. The output is axis-aligned — checkerboard rows and columns are horizontal and vertical — with black fill where calibration coverage is absent. No camera model or distortion coefficients are needed; all corrections are implicit in the stored corner correspondences.
 
 The input image size must match the size recorded in the calibration file. The dense warp maps are expensive to build, so they are cached and rebuilt only when the calibration file (path or last-write time) or the input image size changes.
 
